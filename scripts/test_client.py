@@ -1,10 +1,20 @@
 # test_client.py
 import asyncio
-from mcp.client.stdio import stdio_client
+import os
+from pathlib import Path
+from mcp.client.stdio import stdio_client, StdioServerParameters
 from mcp.client.session import ClientSession
 
+# Resolve the src/ directory so the package is importable by the subprocess
+SRC_DIR = str(Path(__file__).parent.parent / "src")
+
 async def test():
-    async with stdio_client(["python", "project_context_server/server.py"]) as (read, write):
+    server_params = StdioServerParameters(
+        command="python",
+        args=["-m", "project_context_server"],
+        env={**os.environ, "PYTHONPATH": SRC_DIR},
+    )
+    async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
             tools = await session.list_tools()
