@@ -1,0 +1,1 @@
+"""mcp-project-context-server — MCP server for persistent project context."""

@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mcp-project-context-server"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp",
+    "chromadb",
+    "ollama",
+    "watchdog",
+]
+
+[project.scripts]
+project-context-server = "project_context_server.server:run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["project_context_server"]
