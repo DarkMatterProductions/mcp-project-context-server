@@ -1,6 +1,8 @@
 """MCP server setup, tool registry, and entry point."""
 
 import asyncio
+import logging
+import sys
 from typing import Any
 
 from mcp.server import Server
@@ -13,6 +15,15 @@ from project_context_server.tools import (
     save_session,
     index_context,
 )
+
+
+logging.basicConfig(
+    stream=sys.stderr,           # stderr is safe — stdout is reserved for MCP protocol
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
+
 
 server = Server("project-context")
 
@@ -111,5 +122,9 @@ async def _main() -> None:
 
 
 def run() -> None:
-    """Shell entrypoint — called by `project-context-server` and `__main__.py`."""
-    asyncio.run(_main())
+    logger.info("project-context-server starting")
+    try:
+        asyncio.run(_main())
+    except Exception:
+        logger.exception("Server crashed at top level")
+        raise
