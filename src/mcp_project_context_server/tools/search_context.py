@@ -1,4 +1,5 @@
 """Tool: search_project_context — semantic search over indexed context."""
+import os
 
 from mcp import types
 from mcp_project_context_server.integrations.chroma.client import chroma_client
@@ -10,7 +11,8 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     query: str = arguments["query"]
     n_results: int = arguments.get("n_results", 5)
 
-    context_dir = find_context_dir(arguments["project_path"])
+    _project_path = os.getenv("PROJECT_PATH", arguments["project_path"])
+    context_dir = find_context_dir(_project_path)
     if not context_dir:
         return [types.TextContent(
             type="text",
