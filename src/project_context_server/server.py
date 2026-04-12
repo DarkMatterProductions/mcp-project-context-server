@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-import sys
+from pathlib import Path
 from typing import Any
 
 from mcp.server import Server
@@ -17,8 +17,12 @@ from project_context_server.tools import (
 )
 
 
+_LOG_PATH = Path(r"C:\Users\drahk\.mcp-data\logs\project-context-server.log")
+_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+
 logging.basicConfig(
-    stream=sys.stderr,           # stderr is safe — stdout is reserved for MCP protocol
+    filename=_LOG_PATH,
+    filemode="a",
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )

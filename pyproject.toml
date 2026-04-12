@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcp-project-context-server"
-version = "0.1.1"
+version = "0.1.3"
 requires-python = ">=3.11"
 dependencies = [
     "mcp",
@@ -17,4 +17,4 @@ dependencies = [
 project-context-server = "project_context_server.server:run"
 
 [tool.hatch.build.targets.wheel]
-packages = ["project_context_server"]
+packages = ["src/project_context_server"]
