@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from mcp import types
-from project_context_server.helpers.context import find_context_dir
+from mcp_project_context_server.helpers.context import find_context_dir
 
 
 async def handle(arguments: dict) -> list[types.TextContent]:

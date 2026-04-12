@@ -9,7 +9,7 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp import types
 
-from project_context_server.tools import (
+from mcp_project_context_server.tools import (
     load_context,
     search_context,
     save_session,

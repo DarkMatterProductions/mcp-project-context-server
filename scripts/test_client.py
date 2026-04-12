@@ -11,7 +11,7 @@ SRC_DIR = str(Path(__file__).parent.parent / "src")
 async def test():
     server_params = StdioServerParameters(
         command="python",
-        args=["-m", "project_context_server"],
+        args=["-m", "mcp_project_context_server"],
         env={**os.environ, "PYTHONPATH": SRC_DIR},
     )
     async with stdio_client(server_params) as (read, write):

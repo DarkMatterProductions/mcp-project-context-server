@@ -1,9 +1,9 @@
 """Tool: search_project_context — semantic search over indexed context."""
 
 from mcp import types
-from project_context_server.integrations.chroma.client import chroma_client
-from project_context_server.integrations.ollama.client import get_embedding
-from project_context_server.helpers.context import find_context_dir, collection_name_for
+from mcp_project_context_server.integrations.chroma.client import chroma_client
+from mcp_project_context_server.integrations.ollama.client import get_embedding
+from mcp_project_context_server.helpers.context import find_context_dir, collection_name_for
 
 
 async def handle(arguments: dict) -> list[types.TextContent]:
