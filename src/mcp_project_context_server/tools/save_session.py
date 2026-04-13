@@ -1,5 +1,5 @@
 """Tool: save_session_summary — writes a session summary to .context/sessions/."""
-
+import os
 from datetime import datetime
 
 from mcp import types
@@ -9,7 +9,8 @@ from mcp_project_context_server.helpers.context import find_context_dir
 async def handle(arguments: dict) -> list[types.TextContent]:
     summary: str = arguments["summary"]
 
-    context_dir = find_context_dir(arguments["project_path"])
+    _project_path = os.getenv("PROJECT_PATH", arguments["project_path"])
+    context_dir = find_context_dir(_project_path)
     if not context_dir:
         return [types.TextContent(
             type="text",
