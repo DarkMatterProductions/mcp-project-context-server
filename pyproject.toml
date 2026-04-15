@@ -1,11 +1,27 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "mcp-project-context-server"
 version = "0.2.2"
+description = "A Python MCP server that gives LLMs persistent, searchable access to project context — documentation, architecture decisions, and session notes."
+readme = "README.md"
+license = {text = "MIT"}
 requires-python = ">=3.11"
+keywords = [
+    "mcp", "model-context-protocol", "semantic-search",
+    "chromadb", "llm", "documentation", "adr", "architecture-decision-records",
+    "vector-store", "python", "server"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence"
+]
 dependencies = [
     "mcp",
     "chromadb",
@@ -13,8 +29,28 @@ dependencies = [
     "watchdog",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0"
+]
+
 [project.scripts]
 project-context-server = "mcp_project_context_server.server:run"
+
+[project.urls]
+Homepage = "https://github.com/your-org/mcp-project-context-server"
+Documentation = "https://github.com/your-org/mcp-project-context-server#readme"
+Repository = "https://github.com/your-org/mcp-project-context-server.git"
+Issues = "https://github.com/your-org/mcp-project-context-server/issues"
+Changelog = "https://github.com/your-org/mcp-project-context-server/blob/main/CHANGELOG.md"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mcp_project_context_server"]

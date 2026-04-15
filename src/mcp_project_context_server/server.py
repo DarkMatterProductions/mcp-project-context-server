@@ -37,7 +37,7 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
         description=(
             "Load the full project context for the given project path. "
             "Returns project.md, all ADRs, and the latest session summary. "
-            "Call this at the start of every session."
+            "You MUST call this at the start of every session."
         ),
         inputSchema={
             "type": "object",
