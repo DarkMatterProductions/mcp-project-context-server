@@ -2,12 +2,6 @@
 version: 1.0.0
 schema: v1
 mcpServers:
-  - name: filesystem
-    command: "C:/Program Files/nodejs/node.exe"
-    args:
-      - "C:/Users/drahk/AppData/Roaming/npm/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js"
-      - "C:/Users/drahk/DMPProjects/mcp-project-context-server"
-
   - name: memory
     command: "C:/Program Files/nodejs/node.exe"
     args:
