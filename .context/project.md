@@ -79,8 +79,6 @@ Three tool groups are planned and in early design (see ADRs 00009–00011):
 
 ## Known Pain Points / Tech Debt
 
-- **`context_server.py`** (legacy): A monolithic implementation that predates the modular `tools/`/`integrations/`/`indexing/` architecture. It duplicates all tool logic and should be removed. It is not referenced by any entry point.
-- **`AGENTS.md`** in repo root: Belongs to a different project (VSVanillaPlus, a Vintage Story game mod). Should be removed or relocated.
 - **`watchdog` dependency**: Present in `requirements.txt` for planned auto-reindex feature (ADR-00006). Not yet implemented in code.
 - **`pyyaml` dependency**: Present in `requirements.txt` for planned YAML configuration layer (ADR-00005). Not yet implemented in code. Also absent from `pyproject.toml` — needs to be added when the feature lands.
 - **Chunk size not configurable**: The 1000-character chunk size in `indexing/chroma/indexer.py` is a hardcoded constant. Not exposed as an env var. Currently Under Review (ADR-00007).
