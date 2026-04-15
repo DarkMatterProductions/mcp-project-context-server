@@ -29,7 +29,7 @@ The ADR template and naming convention are defined in this project (see `project
 
 1. **File content manipulation approach**: Option C is selected. `read_adr` returns the full ADR markdown in raw form, while targeted reads and writes (`read_adr_status`, `list_sections`, `search_sections`, `read_adr_section`, `update_adr_status`, `update_adr_section`) use structured section parsing. This keeps read and write behavior aligned while reducing unrelated content retrieval.
 
-2. **Sequential numbering enforcement**: The next ADR number should be determined by scanning `.context/decisions/` for the highest existing number and incrementing. This requires a glob of `ADR-*.md` files and parsing the 5-digit prefix. There must be no gap-filling (if ADR-00003 is deleted, the next ADR is still ADR-00004, not ADR-00003).
+2. **Sequential numbering enforcement**: Option A is selected. `create_adr` acquires a lock in `.context/decisions/`, scans valid `ADR-XXXXX-*.md` files, allocates `max(existing_number) + 1`, and creates the new ADR file atomically before releasing the lock. Number parsing uses only strict 5-digit ADR filenames; malformed filenames are ignored for allocation and returned as warnings. If no valid ADR files exist, allocation starts at `ADR-00001`. There is no gap-filling and no number reuse.
 
 3. **Status transition validation**: Should the `update_status` tool validate that transitions are legal (e.g., prevent moving from `Accepted` back to `Proposed`)? Or is the status field treated as a free-text update with no validation? Light validation (warn on unexpected transitions, but don't block) may be the right balance — the agent or user may have legitimate reasons for unusual transitions.
 

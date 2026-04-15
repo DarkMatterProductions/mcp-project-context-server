@@ -36,7 +36,7 @@ Every ADR must use the following structure exactly. Do not add or remove section
 # ADR-XXXXX: {Topic Title}
 
 ## Status
-{One of: Proposed | Under Review | Accepted | Deprecated | Superseded by ADR-XXXXX}
+{One of: Proposed | Under Review | Accepted | Implemented | Deprecated | Superseded by ADR-XXXXX}
 
 ## Context
 [Full description of the problem or scenario requiring a decision. Include:
