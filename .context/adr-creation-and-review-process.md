@@ -66,12 +66,13 @@ Do NOT state the decision here.]
 
 ## Status Values
 
-| Status | Meaning |
-|--------|---------|
-| `Proposed` | ADR has been drafted and is open for discussion. No decision has been made yet. |
-| `Under Review` | ADR is actively being reviewed by stakeholders. Discussion is ongoing in the ADR Review Discussion section. |
-| `Accepted` | Decision has been finalized. ADR Review Discussion section has been removed. Decision section is populated. |
-| `Deprecated` | The decision is no longer applicable (e.g., the component was removed). The ADR is retained for historical reference. |
+| Status | Meaning                                                                                                                     |
+|--------|-----------------------------------------------------------------------------------------------------------------------------|
+| `Proposed` | ADR has been drafted and is open for discussion. No decision has been made yet.                                             |
+| `Under Review` | ADR is actively being reviewed by stakeholders. Discussion is ongoing in the ADR Review Discussion section.                 |
+| `Accepted` | Decision has been finalized. ADR Review Discussion section has been removed. Decision section is populated.                 |
+| `Implemented` | Decision has been implemented in the code. ADR is retained and enforced.                                                    |
+| `Deprecated` | The decision is no longer applicable (e.g., the component was removed). The ADR is retained for historical reference.       |
 | `Superseded by ADR-XXXXX` | A newer ADR has replaced this decision. Link to the superseding ADR. The original ADR is retained for historical reference. |
 
 ---
@@ -119,11 +120,11 @@ Once a decision has been reached:
 
 1. **Populate the Decision section** with a clear, specific description of what was decided and why, drawing directly from the ADR Review Discussion.
 
-2. **Remove the ADR Review Discussion section entirely.** The decision captures the conclusion; the discussion thread is not needed in the final record.
+2. **Refine Consequences and Alternatives Considered** if the review surfaced new information.
 
-3. **Update Status** to `Accepted`.
+3. **Remove the ADR Review Discussion section entirely.** The decision captures the conclusion; the discussion thread is not needed in the final record.
 
-4. **Refine Consequences and Alternatives Considered** if the review surfaced new information.
+4. **Update Status** to `Accepted`.
 
 5. **Commit the finalized ADR** to version control with a commit message like:
    ```
