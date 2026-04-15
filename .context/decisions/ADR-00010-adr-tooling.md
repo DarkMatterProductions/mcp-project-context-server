@@ -43,6 +43,8 @@ The ADR template and naming convention are defined in this project (see `project
 
 8. **`search_sections` implementation**: Option B is selected. `search_adr_sections` uses vector-based search with filters that constrain results to chunks within the selected ADR section scope. This aligns with the planned header-based chunking strategy so semantic retrieval can remain section-aware while still leveraging embeddings. As with other vector-backed tools, responses should provide clear stale-index guidance when reindexing is required.
 
+9. **Session checkpoint (2026-04-15)**: Review paused by request. Questions 1 through 8 are resolved and recorded above. Remaining work on return: (a) populate `## Decision` with the finalized design summary based on Q1-Q8 outcomes, (b) populate `## Consequences` with implementation and operational impacts, (c) populate `## Alternatives Considered` with rejected options, and (d) continue lifecycle progression after content review (`Proposed` -> `Under Review` or `Accepted` when finalization criteria are met).
+
 ## Decision
 
 TBD — pending resolution of the design questions above.
