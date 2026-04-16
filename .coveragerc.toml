@@ -1,0 +1,48 @@
+[run]
+# Source directory for coverage measurement
+source = ["src"]
+
+# Files and directories to exclude from coverage measurement
+omit = [
+    # Tests directory
+    "*/tests/*",
+    # Python cache
+    "*/__pycache__/*",
+    # Third-party packages
+    "*/site-packages/*",
+    # Development tools
+    "*/venv/*",
+    "*/.venv/*",
+    ".tox",
+    "*/.tox/*",
+    # IDE and editor files
+    "*/.idea/*",
+    "*/.vscode/*",
+    # Docker related
+    "*/Dockerfile",
+    "*/docker-compose.yml",
+    # Type stubs
+    "*/.pyi",
+    # Ignore coverage on specific lines
+    "*/setup.py",
+    "*/pyproject.toml",
+]
+
+[report]
+# Fail CI if coverage is below this threshold (optional)
+fail_under = 80
+
+# Show missing lines (optional)
+show_missing = true
+
+[html]
+# Directory to store HTML coverage report (optional)
+directory = "htmlcov"
+
+[xml]
+# File name for XML coverage report for CI integration
+report = "coverage.xml"
+
+[yaml]
+# Directory to store YAML coverage report (optional)
+reportdir = "coverage_reduced"
