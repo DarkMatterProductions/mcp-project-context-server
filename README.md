@@ -6,10 +6,14 @@
 
 <div align="center">
 
-[![Python](https://img.shields.io/pypi/pyversions/mcp-project-context-server)](https://pypi.org/project/mcp-project-context-server/)
 [![PyPI](https://img.shields.io/pypi/v/mcp-project-context-server)](https://pypi.org/project/mcp-project-context-server/)
-[![License](https://img.shields.io/pypi/l/mcp-project-context-server)](LICENSE)
-[![Build](https://img.shields.io/badge/CI-CI-green)](https://github.com/your-org/mcp-project-context-server/actions)
+[![License](https://img.shields.io/badge/License-AGPL%20v3-purple.svg)](LICENSE)
+[![Python](https://img.shields.io/pypi/pyversions/mcp-project-context-server)](https://pypi.org/project/mcp-project-context-server/)
+[![Downloads](https://img.shields.io/pypi/dm/mcp-project-context-server)](https://pypi.org/project/mcp-project-context-server/)
+[![Version](https://img.shields.io/pypi/v/mcp-project-context-server?label=version)](https://pypi.org/project/mcp-project-context-server/)
+[![Coverage](https://img.shields.io/badge/coverage-80%25-green.svg)](https://codecov.io/your-org/mcp-project-context-server)
+[![Last Commit](https://img.shields.io/github/last-commit/your-org/mcp-project-context-server)]()
+[![Issues](https://img.shields.io/github/issues/your-org/mcp-project-context-server)](https://github.com/your-org/mcp-project-context-server/issues)
 
 </div>
 
