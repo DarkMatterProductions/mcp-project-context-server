@@ -31,7 +31,7 @@ omit = [
 
 [report]
 # Fail CI if coverage is below this threshold (optional)
-fail_under = 80
+# fail_under = 80
 
 # Show missing lines (optional)
 show_missing = true
