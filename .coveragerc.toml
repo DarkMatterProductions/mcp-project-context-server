@@ -26,6 +26,7 @@ omit = [
     # Ignore coverage on specific lines
     "*/setup.py",
     "*/pyproject.toml",
+    "*/scripts/*",
 ]
 
 [report]
