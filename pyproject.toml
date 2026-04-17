@@ -27,7 +27,6 @@ dependencies = [
     "chromadb",
     "ollama",
     "watchdog",
-    "pytest-asyncio",
 ]
 
 [dependency-groups]
@@ -38,6 +37,7 @@ tests = [
     "pytest",
     "pytest-cov",
     "pytest-mock>=3.14",
+    "pytest-asyncio",
     "types-pyyaml",
     "flake8>=7.1.0",
     "pytest-benchmark>=4.0.0"
