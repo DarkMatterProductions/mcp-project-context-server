@@ -37,7 +37,7 @@ tests = [
     "black",
     "pytest",
     "pytest-cov",
-    "pytest-mock",
+    "pytest-mock>=3.14",
     "types-pyyaml",
     "flake8>=7.1.0",
     "pytest-benchmark>=4.0.0"
