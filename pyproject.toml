@@ -47,7 +47,7 @@ tests = [
 [tool.setuptools_scm]
 version_scheme = "guess-next-dev"
 local_scheme = "node-and-date"
-tag_regex = '^.*@(?P<version>\d+\.\d+\.\d+)$'
+tag_regex = '^(?P<version>\d+\.\d+\.\d+)$'
 
 [project.scripts]
 project-context-server = "mcp_project_context_server.server:run"
