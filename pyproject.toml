@@ -31,11 +31,11 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "black>=23.0.0",
-    "ruff>=0.1.0",
-    "mypy>=1.0.0"
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "black>=26.3.1",
+    "mypy>=1.20.1",
+    "isort>=8.0.1"
 ]
 
 [project.scripts]
