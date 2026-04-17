@@ -43,6 +43,11 @@ tests = [
     "pytest-benchmark>=4.0.0"
 ]
 
+[tool.setuptools_scm]
+version_scheme = "guess-next-dev"
+local_scheme = "node-and-date"
+tag_regex = '^.*@(?P<version>\d+\.\d+\.\d+)$'
+
 [project.scripts]
 project-context-server = "mcp_project_context_server.server:run"
 
@@ -54,11 +59,11 @@ Issues = "https://github.com/your-org/mcp-project-context-server/issues"
 Changelog = "https://github.com/your-org/mcp-project-context-server/blob/main/CHANGELOG.md"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/mcp_project_context_server"]
+[tool.setuptools-scm]
+write_to = "src/mcp_project_context_server/_version.py"
 
 
 [tool.setuptools.packages.find]
