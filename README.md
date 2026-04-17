@@ -35,12 +35,11 @@
 
 ### Key Features
 
-- ✅ **Model-Agnostic**: Works with any LLM model via Ollama or other providers
+- ✅ **Model-Agnostic**: Works with any LLM model via Ollama (Other providers coming)
 - ✅ **Configuration-Free**: Environment variable-based setup, no hardcoded paths
 - ✅ **Cross-Platform**: POSIX path normalization ensures consistency across OS
 - ✅ **Async-First**: All operations use async/await for performance and scalability
 - ✅ **Error-Resilient**: Graceful error handling with informative messaging
-- ✅ **Production-Ready**: Structured for deployment in production environments
 
 ---
 
@@ -87,22 +86,6 @@ export CHROMA_DIR="$HOME/.mcp-data/chroma"
 export EMBED_CONCURRENCY="4"           # Max concurrent embeddings
 export PROJECT_PATH="/path/to/project" # Optional, defaults to CWD
 ```
-
-### Quick Start
-
-```bash
-# Start the MCP server
-python -m mcp_project_context_server
-
-# Or use the CLI command
-project-context-server
-```
-
-The server will automatically:
-1. Discover or create the `.context/` directory
-2. Read existing documentation files
-3. Create ChromaDB collections
-4. Initialize MCP tool handlers
 
 ---
 
