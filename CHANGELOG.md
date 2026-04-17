@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.3] - 2026-04-17
 
 ### Fixed
-- Refactor GitHub release creation in `build-and-publish.py` to introduced `subprocess.Popen` for proper output capture in `create_github_release()` (`c3021ad`)
+- Refactor GitHub release creation in `build-and-publish.py` to use `subprocess.Popen` for proper output capture; buffered output is now printed when the release process fails
+- Improve error logging in `build-and-publish.py` so that buffered build output is printed when `python -m build` exits with a non-zero return code and `--verbose` is not set (`b423688`)
 
 ---
 
