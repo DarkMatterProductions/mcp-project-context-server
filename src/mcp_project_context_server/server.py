@@ -5,17 +5,16 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from mcp import types
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp import types
 
 from mcp_project_context_server.tools import (
-    load_context,
-    search_context,
-    save_session,
     index_context,
+    load_context,
+    save_session,
+    search_context,
 )
-
 
 _LOG_PATH = Path(r"C:\Users\drahk\.mcp-data\logs\project-context-server.log")
 _LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -34,11 +33,7 @@ server = Server("project-context")
 _TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="load_project_context",
-        description=(
-            "Load the full project context for the given project path. "
-            "Returns project.md, all ADRs, and the latest session summary. "
-            "You MUST call this at the start of every session."
-        ),
+        description=("Load the full project context for the given project path. " "Returns project.md, all ADRs, and the latest session summary. " "You MUST call this at the start of every session."),
         inputSchema={
             "type": "object",
             "properties": {
@@ -52,11 +47,7 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
     ),
     types.Tool(
         name="search_project_context",
-        description=(
-            "Semantically search the indexed project context. "
-            "Use this to find relevant past decisions, architecture notes, "
-            "or code summaries related to your current task."
-        ),
+        description=("Semantically search the indexed project context. " "Use this to find relevant past decisions, architecture notes, " "or code summaries related to your current task."),
         inputSchema={
             "type": "object",
             "properties": {
@@ -69,10 +60,7 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
     ),
     types.Tool(
         name="save_session_summary",
-        description=(
-            "Save a summary of the current session to .context/sessions/YYYY-MM-DD.md. "
-            "Call this at the end of a session with a concise summary of what was done."
-        ),
+        description=("Save a summary of the current session to .context/sessions/YYYY-MM-DD.md. " "Call this at the end of a session with a concise summary of what was done."),
         inputSchema={
             "type": "object",
             "properties": {
@@ -87,10 +75,7 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
     ),
     types.Tool(
         name="index_project_context",
-        description=(
-            "Re-index the .context/ directory into the vector store. "
-            "Run this after updating project.md, adding ADRs, or refreshing BUNDLE.md."
-        ),
+        description=("Re-index the .context/ directory into the vector store. " "Run this after updating project.md, adding ADRs, or refreshing BUNDLE.md."),
         inputSchema={
             "type": "object",
             "properties": {"project_path": {"type": "string"}},
@@ -100,9 +85,9 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
 ]
 
 _TOOL_HANDLERS = {
-    "load_project_context":  load_context.handle,
+    "load_project_context": load_context.handle,
     "search_project_context": search_context.handle,
-    "save_session_summary":  save_session.handle,
+    "save_session_summary": save_session.handle,
     "index_project_context": index_context.handle,
 }
 

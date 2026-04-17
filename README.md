@@ -6,14 +6,14 @@
 
 <div align="center">
 
-[![PyPI](https://img.shields.io/pypi/v/mcp-project-context-server)](https://pypi.org/project/mcp-project-context-server/)
 [![License](https://img.shields.io/badge/License-AGPL%20v3-purple.svg)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/mcp-project-context-server)](https://pypi.org/project/mcp-project-context-server/)
 [![Python](https://img.shields.io/pypi/pyversions/mcp-project-context-server)](https://pypi.org/project/mcp-project-context-server/)
+[![Version](https://img.shields.io/pypi/v/mcp-project-context-server?label=version)](https://pypi.org/project/mcp-project-context-server/)  
 [![Downloads](https://img.shields.io/pypi/dm/mcp-project-context-server)](https://pypi.org/project/mcp-project-context-server/)
-[![Version](https://img.shields.io/pypi/v/mcp-project-context-server?label=version)](https://pypi.org/project/mcp-project-context-server/)
 [![Coverage](https://img.shields.io/badge/coverage-80%25-green.svg)](https://codecov.io/your-org/mcp-project-context-server)
-[![Last Commit](https://img.shields.io/github/last-commit/your-org/mcp-project-context-server)]()
-[![Issues](https://img.shields.io/github/issues/your-org/mcp-project-context-server)](https://github.com/your-org/mcp-project-context-server/issues)
+[![Last Commit](https://img.shields.io/github/last-commit/DarkMatterProductions/mcp-project-context-server)]()
+[![Issues](https://img.shields.io/github/issues/DarkMatterProductions/mcp-project-context-server)](https://github.com/your-org/mcp-project-context-server/issues)
 
 </div>
 
@@ -35,12 +35,11 @@
 
 ### Key Features
 
-- ✅ **Model-Agnostic**: Works with any LLM model via Ollama or other providers
+- ✅ **Model-Agnostic**: Works with any LLM model via Ollama (Other providers coming)
 - ✅ **Configuration-Free**: Environment variable-based setup, no hardcoded paths
 - ✅ **Cross-Platform**: POSIX path normalization ensures consistency across OS
 - ✅ **Async-First**: All operations use async/await for performance and scalability
 - ✅ **Error-Resilient**: Graceful error handling with informative messaging
-- ✅ **Production-Ready**: Structured for deployment in production environments
 
 ---
 
@@ -88,22 +87,6 @@ export EMBED_CONCURRENCY="4"           # Max concurrent embeddings
 export PROJECT_PATH="/path/to/project" # Optional, defaults to CWD
 ```
 
-### Quick Start
-
-```bash
-# Start the MCP server
-python -m mcp_project_context_server
-
-# Or use the CLI command
-project-context-server
-```
-
-The server will automatically:
-1. Discover or create the `.context/` directory
-2. Read existing documentation files
-3. Create ChromaDB collections
-4. Initialize MCP tool handlers
-
 ---
 
 ## 🖥️ Client Setup
@@ -116,65 +99,153 @@ The server follows the standard MCP protocol, making it compatible with any MCP 
 
 | Client | Status | Setup Instructions |
 |--------|--------|-------------------|
-| **Claude Desktop** | ✅ Tested | See [Claude Setup](#claude-desktop-setup) |
+| **Claude Desktop** | ✅ Tested | See [Claude Desktop Setup](#claude-desktop-setup) |
+| **Claude Code** | ✅ Tested | See [Claude Code Setup](#claude-code-setup) |
 | **Cursor** | ✅ Tested | See [Cursor Setup](#cursor-setup) |
 | **Continue** | ✅ Tested | See [Continue Setup](#continue-setup) |
 | **Windsurf** | ✅ Compatible | See [Windsurf Setup](#windsurf-setup) |
-| **VS Code MCP** | ✅ Compatible | See [VS Code MCP Extension](#vs-code-mcp-extension) |
+| **VS Code Copilot** | ✅ Compatible | See [VS Code Copilot Setup](#vs-code-copilot-setup) |
 
 ### Claude Desktop Setup
 
 1. **Install the server** (see [Installation](#installation))
 
-2. **Configure MCP settings** in `claude_desktop_config.json`:
+2. **Locate the config file** for your OS:
 
-```json
-{
-  "mcpServers": {
-    "project-context": {
-      "command": "python",
-      "args": ["-m", "mcp_project_context_server"],
-      "env": {
-        "OLLAMA_HOST": "http://localhost:11434",
-        "EMBED_MODEL": "nomic-embed-text",
-        "CHROMA_DIR": "/path/to/chroma/data"
-      }
-    }
-  }
-}
-```
+   | OS | Config File Location |
+   |----|---------------------|
+   | **Windows** | `%APPDATA%\Claude\claude_desktop_config.json` |
+   | **macOS** | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+   | **Linux** | `~/.config/Claude/claude_desktop_config.json` |
 
-3. **Restart Claude Desktop** and verify the connection:
-   - Open a chat
+3. **Configure MCP settings** in `claude_desktop_config.json`:
+
+   **Windows:**
+   ```json
+   {
+     "mcpServers": {
+       "project-context": {
+         "command": "python",
+         "args": ["-m", "mcp_project_context_server"],
+         "env": {
+           "OLLAMA_HOST": "http://localhost:11434",
+           "EMBED_MODEL": "nomic-embed-text",
+           "CHROMA_DIR": "%USERPROFILE%\\.mcp-data\\chroma"
+         }
+       }
+     }
+   }
+   ```
+
+   **macOS / Linux:**
+   ```json
+   {
+     "mcpServers": {
+       "project-context": {
+         "command": "python",
+         "args": ["-m", "mcp_project_context_server"],
+         "env": {
+           "OLLAMA_HOST": "http://localhost:11434",
+           "EMBED_MODEL": "nomic-embed-text",
+           "CHROMA_DIR": "~/.mcp-data/chroma"
+         }
+       }
+     }
+   }
+   ```
+
+3. **Verify the server is connected:**
+
+   ```bash
+   claude mcp list
+   ```
+
+4. **Use in Claude Code** by referencing the tools directly in your session, or asking questions about your project context.
    - Try asking: *"What was the decision in ADR-00001?"*
    - Verify semantic search works with project-specific queries
+
+### Claude Code Setup
+
+1. **Install the server** (see [Installation](#installation))
+
+2. **Add the MCP server** using one of two methods:
+
+   **Option A — CLI (Recommended):**
+
+   ```bash
+   claude mcp add project-context python -- -m mcp_project_context_server
+   ```
+
+   To include environment variables:
+
+   ```bash
+   claude mcp add project-context \
+     -e OLLAMA_HOST=http://localhost:11434 \
+     -e EMBED_MODEL=nomic-embed-text \
+     -e CHROMA_DIR=~/.mcp-data/chroma \
+     -- python -m mcp_project_context_server
+   ```
+
+   **Option B — Config file:**
+
+   Claude Code supports both user-level and project-level configuration:
+
+   | Scope | Location |
+   |-------|----------|
+   | **User (global)** | `~/.claude.json` |
+   | **Project** | `.claude/settings.json` (in project root) |
+
+   Add the following to the `mcpServers` key:
+
+   ```json
+   {
+     "mcpServers": {
+       "project-context": {
+         "command": "python",
+         "args": ["-m", "mcp_project_context_server"],
+         "env": {
+           "OLLAMA_HOST": "http://localhost:11434",
+           "EMBED_MODEL": "nomic-embed-text",
+           "CHROMA_DIR": "~/.mcp-data/chroma"
+         }
+       }
+     }
+   }
+3. **Verify the server is connected:**
+
+4. **Use in Claude Code** by referencing the tools directly in your session, or asking questions about your project context.
 
 ### Cursor Setup
 
 1. **Install the MCP server** (see [Installation](#installation))
 
-2. **Add to Cursor settings**: Open settings (`Cmd/Ctrl + ,`) → Navigate to MCP section
+2. **Choose a config scope** — Cursor supports both global and project-level MCP configuration:
 
-3. **Configure in `cursor.json`**:
+   | Scope | Windows | macOS / Linux |
+   |-------|---------|---------------|
+   | **Global** | `%USERPROFILE%\.cursor\mcp.json` | `~/.cursor/mcp.json` |
+   | **Project** | `.cursor\mcp.json` (in project root) | `.cursor/mcp.json` (in project root) |
 
-```json
-{
-  "mcpServers": {
-    "project-context": {
-      "type": "stdio",
-      "command": "python",
-      "args": [
-        "-m",
-        "mcp_project_context_server"
-      ],
-      "env": {
-        "OLLAMA_HOST": "http://localhost:11434",
-        "EMBED_MODEL": "nomic-embed-text"
-      }
-    }
-  }
-}
-```
+3. **Configure in `mcp.json`**:
+
+   ```json
+   {
+     "mcpServers": {
+       "project-context": {
+         "command": "python",
+         "args": [
+           "-m",
+           "mcp_project_context_server"
+         ],
+         "env": {
+           "OLLAMA_HOST": "http://localhost:11434",
+           "EMBED_MODEL": "nomic-embed-text",
+           "CHROMA_DIR": "~/.mcp-data/chroma"
+         }
+       }
+     }
+   }
+   ```
 
 4. **Test functionality**:
    - Use `@project-context` in chat
@@ -183,26 +254,52 @@ The server follows the standard MCP protocol, making it compatible with any MCP 
 
 ### Continue Setup
 
-1. **Install the Continue VS Code extension**
+1. **Install the Continue VS Code or JetBrains extension**
 
-2. **Add to `settings.json`**:
+2. **Locate the config file** for your OS:
 
-```json
-{
-  "mcpServers": {
-    "project-context": {
-      "command": "python",
-      "args": ["-m", "mcp_project_context_server"],
-      "env": {
-        "OLLAMA_HOST": "http://localhost:11434",
-        "EMBED_MODEL": "nomic-embed-text"
-      }
-    }
-  }
-}
-```
+   | OS | Config File Location |
+   |----|---------------------|
+   | **Windows** | `%USERPROFILE%\.continue\config.yaml` |
+   | **macOS / Linux** | `~/.continue/config.yaml` |
 
-3. **Usage**:
+   > Continue also supports `config.json` for legacy setups, but `config.yaml` is the current default.
+
+3. **Add to `config.yaml`**:
+
+   ```yaml
+   mcpServers:
+     - name: project-context
+       command: python
+       args:
+         - "-m"
+         - mcp_project_context_server
+       env:
+         OLLAMA_HOST: "http://localhost:11434"
+         EMBED_MODEL: "nomic-embed-text"
+         CHROMA_DIR: "~/.mcp-data/chroma"
+   ```
+
+   Or if using `config.json`:
+
+   ```json
+   {
+     "mcpServers": [
+       {
+         "name": "project-context",
+         "command": "python",
+         "args": ["-m", "mcp_project_context_server"],
+         "env": {
+           "OLLAMA_HOST": "http://localhost:11434",
+           "EMBED_MODEL": "nomic-embed-text",
+           "CHROMA_DIR": "~/.mcp-data/chroma"
+         }
+       }
+     ]
+   }
+   ```
+
+4. **Usage**:
    - Trigger context queries in the chat panel
    - Access project documentation mid-conversation
    - Maintain context across multi-turn conversations
@@ -211,37 +308,88 @@ The server follows the standard MCP protocol, making it compatible with any MCP 
 
 1. **Install MCP server** via terminal or package manager
 
-2. **Configure in Windsurf settings** (exact path: `Settings → MCP Servers`):
+2. **Locate the MCP config file** for your OS:
 
-```json
-{
-  "project-context": {
-    "command": "python",
-    "args": ["-m", "mcp_project_context_server"],
-    "env": {
-      "OLLAMA_HOST": "http://localhost:11434"
-    }
-  }
-}
-```
+   | OS | Config File Location |
+   |----|---------------------|
+   | **Windows** | `%USERPROFILE%\.codeium\windsurf\mcp_config.json` |
+   | **macOS / Linux** | `~/.codeium/windsurf/mcp_config.json` |
 
-### VS Code MCP Extension
+3. **Configure in `mcp_config.json`** (create if not exists):
 
-1. **Install the "MCP" VS Code extension** from the Marketplace
+   ```json
+   {
+     "mcpServers": {
+       "project-context": {
+         "command": "python",
+         "args": ["-m", "mcp_project_context_server"],
+         "env": {
+           "OLLAMA_HOST": "http://localhost:11434",
+           "EMBED_MODEL": "nomic-embed-text",
+           "CHROMA_DIR": "~/.mcp-data/chroma"
+         }
+       }
+     }
+   }
+   ```
 
-2. **Configure in `.vscode/mcp.json`** (create if not exists):
+4. **Restart Windsurf** and verify the MCP server appears under `Settings → MCP Servers`.
 
-```json
-{
-  "servers": {
-    "project-context": {
-      "command": "python",
-      "args": ["-m", "mcp_project_context_server"],
-      "type": "stdio"
-    }
-  }
-}
-```
+### VS Code Copilot Setup
+
+MCP support is built into VS Code via **GitHub Copilot** (no separate extension required). Requires VS Code 1.99+ with the Copilot extension.
+
+1. **Install the server** (see [Installation](#installation))
+
+2. **Choose a config scope:**
+
+   **Option A — Workspace (`.vscode/mcp.json`):**
+
+   Create `.vscode/mcp.json` in your project root (works identically on all OSes):
+
+   ```json
+   {
+     "servers": {
+       "project-context": {
+         "type": "stdio",
+         "command": "python",
+         "args": ["-m", "mcp_project_context_server"],
+         "env": {
+           "OLLAMA_HOST": "http://localhost:11434",
+           "EMBED_MODEL": "nomic-embed-text",
+           "CHROMA_DIR": "${env:USERPROFILE}/.mcp-data/chroma"
+         }
+       }
+     }
+   }
+   ```
+
+   > **Note:** Use `${env:USERPROFILE}/.mcp-data/chroma` on Windows or `~/.mcp-data/chroma` on macOS/Linux for `CHROMA_DIR`.
+
+   **Option B — User settings (`settings.json`):**
+
+   Open VS Code settings (`Ctrl + ,` / `Cmd + ,`) and add to `settings.json`:
+
+   ```json
+   {
+     "mcp": {
+       "servers": {
+         "project-context": {
+           "type": "stdio",
+           "command": "python",
+           "args": ["-m", "mcp_project_context_server"],
+           "env": {
+             "OLLAMA_HOST": "http://localhost:11434",
+             "EMBED_MODEL": "nomic-embed-text",
+             "CHROMA_DIR": "~/.mcp-data/chroma"
+           }
+         }
+       }
+     }
+   }
+   ```
+
+3. **Use in Copilot Chat** by switching to **Agent mode** and the MCP tools will be available automatically.
 
 ### IDE-Specific Best Practices
 
@@ -249,7 +397,14 @@ The server follows the standard MCP protocol, making it compatible with any MCP 
 
 While PyCharm doesn't natively support MCP, you can:
 
-1. **Use the CLI mode**:
+1. **Use the CLI mode:**
+
+   **Windows (PowerShell):**
+   ```powershell
+   project-context-server search "your query"
+   ```
+
+   **macOS / Linux:**
    ```bash
    project-context-server search "your query"
    ```
@@ -263,7 +418,7 @@ While PyCharm doesn't natively support MCP, you can:
 #### Vim/Neovim (with mcp.nvim)
 
 ```lua
--- In your Neovim config
+-- In your Neovim config (works on Windows, macOS, and Linux)
 require('mcp').connect({
   name = 'project-context',
   command = 'python',
@@ -468,3 +623,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed contribution guidelines.
 **Built with ❤️ for better LLM project understanding**
 
 </div>
+
