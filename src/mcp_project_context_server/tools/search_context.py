@@ -1,6 +1,8 @@
 """Tool: search_project_context — semantic search over indexed context."""
 
 import os
+from collections.abc import Sequence
+from typing import cast
 
 from mcp import types
 
@@ -37,12 +39,14 @@ async def handle(arguments: dict) -> list[types.TextContent]:
 
     query_embedding = get_embedding(query)
     results = collection.query(
-        query_embeddings=[query_embedding],
+        query_embeddings=cast(list[Sequence[float]], [query_embedding]),
         n_results=min(n_results, collection.count()),
     )
 
-    if not results["documents"][0]:
+    docs = results["documents"]
+    metas = results["metadatas"]
+    if docs is None or metas is None or not docs[0]:
         return [types.TextContent(type="text", text="No results found.")]
 
-    output_parts = [f"**[{meta['file']}]**\n{doc}" for doc, meta in zip(results["documents"][0], results["metadatas"][0])]
+    output_parts = [f"**[{meta['file']}]**\n{doc}" for doc, meta in zip(docs[0], metas[0])]
     return [types.TextContent(type="text", text="\n\n---\n\n".join(output_parts))]
