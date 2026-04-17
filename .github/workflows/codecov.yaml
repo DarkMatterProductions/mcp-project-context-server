@@ -23,7 +23,6 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade ".[tests]"
-          pip install -e .
 
       - name: black
         run: black --check src tests
