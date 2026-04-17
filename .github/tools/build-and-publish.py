@@ -347,7 +347,7 @@ def create_github_release(version: str, artifacts: List, dry_run: bool = False):
     try:
         subprocess.run([
             'gh', 'release', 'create', version,
-            *[str(a) for a in artifacts],
+            *[f"./dist/{str(a)}" for a in artifacts],
             '--title', f'{version}',
             '--notes', f'Automated release for {version}'
         ], check=True)
