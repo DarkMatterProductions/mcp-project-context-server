@@ -17,3 +17,4 @@ build/*
 **/*.egg-info
 .idea/workspace.xml
 .claude/settings.local.json
+src/**/_version.py
