@@ -13,3 +13,7 @@ dist/*
 *.iml
 .coverage
 coverage.xml
+build/*
+**/*.egg-info
+.idea/workspace.xml
+.claude/settings.local.json
