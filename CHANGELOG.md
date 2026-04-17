@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+---
+
+## [0.0.2]
+
+### Fixed
+- Improve error output in `build-and-publish.py` so that buffered build output is printed when the process exits with a non-zero return code and `--verbose` is not set (`b423688`)
+
+---
+
 ## [0.0.1] - 2026-04-17
 
 ### Added

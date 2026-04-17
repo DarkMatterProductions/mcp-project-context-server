@@ -264,13 +264,15 @@ def build_artifacts(verbose: bool = False) -> List[Path]:
     assert process.stdout is not None
     output_lines: List[str] = []
     for line in process.stdout:
-        if verbose or process.returncode != 0:
+        if verbose:
             print(line, end='')
         output_lines.append(line)
 
     process.wait()
 
     if process.returncode != 0:
+        if not verbose:
+            print(''.join(output_lines), end='')
         print(f"Error: python -m build failed with exit code {process.returncode}")
         sys.exit(1)
 
