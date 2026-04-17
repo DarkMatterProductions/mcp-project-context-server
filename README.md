@@ -154,8 +154,13 @@ The server follows the standard MCP protocol, making it compatible with any MCP 
    }
    ```
 
-4. **Restart Claude Desktop** and verify the connection:
-   - Open a chat
+3. **Verify the server is connected:**
+
+   ```bash
+   claude mcp list
+   ```
+
+4. **Use in Claude Code** by referencing the tools directly in your session, or asking questions about your project context.
    - Try asking: *"What was the decision in ADR-00001?"*
    - Verify semantic search works with project-specific queries
 
@@ -177,6 +182,7 @@ The server follows the standard MCP protocol, making it compatible with any MCP 
    claude mcp add project-context \
      -e OLLAMA_HOST=http://localhost:11434 \
      -e EMBED_MODEL=nomic-embed-text \
+     -e CHROMA_DIR=~/.mcp-data/chroma \
      -- python -m mcp_project_context_server
    ```
 
@@ -199,18 +205,13 @@ The server follows the standard MCP protocol, making it compatible with any MCP 
          "args": ["-m", "mcp_project_context_server"],
          "env": {
            "OLLAMA_HOST": "http://localhost:11434",
-           "EMBED_MODEL": "nomic-embed-text"
+           "EMBED_MODEL": "nomic-embed-text",
+           "CHROMA_DIR": "~/.mcp-data/chroma"
          }
        }
      }
    }
-   ```
-
 3. **Verify the server is connected:**
-
-   ```bash
-   claude mcp list
-   ```
 
 4. **Use in Claude Code** by referencing the tools directly in your session, or asking questions about your project context.
 
@@ -238,7 +239,8 @@ The server follows the standard MCP protocol, making it compatible with any MCP 
          ],
          "env": {
            "OLLAMA_HOST": "http://localhost:11434",
-           "EMBED_MODEL": "nomic-embed-text"
+           "EMBED_MODEL": "nomic-embed-text",
+           "CHROMA_DIR": "~/.mcp-data/chroma"
          }
        }
      }
@@ -275,6 +277,7 @@ The server follows the standard MCP protocol, making it compatible with any MCP 
        env:
          OLLAMA_HOST: "http://localhost:11434"
          EMBED_MODEL: "nomic-embed-text"
+         CHROMA_DIR: "~/.mcp-data/chroma"
    ```
 
    Or if using `config.json`:
@@ -288,7 +291,8 @@ The server follows the standard MCP protocol, making it compatible with any MCP 
          "args": ["-m", "mcp_project_context_server"],
          "env": {
            "OLLAMA_HOST": "http://localhost:11434",
-           "EMBED_MODEL": "nomic-embed-text"
+           "EMBED_MODEL": "nomic-embed-text",
+           "CHROMA_DIR": "~/.mcp-data/chroma"
          }
        }
      ]
@@ -321,7 +325,8 @@ The server follows the standard MCP protocol, making it compatible with any MCP 
          "args": ["-m", "mcp_project_context_server"],
          "env": {
            "OLLAMA_HOST": "http://localhost:11434",
-           "EMBED_MODEL": "nomic-embed-text"
+           "EMBED_MODEL": "nomic-embed-text",
+           "CHROMA_DIR": "~/.mcp-data/chroma"
          }
        }
      }
@@ -351,12 +356,15 @@ MCP support is built into VS Code via **GitHub Copilot** (no separate extension 
          "args": ["-m", "mcp_project_context_server"],
          "env": {
            "OLLAMA_HOST": "http://localhost:11434",
-           "EMBED_MODEL": "nomic-embed-text"
+           "EMBED_MODEL": "nomic-embed-text",
+           "CHROMA_DIR": "${env:USERPROFILE}/.mcp-data/chroma"
          }
        }
      }
    }
    ```
+
+   > **Note:** Use `${env:USERPROFILE}/.mcp-data/chroma` on Windows or `~/.mcp-data/chroma` on macOS/Linux for `CHROMA_DIR`.
 
    **Option B — User settings (`settings.json`):**
 
@@ -372,7 +380,8 @@ MCP support is built into VS Code via **GitHub Copilot** (no separate extension 
            "args": ["-m", "mcp_project_context_server"],
            "env": {
              "OLLAMA_HOST": "http://localhost:11434",
-             "EMBED_MODEL": "nomic-embed-text"
+             "EMBED_MODEL": "nomic-embed-text",
+             "CHROMA_DIR": "~/.mcp-data/chroma"
            }
          }
        }
