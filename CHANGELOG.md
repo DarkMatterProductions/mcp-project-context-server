@@ -11,7 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.0.2]
+## [0.0.4] - 2026-04-17
+
+### Fixed
+- Refactor GitHub release creation in `build-and-publish.py` include a missing path to the location of the artifacts to be published. (`184d85e`)
+
+---
+
+## [0.0.3] - 2026-04-17
+
+### Fixed
+- Refactor GitHub release creation in `build-and-publish.py` to introduced `subprocess.Popen` for proper output capture in `create_github_release()` (`c3021ad`)
+
+---
+
+## [0.0.2] - 2026-04-17
 
 ### Fixed
 - Improve error output in `build-and-publish.py` so that buffered build output is printed when the process exits with a non-zero return code and `--verbose` is not set (`b423688`)
