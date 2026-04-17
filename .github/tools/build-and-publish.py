@@ -344,17 +344,30 @@ def create_github_release(version: str, artifacts: List, dry_run: bool = False):
             print(f"  {artifact}")
         return
 
-    try:
-        subprocess.run([
+    process = subprocess.Popen(
+        [
             'gh', 'release', 'create', version,
             *[str(a) for a in artifacts],
             '--title', f'{version}',
             '--notes', f'Automated release for {version}'
-        ], check=True)
-        print(f"Created GitHub release for {version}")
-    except subprocess.CalledProcessError as e:
-        print(f"Error creating GitHub release: {e}")
-        raise
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+
+    assert process.stdout is not None
+    output_lines: List[str] = []
+    for line in process.stdout:
+        output_lines.append(line)
+
+    process.wait()
+
+    if process.returncode != 0:
+        print(''.join(output_lines), end='')
+        raise subprocess.CalledProcessError(process.returncode, 'gh release create')
+
+    print(f"Created GitHub release for {version}")
 
 
 def main():
