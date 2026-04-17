@@ -11,3 +11,5 @@
 
 dist/*
 *.iml
+.coverage
+coverage.xml

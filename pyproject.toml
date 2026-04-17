@@ -1,9 +1,9 @@
 [project]
 name = "mcp-project-context-server"
-version = "0.2.2"
+dynamic = [ "version",]
 description = "A Python MCP server that gives LLMs persistent, searchable access to project context — documentation, architecture decisions, and session notes."
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "AGLv3"}
 requires-python = ">=3.11"
 keywords = [
     "mcp", "model-context-protocol", "semantic-search",
@@ -27,15 +27,20 @@ dependencies = [
     "chromadb",
     "ollama",
     "watchdog",
+    "pytest-asyncio",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=9.0.3",
-    "pytest-cov>=7.1.0",
-    "black>=26.3.1",
-    "mypy>=1.20.1",
-    "isort>=8.0.1"
+[dependency-groups]
+tests = [
+    "isort",
+    "mypy",
+    "black",
+    "pytest",
+    "pytest-cov",
+    "pytest-mock",
+    "types-pyyaml",
+    "flake8>=7.1.0",
+    "pytest-benchmark>=4.0.0"
 ]
 
 [project.scripts]
@@ -54,3 +59,98 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mcp_project_context_server"]
+
+
+[tool.setuptools.packages.find]
+where = ["src"]  # Look for packages in src/
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.pytest]
+pythonpath = [
+    "src"
+]
+testpaths = [
+    "tests"
+]
+
+[tool.pytest_asyncio]
+asyncio_mode  = "auto"
+asyncio_default_fixture_loop_scope = "fixture"
+
+[tool.black]
+line-length = 240
+target-version = [
+    'py39',
+    'py310'
+]
+include = '\.py$'
+exclude = '''
+/(
+    tests/resources
+    | /src/*.egg-info/
+)/
+'''
+
+[tool.flake8]
+plugins = "flake8"
+max-line-length = 120
+extend-ignore = "E203, W503"  # for Black compatibility
+filename = '*.py,*'
+exclude = [
+    ".git",
+    "__pycache__",
+    "./src/*-info/*",
+    "tests/resources"
+]
+ignore="D100,D104,D105,D200,D204,D205,D301,D302,D400,D401,D402,D403,D404,E203,E741,H101,H301,H306,H401,H404,H405,N804,N805,P102,W291,P302,S001,W503,W504,E122,W605,F541,E231,E241,E128,E501,E125,E126"
+# IGNORE THESE ERRORS.
+# D100: Missing docstring in public module
+# D104: Missing docstring in public package
+# D105: Missing docstring in magic method
+# D200: One-line docstring should fit on one line with quotes
+# D204: 1 blank line required after class docstring
+# D205: 1 blank line required between summary line and description
+# D301: Use r""" if any backslashes in a docstring
+# D302: Use u""" for Unicode docstrings
+# D400: First line should end with a period
+# D401: First line should be in imperative mood
+# D402: First line should not be the function's "signature"
+# D403: First word of the first line should be properly capitalized
+# D404: First word of the docstring should not be `This`
+# E203: whitespace before the ':' character in slice syntax.
+# E741 ambiguous variable name
+# H301: one import per line
+# H306: imports not in alphabetical order (time, os)
+# H401: docstring should not start with a space
+# H404: multi line docstring should start without a leading new line
+# H405: multi line docstring summary not separated with an empty line
+# N804: first argument of a classmethod should be named 'cls'
+# N805: first argument of a method should be named 'self'
+# P102: docstring does contain unindexed parameters
+# P302: format call provides unused keyword (e.g. 'exc_info')
+# S001: found module formatter
+# W503: Line break before binary operator
+# W504: line break after binary operator
+
+[tool.isort]
+profile = "black"
+line_length = 240
+known_third_party = ["jsonschema", "pyyaml"]
+
+[tool.mypy]
+mypy_path = ["src", "src/python"]
+files = ["src", "src/python"]
+ignore_missing_imports = true
+no_implicit_optional = false
+scripts_are_modules = true
+exclude = [
+    "build/",
+    "dist/",
+    ".*.egg-info/",
+]
+
+[tool.coverage.run]
+branch = true
+source =["mcp_project_context_server"]
