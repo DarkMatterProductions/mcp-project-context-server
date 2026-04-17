@@ -1,5 +1,6 @@
 from pathlib import Path
-from mcp_project_context_server.helpers.context import find_context_dir, collection_name_for, read_context_files
+
+from mcp_project_context_server.helpers.context import collection_name_for, find_context_dir, read_context_files
 
 
 class TestFindContextDir:

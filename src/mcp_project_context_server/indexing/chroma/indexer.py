@@ -5,14 +5,14 @@ import os
 import sys
 from pathlib import Path
 
-from mcp_project_context_server.integrations.chroma.client import chroma_client
-from mcp_project_context_server.integrations.ollama.client import get_async_client
-from mcp_project_context_server.indexing.ollama.embedder import embed_chunk_async
 from mcp_project_context_server.helpers.context import (
+    collection_name_for,
     find_context_dir,
     read_context_files,
-    collection_name_for,
 )
+from mcp_project_context_server.indexing.ollama.embedder import embed_chunk_async
+from mcp_project_context_server.integrations.chroma.client import chroma_client
+from mcp_project_context_server.integrations.ollama.client import get_async_client
 
 _EMBED_CONCURRENCY: int = int(os.getenv("EMBED_CONCURRENCY", "4"))
 
@@ -37,9 +37,7 @@ async def index_project_context(project_path: str | Path) -> str:
     # Build flat list of (doc_id, chunk_text, filename, chunk_index)
     all_chunks: list[tuple[str, str, str, int]] = []
     for filename, file_content in files.items():
-        for i, chunk in enumerate(
-            file_content[j: j + 1000] for j in range(0, len(file_content), 1000)
-        ):
+        for i, chunk in enumerate(file_content[j : j + 1000] for j in range(0, len(file_content), 1000)):
             if chunk.strip():
                 all_chunks.append((f"{filename}::{i}", chunk, filename, i))
 

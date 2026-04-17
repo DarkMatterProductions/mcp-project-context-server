@@ -1,6 +1,7 @@
 """Ollama client configuration and raw embedding API calls (sync + async)."""
 
 import os
+
 import ollama
 
 OLLAMA_BASE_URL: str = os.getenv("OLLAMA_HOST", "http://localhost:11434")
