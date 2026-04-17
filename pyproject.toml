@@ -47,17 +47,17 @@ tests = [
 [tool.setuptools_scm]
 version_scheme = "guess-next-dev"
 local_scheme = "node-and-date"
-tag_regex = '^.*@(?P<version>\d+\.\d+\.\d+)$'
+tag_regex = '^(?P<version>\d+\.\d+\.\d+)$'
 
 [project.scripts]
 project-context-server = "mcp_project_context_server.server:run"
 
 [project.urls]
-Homepage = "https://github.com/your-org/mcp-project-context-server"
-Documentation = "https://github.com/your-org/mcp-project-context-server#readme"
-Repository = "https://github.com/your-org/mcp-project-context-server.git"
-Issues = "https://github.com/your-org/mcp-project-context-server/issues"
-Changelog = "https://github.com/your-org/mcp-project-context-server/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/DarkMatterProductions/mcp-project-context-server"
+Documentation = "https://github.com/DarkMatterProductions/mcp-project-context-server#readme"
+Repository = "https://github.com/DarkMatterProductions/mcp-project-context-server.git"
+Issues = "https://github.com/DarkMatterProductions/mcp-project-context-server/issues"
+Changelog = "https://github.com/DarkMatterProductions/mcp-project-context-server/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["setuptools>=64", "setuptools-scm>=8"]

@@ -26,6 +26,13 @@ def get_distance_from_main() -> int:
             check=True
         )
         return int(result.stdout.strip())
+    except subprocess.CalledProcessError as e:
+        print(f"Error getting distance from main: {e}")
+        if e.stdout:
+            print(f"stdout: {e.stdout.strip()}")
+        if e.stderr:
+            print(f"stderr: {e.stderr.strip()}")
+        return 0
     except Exception as e:
         print(f"Error getting distance from main: {e}")
         return 0
@@ -41,6 +48,13 @@ def get_current_git_hash() -> str:
             check=True
         )
         return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        print(f"Error getting git hash: {e}")
+        if e.stdout:
+            print(f"stdout: {e.stdout.strip()}")
+        if e.stderr:
+            print(f"stderr: {e.stderr.strip()}")
+        return 'unknown'
     except Exception as e:
         print(f"Error getting git hash: {e}")
         return 'unknown'
@@ -75,6 +89,13 @@ def get_last_version() -> str:
         # Sort by version number and return the highest
         version_tags.sort(key=lambda v: tuple(map(int, v.split('.'))))
         return version_tags[-1]
+    except subprocess.CalledProcessError as e:
+        print(f"Error getting last version: {e}")
+        if e.stdout:
+            print(f"stdout: {e.stdout.strip()}")
+        if e.stderr:
+            print(f"stderr: {e.stderr.strip()}")
+        return '0.0.0'
     except Exception as e:
         print(f"Error getting last version: {e}")
         return '0.0.0'
@@ -102,6 +123,13 @@ def get_commits_since_tag(tag: str) -> List[str]:
 
         commits = [c.strip() for c in result.stdout.strip().split('\n') if c.strip()]
         return commits
+    except subprocess.CalledProcessError as e:
+        print(f"Error getting commits: {e}")
+        if e.stdout:
+            print(f"stdout: {e.stdout.strip()}")
+        if e.stderr:
+            print(f"stderr: {e.stderr.strip()}")
+        return []
     except Exception as e:
         print(f"Error getting commits: {e}")
         return []
@@ -120,6 +148,13 @@ def get_commit_message(commit_hash: str) -> Tuple[str, str]:
         subject = lines[0] if lines else ''
         body = lines[1] if len(lines) > 1 else ''
         return subject, body
+    except subprocess.CalledProcessError as e:
+        print(f"Error getting commit message for {commit_hash}: {e}")
+        if e.stdout:
+            print(f"stdout: {e.stdout.strip()}")
+        if e.stderr:
+            print(f"stderr: {e.stderr.strip()}")
+        return '', ''
     except Exception as e:
         print(f"Error getting commit message for {commit_hash}: {e}")
         return '', ''
@@ -229,7 +264,7 @@ def build_artifacts(verbose: bool = False) -> List[Path]:
     assert process.stdout is not None
     output_lines: List[str] = []
     for line in process.stdout:
-        if verbose:
+        if verbose or process.returncode != 0:
             print(line, end='')
         output_lines.append(line)
 
@@ -287,6 +322,13 @@ def get_repository_name():
         repository_path = Path(lines[0] if lines else '/repo/unknown')
         repository_name = repository_path.name
         return repository_name
+    except subprocess.CalledProcessError as e:
+        print(f"Error getting git repository root: {e}")
+        if e.stdout:
+            print(f"stdout: {e.stdout.strip()}")
+        if e.stderr:
+            print(f"stderr: {e.stderr.strip()}")
+        return ''
     except Exception as e:
         print(f"Error getting git repository root: {e}")
         return ''
@@ -376,20 +418,13 @@ def main():
         print("Cannot determine new version")
         sys.exit(1)
 
-    # Step 5: Create git tag
-    if args.dry_run:
-        print("[DRY-RUN] Would create git tag:", new_version)
-    else:
-        print("Creating git tag...")
-        create_git_tag(new_version)
-
     # Output version for GitHub Actions
     github_output = os.environ.get('GITHUB_OUTPUT', None)
     if github_output:
         with open(github_output, 'a') as f:
             f.write(f'version={new_version}\n')
 
-    # Step 6: Build artifacts
+    # Step 5: Build artifacts
     artifacts = []
     if args.build:
         if args.dry_run:
@@ -404,6 +439,13 @@ def main():
         else:
             print("\nBuilding artifacts...")
             artifacts = build_artifacts(verbose=args.verbose)
+
+    # Step 6: Create git tag
+    if args.dry_run:
+        print("[DRY-RUN] Would create git tag:", new_version)
+    else:
+        print("Creating git tag...")
+        create_git_tag(new_version)
 
     # Step 7: Publish GitHub release
     if args.publish:
