@@ -249,7 +249,7 @@ def determine_new_version(current_version: str, commits: List[str], force_bump: 
     return new_version
 
 
-def build_artifacts(verbose: bool = False) -> List[Path]:
+def build_artifacts(new_version: str, verbose: bool = False) -> List[Path]:
     """Run python -m build and return the list of generated artifact paths."""
     print("Running python -m build...")
 
@@ -258,6 +258,9 @@ def build_artifacts(verbose: bool = False) -> List[Path]:
         [sys.executable, '-m', 'build'],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
+        env={
+            "SETUPTOOLS_SCM_PRETEND_VERSION": new_version,
+        },
         text=True,
     )
 
@@ -453,7 +456,10 @@ def main():
                 print(f"  {artifact}")
         else:
             print("\nBuilding artifacts...")
-            artifacts = build_artifacts(verbose=args.verbose)
+            artifacts = build_artifacts(
+                new_version=new_version,
+                verbose=args.verbose
+            )
 
     # Step 6: Create git tag
     if args.dry_run:
