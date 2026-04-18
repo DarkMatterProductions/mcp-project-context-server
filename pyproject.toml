@@ -5,10 +5,10 @@ description = "A Python MCP server that gives LLMs persistent, searchable access
 readme = "README.md"
 license = {"file" = "LICENSE"}
 authors = [
-    {
-        name = "Darkmatter Productions",
-        email = "pypi@darkmatter-productions.com"
-    }
+    {name = "James Boylan", email = "drahkar@darkmatter-productions.com"}
+]
+maintainers = [
+    {name = "Darkmatter Productions", email = "pypi@darkmatter-productions.com"}
 ]
 requires-python = ">=3.11"
 keywords = [
