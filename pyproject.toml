@@ -3,7 +3,13 @@ name = "mcp-project-context-server"
 dynamic = [ "version",]
 description = "A Python MCP server that gives LLMs persistent, searchable access to project context — documentation, architecture decisions, and session notes."
 readme = "README.md"
-license = {text = "AGLv3"}
+license = {"file" = "LICENSE"}
+authors = [
+    {name = "James Boylan", email = "drahkar@darkmatter-productions.com"}
+]
+maintainers = [
+    {name = "Darkmatter Productions", email = "pypi@darkmatter-productions.com"}
+]
 requires-python = ">=3.11"
 keywords = [
     "mcp", "model-context-protocol", "semantic-search",
@@ -14,7 +20,7 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
