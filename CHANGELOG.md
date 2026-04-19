@@ -66,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update project URLs in `pyproject.toml` to reflect `DarkMatterProductions` organisation branding (`47969a0`)
 - Update `tag_regex` in `pyproject.toml` to correctly capture version numbers (`f60ef63`)
 - Update CI to use `actions/checkout@v6` and `actions/setup-python@v6` (`3ee6cf2`)
-- Update CI dependency installation to use `pip install --group tests` with explicit pip upgrade (`ee6c917`, `2e094b3`)
+- Update CI dependency installation to use `pip install testsuite` with explicit pip upgrade (`ee6c917`, `2e094b3`)
 - Update `pyproject.toml` dependency versions for improved compatibility (`5faca4a`)
 
 ### Fixed

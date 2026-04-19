@@ -167,34 +167,47 @@ def determine_bump(commits: List[str]) -> str:
     """
     has_major = False
     has_minor = False
+    has_patch = False
+    __bump = 'none'
 
     for commit_hash in commits:
         subject, body = get_commit_message(commit_hash)
 
-        # Check for BREAKING CHANGE in subject or body
-        if 'BREAKING CHANGE:' in subject or 'BREAKING CHANGE:' in body:
+        major_bump_check = re.findall(r'^(breaking|rewrite|milestone|deprecate|eos|license|security)\(.*\):', subject)
+        if major_bump_check:
+            print(f"Commit flagged as {major_bump_check[0]} change. Incrementing major version.")
             has_major = True
             break
 
-        # Check for feat! or fix! (exclamation indicates breaking change)
-        if re.match(r'^(feat|fix)!:', subject):
+        major_bump_check = re.findall(r'^(feature|fix)!\(.*\):', subject)
+        if major_bump_check:
+            print(f"Commit flagged as {major_bump_check[0]} change. Incrementing major version.")
             has_major = True
             break
 
-        # Check for feat: (feature bump)
-        if re.match(r'^feat:', subject):
+        minor_bump_check = re.findall(r'^(feature|license)\(.*\):', subject)
+        if minor_bump_check:
+            print(f"Commit flagged as {minor_bump_check[0]} change. Incrementing minor version.")
             has_minor = True
 
-        # fix: defaults to patch, so we don't need to explicitly check
+        patch_bump_check = re.findall(r'^(fix|test|docs|refactor|chore|adr)\(.*\):', subject)
+        if patch_bump_check:
+            print(f"Commit flagged as {patch_bump_check[0]}. Incrementing patch version.")
+            has_patch = True
+
+    # fix: defaults to patch, so we don't need to explicitly check
 
     if has_major:
-        return 'major'
+        __bump = 'major'
     elif has_minor:
-        return 'minor'
+        __bump = 'minor'
+    elif has_patch:
+        __bump = 'patch'
     else:
-        # Default to patch if there are commits (even without conventional prefix)
-        return 'patch'
+        raise ValueError(f"Unknown Increment Type: {__bump}")
 
+    print(f"Determined bump type: {__bump}")
+    return __bump
 
 def increment_version(version: str, bump: str) -> str:
     """Increment the version based on bump type."""
@@ -207,8 +220,10 @@ def increment_version(version: str, bump: str) -> str:
     elif bump == 'minor':
         minor += 1
         patch = 0
-    else:  # patch
+    elif bump == 'patch':
         patch += 1
+    else:
+        raise ValueError(f"Unknown Increment Type: {bump}")
 
     return f'{major}.{minor}.{patch}'
 
@@ -243,7 +258,6 @@ def determine_new_version(current_version: str, commits: List[str], force_bump: 
         print(f"Using forced bump type: {bump}")
     else:
         bump = determine_bump(commits)
-        print(f"Determined bump type: {bump}")
 
     new_version = increment_version(current_version, bump)
     return new_version
