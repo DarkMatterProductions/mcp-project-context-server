@@ -530,6 +530,10 @@ python scripts/test_client.py
 ### Development Workflow
 
 ```bash
+# Install  
+
+# Install testing dependencies
+python -m pip install testsuite
 # Run pytest
 pytest tests/
 
@@ -556,49 +560,19 @@ black src/
 
 ---
 
-## 🔮 Roadmap
+## 🔮 Roadmap & Contributions
 
 ### Planned Features
 
 - [ ] **Auto-reindex**: Watchdog-based file monitoring for automatic reindexing
-- [ ] **YAML Configuration**: Replace environment variables with config files
 - [ ] **Codebase Indexing**: Repomix integration for source code analysis
 - [ ] **Enhanced ADR Tools**: First-class MCP tools for ADR lifecycle
 - [ ] **Repository Bootstrapping**: Automatic `.context/` generation
 - [ ] **Batch Operations**: Bulk ADR updates and session imports
-- [ ] **API Endpoint**: HTTP REST API alternative to MCP tools
 
 ### Community Contributions
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
----
-
-## 📜 Architecture Decision Records
-
-Explore our [ADRs](.context/decisions/) to understand architectural decisions:
-
-- **ADR-00001**: MCP Protocol Selection
-- **ADR-00002**: ChromaDB as Vector Store
-- **ADR-00003**: Embedding Provider Selection
-- **ADR-00004**: Modular Tool Architecture
-- **ADR-00005**: Environment Configuration
-- **ADR-00006**: Drop & Recreate Indexing
-- **ADR-00007**: Chunking Strategy
-- **ADR-00008**: POSIX Path Normalization
-- **ADR-00009**: Repomix Integration
-- **ADR-00010**: ADR Tooling
-- **ADR-00011**: Repository Bootstrapping
-
----
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🤝 Contributing
+Contributions are welcome! See [CONTRIBUTING.md](https://github.com/DarkMatterProductions/mcp-project-context-server/blob/main/CONTRIBUTING.md) for detailed contribution guidelines.
 
 1. Fork the repository
 2. Create a feature branch
@@ -606,7 +580,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 4. Push to the branch
 5. Open a Pull Request
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed contribution guidelines.
+---
+
+## 📝 License
+
+This project is licensed under the GNU AFFERO GENERAL PUBLIC LICENSE Version 3 - see the [LICENSE](https://github.com/DarkMatterProductions/mcp-project-context-server/blob/main/LICENSE) file for details.
 
 ---
 
