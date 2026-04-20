@@ -1,7 +1,7 @@
 # ADR-00004: Modular tool handler architecture
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 

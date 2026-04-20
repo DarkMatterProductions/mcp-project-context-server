@@ -1,7 +1,7 @@
 # ADR-00001: MCP as the server protocol
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 
