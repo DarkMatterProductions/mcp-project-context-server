@@ -32,11 +32,13 @@ jobs:
         run: pip install build
 
       - name: Run build and publish script
+        id: versioning
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python .github/tools/build-and-publish.py --build --publish
 
       - name: Publish package distributions to PyPI
+        if: steps.versioning.outputs.bump != 'none'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           print-hash: true
