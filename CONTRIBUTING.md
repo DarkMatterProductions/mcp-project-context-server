@@ -16,6 +16,7 @@ Thank you for your interest in contributing to **MCP Project Context Server**! T
 - [Linting and Code Style](#linting-and-code-style)
 - [Architecture Decision Records (ADRs)](#architecture-decision-records-adrs)
 - [Pull Request Guidelines](#pull-request-guidelines)
+- [PR Template](#pr-template)
 - [Review Process](#review-process)
 - [Reporting Issues](#reporting-issues)
 
@@ -193,7 +194,8 @@ All code changes **must** be accompanied by unit tests. Pull requests that modif
 
 ### Standards
 
-- **All tests live in the `tests/` directory** and follow the naming convention `test_<module_name>.py`.
+- **Tests for application source code** live in the `tests/` directory and follow the naming convention `test_<module_name>.py`.
+- **Tests for scripts under `.github/tools/`** live **alongside the script** in `.github/tools/`, following the same `test_<script_name>.py` naming convention. Each tools subdirectory maintains its own `conftest.py` for path configuration. Do **not** place tooling script tests in `tests/`.
 - **Async functions** must use `pytest-asyncio` and be decorated with `@pytest.mark.asyncio` (or rely on `asyncio_mode = "auto"` in `pyproject.toml`).
 - **External dependencies** (ChromaDB, Ollama, filesystem I/O) **must be mocked** in unit tests using `pytest-mock`. Unit tests should never require a running external service.
 - **New tools or helper functions** require tests for:
@@ -211,14 +213,21 @@ pytest --cov=src/mcp_project_context_server --cov-report=term-missing tests/
 ### Running the Full Test Suite
 
 ```bash
-# All tests
+# Application source tests
 pytest tests/
 
-# With coverage report
+# CI/tooling script tests
+pytest .github/tools/
+
+# All tests
+pytest tests/ .github/tools/
+
+# With coverage report (application source)
 pytest --cov=src/mcp_project_context_server tests/
 
 # A specific test file
 pytest tests/test_tool_search_context.py -v
+pytest .github/tools/test_build_and_publish.py -v
 ```
 
 ---
@@ -316,11 +325,28 @@ Ensure the following are true:
 
 ### PR Title
 
-Use the same `<type>(<scope>): <summary>` format as commit messages.
+Write the title in **imperative mood** as a plain summary of the change — ≤ 72 characters. Do **not** use a `<type>(<scope>):` prefix in the title. Type and scope information belongs in the **Change Types** table in the PR description (see below), because a single PR may span multiple commit types and a single-type prefix would lose that signal.
+
+**Good:** `Add semantic versioning and release automation script`
+**Bad:** `chore(ci): add semantic versioning and release automation script`
 
 ### PR Description
 
-Every PR **must** include a thorough description. The following sections are required:
+Every PR **must** include a thorough description using the template at `.github/PULL_REQUEST_TEMPLATE.md`. The following sections are required:
+
+#### Change Types
+A table mapping each `type` and `scope` present in the PR's commits to a short description of what that group of changes covers. This replaces the single-type prefix that would appear in a commit subject line.
+
+```markdown
+## Change Types
+
+| Type | Scope |
+|------|-------|
+| `chore` | `ci` |
+| `docs` | `claude` |
+```
+
+Every distinct `type(scope)` combination in the PR's commits must appear as a row. Use the type values defined in the [Commit Message Standards](#commit-message-standards) types table.
 
 #### Summary
 A clear explanation of what this PR does and why. Do not simply restate the title. Explain the motivation and the problem being solved.
@@ -340,9 +366,9 @@ List any ADRs that informed, constrain, or are affected by this change. If a new
 #### Checklist
 Include the pre-PR checklist above in your description and check off each item.
 
-### Small, Focused PRs
+### PR Template
 
-Keep PRs focused on a single concern. Large, multipurpose PRs are harder to review, harder to revert, and more likely to introduce unintended regressions. If a change is large, consider breaking it into a series of smaller, logically ordered PRs.
+A GitHub PR template is provided at `.github/PULL_REQUEST_TEMPLATE.md`. It pre-populates the required sections when you open a new PR. Fill in every section — do not delete any headings.
 
 ---
 

@@ -280,9 +280,9 @@ class TestDetermineBump(unittest.TestCase):
         self.assertEqual(bap.determine_bump(['abc']), 'patch')
 
     @patch('build_and_publish.get_commit_message')
-    def test_patch_bump_on_test_type(self, mock_msg):
+    def test_returns_none_on_test_type(self, mock_msg):
         mock_msg.return_value = ('test(scope): add unit tests', '')
-        self.assertEqual(bap.determine_bump(['abc']), 'patch')
+        self.assertEqual(bap.determine_bump(['abc']), 'none')
 
     @patch('build_and_publish.get_commit_message')
     def test_patch_bump_on_refactor_type(self, mock_msg):
@@ -300,16 +300,14 @@ class TestDetermineBump(unittest.TestCase):
         self.assertEqual(bap.determine_bump(['abc']), 'patch')
 
     @patch('build_and_publish.get_commit_message')
-    def test_raises_on_chore_only(self, mock_msg):
+    def test_returns_none_on_chore_only(self, mock_msg):
         mock_msg.return_value = ('chore(ci): update pipeline', '')
-        with self.assertRaises(ValueError):
-            bap.determine_bump(['abc'])
+        self.assertEqual(bap.determine_bump(['abc']), 'none')
 
     @patch('build_and_publish.get_commit_message')
-    def test_raises_on_docs_only(self, mock_msg):
+    def test_returns_none_on_docs_only(self, mock_msg):
         mock_msg.return_value = ('docs(readme): update readme', '')
-        with self.assertRaises(ValueError):
-            bap.determine_bump(['abc'])
+        self.assertEqual(bap.determine_bump(['abc']), 'none')
 
     @patch('build_and_publish.get_commit_message')
     def test_raises_on_unknown_type(self, mock_msg):
@@ -357,23 +355,37 @@ class TestIncrementVersion(unittest.TestCase):
 # ---------------------------------------------------------------------------
 class TestDetermineNewVersion(unittest.TestCase):
     def test_returns_none_when_no_commits_and_no_force(self):
-        self.assertIsNone(bap.determine_new_version('1.0.0', []))
+        new_version, bump_used = bap.determine_new_version('1.0.0', [])
+        self.assertIsNone(new_version)
+        self.assertEqual(bump_used, 'none')
 
     def test_first_version_defaults_to_patch_from_zero(self):
-        self.assertEqual(bap.determine_new_version('0.0.0', ['abc']), '0.0.1')
+        new_version, bump_used = bap.determine_new_version('0.0.0', ['abc'])
+        self.assertEqual(new_version, '0.0.1')
+        self.assertEqual(bump_used, 'patch')
 
     def test_first_version_respects_force_bump(self):
-        self.assertEqual(bap.determine_new_version('0.0.0', [], force_bump='minor'), '0.1.0')
+        new_version, bump_used = bap.determine_new_version('0.0.0', [], force_bump='minor')
+        self.assertEqual(new_version, '0.1.0')
+        self.assertEqual(bump_used, 'minor')
 
     def test_force_bump_overrides_commit_analysis(self):
-        result = bap.determine_new_version('1.2.3', ['abc'], force_bump='major')
-        self.assertEqual(result, '2.0.0')
+        new_version, bump_used = bap.determine_new_version('1.2.3', ['abc'], force_bump='major')
+        self.assertEqual(new_version, '2.0.0')
+        self.assertEqual(bump_used, 'major')
 
     @patch('build_and_publish.determine_bump', return_value='patch')
     def test_delegates_to_determine_bump_when_no_force(self, mock_bump):
-        result = bap.determine_new_version('1.2.3', ['abc'])
-        self.assertEqual(result, '1.2.4')
+        new_version, bump_used = bap.determine_new_version('1.2.3', ['abc'])
+        self.assertEqual(new_version, '1.2.4')
+        self.assertEqual(bump_used, 'patch')
         mock_bump.assert_called_once_with(['abc'])
+
+    @patch('build_and_publish.determine_bump', return_value='none')
+    def test_returns_none_version_when_bump_is_none(self, mock_bump):
+        new_version, bump_used = bap.determine_new_version('1.2.3', ['abc'])
+        self.assertIsNone(new_version)
+        self.assertEqual(bump_used, 'none')
 
 
 # ---------------------------------------------------------------------------
@@ -538,7 +550,7 @@ class TestMain(unittest.TestCase):
             get_repository_name=MagicMock(return_value='my-repo'),
             get_last_version=MagicMock(return_value='1.0.0'),
             get_commits_since_tag=MagicMock(return_value=['abc']),
-            determine_new_version=MagicMock(return_value='1.0.1'),
+            determine_new_version=MagicMock(return_value=('1.0.1', 'patch')),
             create_git_tag=MagicMock(),
             build_artifacts=MagicMock(return_value=[Path('my-repo-1.0.1.tar.gz')]),
             create_github_release=MagicMock(),
@@ -608,14 +620,30 @@ class TestMain(unittest.TestCase):
 
     def test_none_version_exits(self):
         with self.assertRaises(SystemExit):
-            self._run_main([], determine_new_version=MagicMock(return_value=None))
+            self._run_main([], determine_new_version=MagicMock(return_value=(None, 'none')))
 
-    def test_github_output_env_writes_version(self):
+    def test_github_output_env_writes_version_and_bump(self):
         tmp = Path('/tmp/gh_output_test.txt')
         tmp.write_text('')
         try:
             self._run_main([], env={'GITHUB_OUTPUT': str(tmp)})
-            self.assertIn('version=1.0.1', tmp.read_text())
+            content = tmp.read_text()
+            self.assertIn('version=1.0.1', content)
+            self.assertIn('bump=patch', content)
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def test_github_output_env_writes_bump_none_for_no_release_commits(self):
+        tmp = Path('/tmp/gh_output_test_none.txt')
+        tmp.write_text('')
+        try:
+            self._run_main(
+                [],
+                env={'GITHUB_OUTPUT': str(tmp)},
+                determine_new_version=MagicMock(return_value=('1.0.1', 'none')),
+            )
+            content = tmp.read_text()
+            self.assertIn('bump=none', content)
         finally:
             tmp.unlink(missing_ok=True)
 

@@ -12,6 +12,7 @@ import platform
 from pathlib import Path
 from typing import Tuple, List, Optional
 
+
 # Use 'git.exe' on Windows, 'git' on all other platforms
 GIT_CMD = 'git.exe' if platform.system() == 'Windows' else 'git'
 
@@ -182,15 +183,33 @@ COMMIT_TYPES = {
 def determine_bump(commits: List[str]) -> str:
     """
     Determine the semantic version bump based on commits.
-    Returns 'major', 'minor', or 'patch'
+    Returns 'major', 'minor', 'patch', or 'none' when all commits are docs/test/chore-only.
     """
     has_major = False
     has_minor = False
     has_patch = False
-    __bump = 'none'
+    has_none = False
 
     for commit_hash in commits:
         subject, body = get_commit_message(commit_hash)
+
+        chore_or_doc_check = re.findall(r'^(docs|test|chore)\(.*\):', subject)
+        if chore_or_doc_check:
+            commit_type = chore_or_doc_check[0]
+            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Not building a release.")
+            has_none = True
+
+        patch_bump_check = re.findall(r'^(fix|refactor|adr[s]*)\(.*\):', subject)
+        if patch_bump_check:
+            commit_type = patch_bump_check[0]
+            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing patch version.")
+            has_patch = True
+
+        minor_bump_check = re.findall(r'^(feature|license)\(.*\):', subject)
+        if minor_bump_check:
+            commit_type = minor_bump_check[0]
+            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing minor version.")
+            has_minor = True
 
         major_bump_check = re.findall(r'^(breaking|rewrite|milestone|deprecate|eos|license|security)\(.*\):', subject)
         if major_bump_check:
@@ -206,36 +225,19 @@ def determine_bump(commits: List[str]) -> str:
             has_major = True
             break
 
-        minor_bump_check = re.findall(r'^(feature|license)\(.*\):', subject)
-        if minor_bump_check:
-            commit_type = minor_bump_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing minor version.")
-            has_minor = True
-
-        patch_bump_check = re.findall(r'^(fix|test|refactor|adr[s]*)\(.*\):', subject)
-        if patch_bump_check:
-            commit_type = patch_bump_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing patch version.")
-            has_patch = True
-
-        chore_or_doc_check = re.findall(r'^(docs|chore)\(.*\):', subject)
-        if chore_or_doc_check:
-            commit_type = chore_or_doc_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Not building a release.")
-
-    # fix: defaults to patch, so we don't need to explicitly check
-
     if has_major:
-        __bump = 'major'
+        bump = 'major'
     elif has_minor:
-        __bump = 'minor'
+        bump = 'minor'
     elif has_patch:
-        __bump = 'patch'
+        bump = 'patch'
+    elif has_none:
+        bump = 'none'
     else:
-        raise ValueError(f"Unknown Increment Type: {__bump}")
+        raise ValueError(f"No recognised commit type found in {len(commits)} commit(s). Cannot determine bump type.")
 
-    print(f"Determined bump type: {__bump}")
-    return __bump
+    print(f"Determined bump type: {bump}")
+    return bump
 
 def increment_version(version: str, bump: str) -> str:
     """Increment the version based on bump type."""
@@ -256,7 +258,7 @@ def increment_version(version: str, bump: str) -> str:
     return f'{major}.{minor}.{patch}'
 
 
-def determine_new_version(current_version: str, commits: List[str], force_bump: Optional[str] = None) -> Optional[str]:
+def determine_new_version(current_version: str, commits: List[str], force_bump: Optional[str] = None) -> Tuple[Optional[str], str]:
     """
     Determine the new version based on current version and commits.
 
@@ -265,10 +267,15 @@ def determine_new_version(current_version: str, commits: List[str], force_bump: 
         commits: List of commit hashes since the last version tag.
         force_bump: Optional override for bump type ('major', 'minor', or 'patch').
                     When provided, skips commit analysis and uses this bump type directly.
+
+    Returns:
+        A tuple of (new_version, bump_used). new_version is None when there is nothing
+        to version. bump_used is 'none' when all commits are docs/test/chore-only or
+        when there are no commits and no force_bump.
     """
     if not commits and not force_bump:
         print("No new commits since last version")
-        return None
+        return None, 'none'
 
     if current_version == '0.0.0':
         # Apply forced bump from initial version, or default to 0.0.1
@@ -278,7 +285,7 @@ def determine_new_version(current_version: str, commits: List[str], force_bump: 
             print(f"No previous version found. Setting first version to {first_version} (forced {force_bump})")
         else:
             print(f"No previous version found. Setting first version to {first_version}")
-        return first_version
+        return first_version, bump
 
     # Use forced bump if provided, otherwise analyse commits
     if force_bump:
@@ -287,8 +294,12 @@ def determine_new_version(current_version: str, commits: List[str], force_bump: 
     else:
         bump = determine_bump(commits)
 
+    if bump == 'none':
+        print("No version-bumping commits found. Skipping release.")
+        return None, 'none'
+
     new_version = increment_version(current_version, bump)
-    return new_version
+    return new_version, bump
 
 
 def build_artifacts(new_version: str, verbose: bool = False) -> List[Path]:
@@ -473,16 +484,17 @@ def main():
         force_bump = None
 
     # Step 4: Determine new base version
-    new_version = determine_new_version(current_version, commits, force_bump)
+    new_version, bump_used = determine_new_version(current_version, commits, force_bump)
     if new_version is None:
         print("Cannot determine new version")
         sys.exit(1)
 
-    # Output version for GitHub Actions
+    # Output version and bump type for GitHub Actions
     github_output = os.environ.get('GITHUB_OUTPUT', None)
     if github_output:
         with open(github_output, 'a') as f:
             f.write(f'version={new_version}\n')
+            f.write(f'bump={bump_used}\n')
 
     # Step 5: Build artifacts
     artifacts = []
