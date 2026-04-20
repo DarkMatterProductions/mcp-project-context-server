@@ -190,7 +190,7 @@ def determine_bump(commits: List[str]) -> str:
             print(f"Commit flagged as {minor_bump_check[0]} change. Incrementing minor version.")
             has_minor = True
 
-        patch_bump_check = re.findall(r'^(fix|test|docs|refactor|chore|adr)\(.*\):', subject)
+        patch_bump_check = re.findall(r'^(fix|test|docs|refactor|chore|adr[s]*)\(.*\):', subject)
         if patch_bump_check:
             print(f"Commit flagged as {patch_bump_check[0]}. Incrementing patch version.")
             has_patch = True
