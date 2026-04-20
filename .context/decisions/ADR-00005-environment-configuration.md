@@ -1,7 +1,7 @@
 # ADR-00005: Environment variable configuration with planned YAML layer
 
 ## Status
-Accepted (environment variables)
+Implemented (environment variables)
 Proposed (YAML configuration layer)
 
 ## Context

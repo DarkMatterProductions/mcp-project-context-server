@@ -1,7 +1,7 @@
 # ADR-00002: ChromaDB as the vector store
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 

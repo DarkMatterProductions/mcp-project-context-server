@@ -1,7 +1,7 @@
 # ADR-00003: Ollama-first embedding with planned cloud provider extensibility
 
 ## Status
-Accepted (Ollama as initial provider)
+Implemented (Ollama as initial provider)
 Proposed (cloud provider support)
 
 ## Context

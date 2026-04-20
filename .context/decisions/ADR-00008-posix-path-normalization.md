@@ -1,7 +1,7 @@
 # ADR-00008: POSIX path normalization for ChromaDB document IDs
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 

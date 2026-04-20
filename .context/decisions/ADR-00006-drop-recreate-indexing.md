@@ -1,7 +1,7 @@
 # ADR-00006: Drop-and-recreate indexing with planned watchdog auto-reindex
 
 ## Status
-Accepted (drop-and-recreate on manual trigger)
+Implemented (drop-and-recreate on manual trigger)
 Proposed (watchdog-based auto-reindex)
 
 ## Context
