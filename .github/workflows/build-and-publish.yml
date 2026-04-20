@@ -35,7 +35,7 @@ jobs:
         id: versioning
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python .github/tools/build-and-publish.py --build --publish
+        run: python .github/tools/build_and_publish.py --build --publish
 
       - name: Publish package distributions to PyPI
         if: steps.versioning.outputs.bump != 'none'
