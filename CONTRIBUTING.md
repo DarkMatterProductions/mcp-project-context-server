@@ -159,6 +159,27 @@ Every commit must include a **clear, detailed message** that explains both *what
 | `chore`     | Build system, tooling, or dependency changes        |
 | `adr`       | Adding or updating an Architecture Decision Record  |
 
+### No-Release Scopes
+
+Certain scopes suppress version bumping **regardless of the commit type**. Even a `fix` or `feature` commit will not trigger a release if its scope is one of the following:
+
+| Scope     | When to use                                                         |
+|-----------|---------------------------------------------------------------------|
+| `ci`      | Changes to CI/CD pipeline configuration or workflow files           |
+| `tools`   | Changes to scripts or utilities under `.github/tools/`              |
+
+These scopes are enforced by `build_and_publish.py` via the `NO_RELEASE_SCOPES` constant. When a commit matches a no-release scope, `determine_bump()` sets `has_none = True` and skips all further bump checks for that commit — meaning even a `fix(ci):` or `feature(tools):` commit will produce `bump=none` in `GITHUB_OUTPUT` and skip the PyPI publish step.
+
+If a new no-release scope is needed, add it to the `NO_RELEASE_SCOPES` set in `build_and_publish.py` **and** document it in this table.
+
+**Example:**
+```
+fix(ci): correct PyPI publish condition in build-and-publish.yml
+
+- The publish step was not correctly gating on the bump output variable
+- Updated the if-condition to reference the correct step id
+```
+
 ### Examples
 
 ```

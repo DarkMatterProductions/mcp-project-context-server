@@ -242,6 +242,20 @@ class TestCommitTypesDictionary(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# NO_RELEASE_SCOPES constant
+# ---------------------------------------------------------------------------
+class TestNoReleaseScopesConstant(unittest.TestCase):
+    def test_ci_scope_is_present(self):
+        self.assertIn('ci', bap.NO_RELEASE_SCOPES)
+
+    def test_tools_scope_is_present(self):
+        self.assertIn('tools', bap.NO_RELEASE_SCOPES)
+
+    def test_is_a_set(self):
+        self.assertIsInstance(bap.NO_RELEASE_SCOPES, set)
+
+
+# ---------------------------------------------------------------------------
 # determine_bump
 # ---------------------------------------------------------------------------
 class TestDetermineBump(unittest.TestCase):
@@ -330,6 +344,33 @@ class TestDetermineBump(unittest.TestCase):
             bap.determine_bump(['abc'])
             printed = ' '.join(str(c) for c in mock_print.call_args_list)
             self.assertIn(bap.COMMIT_TYPES['fix'], printed)
+
+    @patch('build_and_publish.get_commit_message')
+    def test_returns_none_on_ci_scope_overrides_fix(self, mock_msg):
+        mock_msg.return_value = ('fix(ci): update pipeline config', '')
+        self.assertEqual(bap.determine_bump(['abc']), 'none')
+
+    @patch('build_and_publish.get_commit_message')
+    def test_returns_none_on_tools_scope_overrides_feature(self, mock_msg):
+        mock_msg.return_value = ('feature(tools): add new build script', '')
+        self.assertEqual(bap.determine_bump(['abc']), 'none')
+
+    @patch('build_and_publish.get_commit_message')
+    def test_no_release_scope_does_not_block_other_commits(self, mock_msg):
+        mock_msg.side_effect = [
+            ('fix(ci): update pipeline', ''),
+            ('fix(scope): correct a bug', ''),
+        ]
+        self.assertEqual(bap.determine_bump(['abc', 'def']), 'patch')
+
+    @patch('build_and_publish.get_commit_message')
+    def test_returns_none_when_all_commits_are_no_release_scope(self, mock_msg):
+        mock_msg.side_effect = [
+            ('fix(ci): update pipeline', ''),
+            ('chore(tools): update build script', ''),
+            ('docs(ci): update workflow readme', ''),
+        ]
+        self.assertEqual(bap.determine_bump(['abc', 'def', 'ghi']), 'none')
 
 
 # ---------------------------------------------------------------------------
@@ -650,16 +691,4 @@ class TestMain(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
-
-
-
-
-
-
-
-
-
-
-
 

@@ -179,11 +179,15 @@ COMMIT_TYPES = {
     'adr':       'Adding or updating an Architecture Decision Record',
 }
 
+# Scopes that suppress version bumping regardless of commit type.
+NO_RELEASE_SCOPES = {'ci', 'tools'}
+
 
 def determine_bump(commits: List[str]) -> str:
     """
     Determine the semantic version bump based on commits.
-    Returns 'major', 'minor', 'patch', or 'none' when all commits are docs/test/chore-only.
+    Returns 'major', 'minor', 'patch', or 'none' when all commits are docs/test/chore-only
+    or scoped to a no-release scope (e.g. 'ci', 'tools').
     """
     has_major = False
     has_minor = False
@@ -192,6 +196,14 @@ def determine_bump(commits: List[str]) -> str:
 
     for commit_hash in commits:
         subject, body = get_commit_message(commit_hash)
+
+        # Extract scope; certain scopes always suppress a release regardless of type
+        scope_match = re.match(r'^\w+!?\(([^)]+)\):', subject)
+        if scope_match and scope_match.group(1) in NO_RELEASE_SCOPES:
+            scope = scope_match.group(1)
+            print(f"Commit scope '{scope}' is a no-release scope. Not building a release.")
+            has_none = True
+            continue
 
         chore_or_doc_check = re.findall(r'^(docs|test|chore)\(.*\):', subject)
         if chore_or_doc_check:
@@ -532,10 +544,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
-
