@@ -33,7 +33,11 @@ server = Server("project-context")
 _TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="load_project_context",
-        description=("Load the full project context for the given project path. " "Returns project.md, all ADRs, and the latest session summary. " "You MUST call this at the start of every session."),
+        description=(
+            "Load the full project context for the given project path. "
+            "Returns project.md, all ADRs, and the latest session summary. "
+            "You MUST call this at the start of every session."
+        ),
         inputSchema={
             "type": "object",
             "properties": {
@@ -47,7 +51,11 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
     ),
     types.Tool(
         name="search_project_context",
-        description=("Semantically search the indexed project context. " "Use this to find relevant past decisions, architecture notes, " "or code summaries related to your current task."),
+        description=(
+            "Semantically search the indexed project context. "
+            "Use this to find relevant past decisions, architecture notes, "
+            "or code summaries related to your current task."
+        ),
         inputSchema={
             "type": "object",
             "properties": {
@@ -60,7 +68,10 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
     ),
     types.Tool(
         name="save_session_summary",
-        description=("Save a summary of the current session to .context/sessions/YYYY-MM-DD.md. " "Call this at the end of a session with a concise summary of what was done."),
+        description=(
+            "Save a summary of the current session to .context/sessions/YYYY-MM-DD.md. "
+            "Call this at the end of a session with a concise summary of what was done."
+        ),
         inputSchema={
             "type": "object",
             "properties": {
@@ -75,7 +86,10 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
     ),
     types.Tool(
         name="index_project_context",
-        description=("Re-index the .context/ directory into the vector store. " "Run this after updating project.md, adding ADRs, or refreshing BUNDLE.md."),
+        description=(
+            "Re-index the .context/ directory into the vector store. "
+            "Run this after updating project.md, adding ADRs, or refreshing BUNDLE.md."
+        ),
         inputSchema={
             "type": "object",
             "properties": {"project_path": {"type": "string"}},

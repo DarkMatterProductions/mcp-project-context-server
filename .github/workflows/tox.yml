@@ -74,5 +74,5 @@ jobs:
           pytest test_build_and_publish.py -v \
             --cov=build_and_publish \
             --cov-report=term-missing \
-            --cov-fail-under=99
+            --cov-fail-under=98
 

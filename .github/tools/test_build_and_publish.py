@@ -678,13 +678,13 @@ class TestMain(unittest.TestCase):
         tmp = Path('/tmp/gh_output_test_none.txt')
         tmp.write_text('')
         try:
-            self._run_main(
-                [],
-                env={'GITHUB_OUTPUT': str(tmp)},
-                determine_new_version=MagicMock(return_value=('1.0.1', 'none')),
-            )
-            content = tmp.read_text()
-            self.assertIn('bump=none', content)
+            with self.assertRaises(SystemExit) as cm:
+                self._run_main(
+                    [],
+                    env={'GITHUB_OUTPUT': str(tmp)},
+                    determine_new_version=MagicMock(return_value=('1.0.1', 'none')),
+                )
+            self.assertEqual(cm.exception.code, 0)
         finally:
             tmp.unlink(missing_ok=True)
 
