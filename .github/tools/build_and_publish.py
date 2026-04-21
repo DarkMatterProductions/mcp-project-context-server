@@ -502,12 +502,6 @@ def main():
 
     # Step 4: Determine new base version
     new_version, bump_used = determine_new_version(current_version, commits, force_bump)
-    if bump_used == 'none':
-        print("No release needed based on commit analysis. Exiting.")
-        sys.exit(0)
-    elif new_version is None:
-        print("Cannot determine new version")
-        sys.exit(1)
 
     # Output version and bump type for GitHub Actions
     github_output = os.environ.get('GITHUB_OUTPUT', None)
@@ -515,6 +509,13 @@ def main():
         with open(github_output, 'a') as f:
             f.write(f'version={new_version}\n')
             f.write(f'bump={bump_used}\n')
+
+    if bump_used == 'none':
+        print("No release needed based on commit analysis. Exiting.")
+        sys.exit(0)
+    elif new_version is None:
+        print("Cannot determine new version")
+        sys.exit(1)
 
     # Step 5: Build artifacts
     artifacts = []
