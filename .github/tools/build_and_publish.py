@@ -12,7 +12,6 @@ import platform
 from pathlib import Path
 from typing import Tuple, List, Optional
 
-
 # Use 'git.exe' on Windows, 'git' on all other platforms
 GIT_CMD = 'git.exe' if platform.system() == 'Windows' else 'git'
 
@@ -162,21 +161,26 @@ def get_commit_message(commit_hash: str) -> Tuple[str, str]:
 
 
 COMMIT_TYPES = {
-    'breaking':  'A backwards incompatible change to the API or Tools',
-    'rewrite':   'Complete rewrites / architectural overhauls',
-    'milestone': 'Significant feature milestones / stable releases',
-    'deprecate': 'Major deprecation cleanups',
-    'eos':       'End of support for a runtime/platform',
-    'license':   'License changes',
-    'security':  'Security-mandated incompatible changes',
-    'feature':   'A new feature or capability',
-    'fix':       'A bug fix',
-    'test':      'Adding or updating tests',
-    'docs':      'Documentation changes only',
-    'refactor':  'Code restructuring with no behaviour change',
-    'chore':     'Build system, tooling, or dependency changes',
-    'adrs':      'Adding or updating an Architecture Decision Record',
-    'adr':       'Adding or updating an Architecture Decision Record',
+    'breaking':  ('major_bump', 'A backwards incompatible change to the API or Tools'),
+    'rewrite':   ('major_bump', 'A significant rewrite of a major component or subsystem'),
+    'milestone': ('major_bump', 'A significant milestone or achievement, such as a major feature completion or project phase'),
+    'deprecate': ('major_bump', 'Deprecation of a major feature or API, signaling that it will be removed in a future release'),
+    'eos':       ('major_bump', 'End of support for a major version or platform'),
+    'security':  ('major_bump', 'A security fix that addresses a critical vulnerability'),
+    'license':   ('major_bump', 'Changes to licensing or legal documentation'),
+    'feature':   ('minor_bump', 'A new feature or enhancement to existing functionality'),
+    'fix':       ('patch_bump', 'A bug fix or patch that addresses a specific issue'),
+    'refactor':  ('patch_bump', 'A code change that improves internal structure or readability without changing external behavior'),
+    'docs':      ('no_release', 'Documentation changes, including updates to README, docstrings, or other non-code content'),
+    'test':      ('no_release', 'Changes to test code or test coverage, without affecting production code'),
+    'chore':     ('no_release', 'General maintenance tasks, such as build scripts, CI configuration, or other non-feature, non-fix changes'),
+}
+
+COMMIT_OUTPUT_MESSAGE = {
+    'no_bump': "Commit flagged as {commit_type}({scope}) ({description}). Not building a release.",
+    'patch_bump': "Commit flagged as {commit_type} ({description}). Incrementing patch version.",
+    'minor_bump': "Commit flagged as {commit_type} ({description}). Incrementing minor version.",
+    'major_bump': "Commit flagged as {commit_type} ({description}). Incrementing major version.",
 }
 
 # Scopes that suppress version bumping regardless of commit type.
@@ -197,45 +201,41 @@ def determine_bump(commits: List[str]) -> str:
     for commit_hash in commits:
         subject, body = get_commit_message(commit_hash)
 
-        # Extract scope; certain scopes always suppress a release regardless of type
-        scope_match = re.match(r'^\w+!?\(([^)]+)\):', subject)
-        if scope_match and scope_match.group(1) in NO_RELEASE_SCOPES:
-            scope = scope_match.group(1)
-            print(f"Commit scope '{scope}' is a no-release scope. Not building a release.")
-            has_none = True
-            continue
+        bump_check_result = re.match(r'^([a-zA-Z0-9]+)\((.*)\)([*!]*):', subject)
+        bump_check_metadata = bump_check_result.groups() if bump_check_result else None
+        if bump_check_metadata:
+            if bump_check_metadata is None:
+                continue
+            commit_type_match = bump_check_metadata[0]
+            commit_scope_match = bump_check_metadata[1]
+            override_flag_match = bump_check_metadata[2]
+            commit_type = COMMIT_TYPES.get(commit_type_match, '')
+            bump_action = commit_type[0] if commit_type else 'unknown'
+            commit_response_msg = COMMIT_OUTPUT_MESSAGE.get(commit_type[0], None)
+            if commit_response_msg is None:
+                raise ValueError(f"Unknown commit type {commit_type_match}")
 
-        chore_or_doc_check = re.findall(r'^(docs|test|chore)\(.*\):', subject)
-        if chore_or_doc_check:
-            commit_type = chore_or_doc_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Not building a release.")
-            has_none = True
-
-        patch_bump_check = re.findall(r'^(fix|refactor|adr[s]*)\(.*\):', subject)
-        if patch_bump_check:
-            commit_type = patch_bump_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing patch version.")
-            has_patch = True
-
-        minor_bump_check = re.findall(r'^(feature|license)\(.*\):', subject)
-        if minor_bump_check:
-            commit_type = minor_bump_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing minor version.")
-            has_minor = True
-
-        major_bump_check = re.findall(r'^(breaking|rewrite|milestone|deprecate|eos|license|security)\(.*\):', subject)
-        if major_bump_check:
-            commit_type = major_bump_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing major version.")
-            has_major = True
+            if override_flag_match and override_flag_match == "!":
+                print("** Breaking Change Escalation Override Enabled **")
+                has_major = True
+            elif override_flag_match and override_flag_match == "*":
+                print("** Breaking Change Downgrading Exception Override Enabled **")
+                has_minor = True
+            elif bump_action == 'no_release':
+                has_none = True
+            elif bump_action == 'patch_bump':
+                has_patch = True
+            elif bump_action == 'minor_bump':
+                has_minor = True
+            elif bump_action == 'major_bump':
+                print(commit_response_msg.format(commit_type=commit_type_match, scope=commit_scope_match, description=commit_type[1]))
+                has_major = True
+            else:
+                raise ValueError(f"Unknown bump action {bump_action} for commit type {commit_type_match}")
+            print(commit_response_msg.format(commit_type=commit_type_match, scope=commit_scope_match, description=commit_type[1]))
             break
-
-        major_bump_check = re.findall(r'^(feature|fix)!\(.*\):', subject)
-        if major_bump_check:
-            commit_type = major_bump_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing major version.")
-            has_major = True
-            break
+        else:
+            ValueError(f"Commit {commit_hash} does not match expected format. Cannot determine bump type.")
 
     if has_major:
         bump = 'major'

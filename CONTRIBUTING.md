@@ -112,7 +112,7 @@ Every commit must include a **clear, detailed message** that explains both *what
 ### Format
 
 ```
-<type>(<scope>): <short summary — imperative mood, max 72 chars>
+<type>(<scope>)[!|*]: <short summary — imperative mood, max 72 chars>
 
 <body — itemized list explaining the motivation, context, and any relevant detail>
 
@@ -122,7 +122,10 @@ Every commit must include a **clear, detailed message** that explains both *what
 ### Best Practices
 
 #### Subject Line (First Line)
-- Use the **`<type>(<scope>):`** prefix from the types table below
+- Use the **`<type>(<scope>)[!|*]:`** prefix from the types table below, with optional override flags `!` and `*`
+- Override flags indicate:
+  - `!` — this commit should be treated as a breaking change regardless of type
+  - `*` — this commit should be treated as a minor version bump, even if the type would normally trigger a major or patch bump
 - Write in **imperative mood** — *"add feature"* not *"added feature"*
 - Keep it **≤ 72 characters**
 - Be specific — avoid vague summaries like `"fix bug"` or `"update code"`
