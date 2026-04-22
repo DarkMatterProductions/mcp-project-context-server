@@ -1,10 +1,36 @@
 """Tool: load_project_context — loads project.md, ADRs, and last session."""
 
+import importlib.metadata
 import os
 
 from mcp import types
 
-from mcp_project_context_server.helpers.context import find_context_dir
+from mcp_project_context_server.helpers.context import collection_name_for, find_context_dir
+from mcp_project_context_server.integrations.chroma.client import chroma_client
+
+_MIGRATION_NOTICE = (
+    "⚠️ **Re-index required**: This project's search index was built with an older "
+    "version of `mcp-project-context-server`. Run `index_project_context` to rebuild "
+    "with the new heading-boundary chunking strategy and restore full retrieval precision."
+)
+
+try:
+    _SERVER_VERSION: str = importlib.metadata.version("mcp-project-context-server")
+except importlib.metadata.PackageNotFoundError:
+    _SERVER_VERSION = "unknown"
+
+
+def _needs_reindex(context_dir) -> bool:
+    """Return True if the ChromaDB collection exists but was built with a different server version."""
+    col_name = collection_name_for(context_dir)
+    try:
+        collection = chroma_client.get_collection(col_name)
+        collection_version = (collection.metadata or {}).get("server_version")
+        # If no server_version field the collection pre-dates this feature — needs re-index.
+        return collection_version != _SERVER_VERSION
+    except Exception:
+        # Collection does not exist yet — nothing to warn about.
+        return False
 
 
 async def handle(arguments: dict) -> list[types.TextContent]:
@@ -19,6 +45,10 @@ async def handle(arguments: dict) -> list[types.TextContent]:
         ]
 
     parts: list[str] = []
+
+    # Migration notice — prepended when the indexed collection is stale
+    if _needs_reindex(context_dir):
+        parts.append(_MIGRATION_NOTICE)
 
     project_md = context_dir / "project.md"
     if project_md.exists():
