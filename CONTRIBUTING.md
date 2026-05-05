@@ -55,7 +55,7 @@ All contributors are expected to behave professionally and respectfully. Harassm
 
 ```bash
 pip install -e .
-pip install testsuite
+pip install --group testsuite
 ```
 
 ### Verify Your Setup

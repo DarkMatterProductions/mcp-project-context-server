@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CodeGPT_AcpAgentSettings">
+    <option name="enabledAgentIds">
+      <list>
+        <option value="claude-code" />
+        <option value="junie" />
+      </list>
+    </option>
+  </component>
+</project>
