@@ -11,6 +11,7 @@ from mcp.server.stdio import stdio_server
 
 from mcp_project_context_server.tools import (
     index_context,
+    list_repositories,
     load_context,
     save_session,
     search_context,
@@ -96,6 +97,24 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
             "required": ["project_path"],
         },
     ),
+    types.Tool(
+        name="list_repositories",
+        description=(
+            "List repositories accessible via the configured repository provider. "
+            "In multi-tenant mode, returns all approved repositories. "
+            "Optionally filter by organisation name."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "org": {
+                    "type": "string",
+                    "description": "Optional organisation/group name to filter results.",
+                }
+            },
+            "required": [],
+        },
+    ),
 ]
 
 _TOOL_HANDLERS = {
@@ -103,6 +122,7 @@ _TOOL_HANDLERS = {
     "search_project_context": search_context.handle,
     "save_session_summary": save_session.handle,
     "index_project_context": index_context.handle,
+    "list_repositories": list_repositories.handle,
 }
 
 

@@ -1,0 +1,1 @@
+"""GitLab repository provider."""
