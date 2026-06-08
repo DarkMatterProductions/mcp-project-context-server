@@ -1,9 +1,8 @@
-"""Indexes .context/ files into the vector store for semantic search.
+"""Indexes .context/ files into the configured vector store for semantic search.
 
-This module is provider-agnostic: it obtains its embedding provider through
-``indexing/embedder.py`` and its vector store client through
-``integrations/chroma/client.py``.  Neither the embedding provider nor the
-vector store implementation is imported directly here.
+Provider-agnostic: embedding via ``indexing/embedder.py``, vector storage via
+``integrations/vectorstore/registry.py``.  Neither the embedding provider nor
+the vector store implementation is imported directly here.
 """
 
 import asyncio
@@ -17,7 +16,7 @@ from mcp_project_context_server.helpers.context import (
     read_context_files,
 )
 from mcp_project_context_server.indexing.embedder import embed_chunk, get_max_chars
-from mcp_project_context_server.integrations.chroma.client import chroma_client
+from mcp_project_context_server.integrations.vectorstore.registry import get_vector_store
 
 _EMBED_CONCURRENCY: int = int(os.getenv("EMBED_CONCURRENCY", "4"))
 
@@ -26,7 +25,7 @@ async def index_project_context(project_path: str | Path) -> str:
     """Chunk, embed concurrently, and batch-store all .context/ markdown files.
 
     Chunk size is driven by the active embedding provider's ``max_chars``
-    property so that chunks stay within the provider's context window.
+    so that chunks stay within the model's context window.
 
     Args:
         project_path: Path to the project root or any file within it.
@@ -40,13 +39,10 @@ async def index_project_context(project_path: str | Path) -> str:
 
     col_name = collection_name_for(context_dir)
     chunk_size = get_max_chars()
+    store = get_vector_store()
 
     # Drop and recreate for a clean re-index (ADR-00006)
-    try:
-        chroma_client.delete_collection(col_name)
-    except Exception:
-        pass
-    collection = chroma_client.create_collection(col_name)
+    await store.create_collection(col_name)
 
     files = read_context_files(context_dir)
 
@@ -75,10 +71,10 @@ async def index_project_context(project_path: str | Path) -> str:
 
     results = await asyncio.gather(*[_embed(*c) for c in all_chunks])
 
-    # Filter failures, then batch-add everything to ChromaDB in one call
     valid = [r for r in results if r is not None]
     if valid:
-        collection.add(
+        await store.upsert(
+            collection_name=col_name,
             ids=[r[0] for r in valid],
             embeddings=[r[2] for r in valid],
             documents=[r[1] for r in valid],

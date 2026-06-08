@@ -1,14 +1,14 @@
 """Tool: search_project_context — semantic search over indexed context."""
 
 import os
-from collections.abc import Sequence
 from typing import cast
 
 from mcp import types
 
 from mcp_project_context_server.helpers.context import collection_name_for, find_context_dir
 from mcp_project_context_server.indexing.embedder import embed_chunk
-from mcp_project_context_server.integrations.chroma.client import chroma_client
+from mcp_project_context_server.integrations.vectorstore.base import VectorStoreError
+from mcp_project_context_server.integrations.vectorstore.registry import get_vector_store
 
 
 async def handle(arguments: dict) -> list[types.TextContent]:
@@ -26,10 +26,9 @@ async def handle(arguments: dict) -> list[types.TextContent]:
         ]
 
     col_name = collection_name_for(context_dir)
+    store = get_vector_store()
 
-    try:
-        collection = chroma_client.get_collection(col_name)
-    except Exception:
+    if not await store.collection_exists(col_name):
         return [
             types.TextContent(
                 type="text",
@@ -37,16 +36,21 @@ async def handle(arguments: dict) -> list[types.TextContent]:
             )
         ]
 
-    query_embedding = await embed_chunk(query)
-    results = collection.query(
-        query_embeddings=cast(list[Sequence[float]], [query_embedding]),
-        n_results=min(n_results, collection.count()),
-    )
+    try:
+        query_embedding = await embed_chunk(query)
+        result = await store.query(
+            collection_name=col_name,
+            query_embedding=query_embedding,
+            n_results=n_results,
+        )
+    except VectorStoreError as exc:
+        return [types.TextContent(type="text", text=f"Search failed: {exc}")]
 
-    docs = results["documents"]
-    metas = results["metadatas"]
-    if docs is None or metas is None or not docs[0]:
+    if not result.documents:
         return [types.TextContent(type="text", text="No results found.")]
 
-    output_parts = [f"**[{meta['file']}]**\n{doc}" for doc, meta in zip(docs[0], metas[0])]
+    output_parts = [
+        f"**[{meta.get('file', '?')}]**\n{doc}"
+        for doc, meta in zip(result.documents, result.metadatas)
+    ]
     return [types.TextContent(type="text", text="\n\n---\n\n".join(output_parts))]

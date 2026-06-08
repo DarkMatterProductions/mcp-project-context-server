@@ -1,88 +1,145 @@
-import pytest
+"""Tests for tools/search_context.py — updated to use vector store registry."""
 
+import pytest
+from pytest_mock import MockerFixture
+
+from mcp_project_context_server.integrations.vectorstore.base import (
+    QueryResult,
+    VectorStoreError,
+)
 from mcp_project_context_server.tools.search_context import handle
 
+_GET_VECTOR_STORE = "mcp_project_context_server.tools.search_context.get_vector_store"
+_EMBED_CHUNK = "mcp_project_context_server.tools.search_context.embed_chunk"
 
-class TestSearchContext:
-    def setup_method(self):
-        pass
 
+@pytest.fixture()
+def context_dir(tmp_path):
+    """Create a tmp project dir with a .context/ subdirectory."""
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / ".context").mkdir()
+    return project
+
+
+@pytest.fixture()
+def mock_store(mocker: MockerFixture):
+    """Return a mock vector store injected via get_vector_store."""
+    store = mocker.MagicMock()
+    store.collection_exists = mocker.AsyncMock(return_value=True)
+    store.query = mocker.AsyncMock(
+        return_value=QueryResult(
+            ids=["id1", "id2"],
+            documents=["Doc 1", "Doc 2"],
+            metadatas=[{"file": "f1.md"}, {"file": "f2.md"}],
+        )
+    )
+    mocker.patch(_GET_VECTOR_STORE, return_value=store)
+    return store
+
+
+@pytest.fixture()
+def mock_embed(mocker: MockerFixture):
+    return mocker.patch(_EMBED_CHUNK, new_callable=mocker.AsyncMock, return_value=[0.1, 0.2])
+
+
+# ---------------------------------------------------------------------------
+# No .context/ directory
+# ---------------------------------------------------------------------------
+
+
+class TestNoContextDir:
     @pytest.mark.asyncio
-    async def test_search_context_no_dir(self):
-        arguments = {"project_path": "/nonexistent", "query": "test"}
-        result = await handle(arguments)
+    async def test_returns_no_context_dir_message(self) -> None:
+        result = await handle({"project_path": "/nonexistent/path", "query": "test"})
         assert "No .context/ directory found" in result[0].text
 
+
+# ---------------------------------------------------------------------------
+# Collection not indexed
+# ---------------------------------------------------------------------------
+
+
+class TestCollectionNotIndexed:
     @pytest.mark.asyncio
-    async def test_search_context_success(self, tmp_path, mocker):
-        project_dir = tmp_path / "project"
-        project_dir.mkdir()
-        (project_dir / ".context").mkdir()
+    async def test_returns_not_indexed_message(
+        self, context_dir, mocker: MockerFixture
+    ) -> None:
+        store = mocker.MagicMock()
+        store.collection_exists = mocker.AsyncMock(return_value=False)
+        mocker.patch(_GET_VECTOR_STORE, return_value=store)
 
-        arguments = {"project_path": str(project_dir), "query": "my query", "n_results": 2}
+        result = await handle({"project_path": str(context_dir), "query": "something"})
+        assert "not found. Run index_project_context first." in result[0].text
 
-        mock_collection = mocker.MagicMock()
-        mock_chroma = mocker.patch("mcp_project_context_server.tools.search_context.chroma_client")
-        # embed_chunk is now async — must use AsyncMock
-        mock_embed_chunk = mocker.patch(
-            "mcp_project_context_server.tools.search_context.embed_chunk",
-            new_callable=mocker.AsyncMock,
-        )
 
-        mock_chroma.get_collection.return_value = mock_collection
-        mock_collection.count.return_value = 10
-        mock_embed_chunk.return_value = [0.1, 0.2]
-        mock_collection.query.return_value = {
-            "documents": [["Doc 1", "Doc 2"]],
-            "metadatas": [[{"file": "file1.md"}, {"file": "file2.md"}]],
-        }
+# ---------------------------------------------------------------------------
+# Successful search
+# ---------------------------------------------------------------------------
 
-        result = await handle(arguments)
+
+class TestSuccessfulSearch:
+    @pytest.mark.asyncio
+    async def test_returns_formatted_markdown(
+        self, context_dir, mock_store, mock_embed
+    ) -> None:
+        result = await handle({"project_path": str(context_dir), "query": "what is this?"})
 
         assert len(result) == 1
         text = result[0].text
-        assert "[file1.md]" in text
+        assert "**[f1.md]**" in text
         assert "Doc 1" in text
-        assert "[file2.md]" in text
+        assert "**[f2.md]**" in text
         assert "Doc 2" in text
 
-        mock_collection.query.assert_called_once()
-        _, kwargs = mock_collection.query.call_args
-        assert kwargs["n_results"] == 2
-
     @pytest.mark.asyncio
-    async def test_search_context_not_indexed(self, tmp_path, mocker):
-        project_dir = tmp_path / "project"
-        project_dir.mkdir()
-        (project_dir / ".context").mkdir()
+    async def test_n_results_passed_through_to_store_query(
+        self, context_dir, mock_store, mock_embed
+    ) -> None:
+        await handle({"project_path": str(context_dir), "query": "q", "n_results": 7})
 
-        arguments = {"project_path": str(project_dir), "query": "test"}
+        _, kwargs = mock_store.query.call_args
+        assert kwargs["n_results"] == 7
 
-        mock_chroma = mocker.patch("mcp_project_context_server.tools.search_context.chroma_client")
-        mock_chroma.get_collection.side_effect = Exception("Not found")
 
-        result = await handle(arguments)
-        assert "not found. Run index_project_context first." in result[0].text
+# ---------------------------------------------------------------------------
+# No results
+# ---------------------------------------------------------------------------
 
+
+class TestNoResults:
     @pytest.mark.asyncio
-    async def test_search_context_no_results(self, tmp_path, mocker):
-        project_dir = tmp_path / "project"
-        project_dir.mkdir()
-        (project_dir / ".context").mkdir()
-
-        arguments = {"project_path": str(project_dir), "query": "nothing"}
-
-        mock_collection = mocker.MagicMock()
-        mock_chroma = mocker.patch("mcp_project_context_server.tools.search_context.chroma_client")
-        mock_embed_chunk = mocker.patch(
-            "mcp_project_context_server.tools.search_context.embed_chunk",
-            new_callable=mocker.AsyncMock,
+    async def test_returns_no_results_message(
+        self, context_dir, mocker: MockerFixture
+    ) -> None:
+        store = mocker.MagicMock()
+        store.collection_exists = mocker.AsyncMock(return_value=True)
+        store.query = mocker.AsyncMock(
+            return_value=QueryResult(ids=[], documents=[], metadatas=[])
         )
+        mocker.patch(_GET_VECTOR_STORE, return_value=store)
+        mocker.patch(_EMBED_CHUNK, new_callable=mocker.AsyncMock, return_value=[0.1])
 
-        mock_chroma.get_collection.return_value = mock_collection
-        mock_collection.count.return_value = 5
-        mock_embed_chunk.return_value = [0.1]
-        mock_collection.query.return_value = {"documents": [[]], "metadatas": [[]]}
-
-        result = await handle(arguments)
+        result = await handle({"project_path": str(context_dir), "query": "nothing"})
         assert "No results found." in result[0].text
+
+
+# ---------------------------------------------------------------------------
+# VectorStoreError
+# ---------------------------------------------------------------------------
+
+
+class TestVectorStoreErrorHandling:
+    @pytest.mark.asyncio
+    async def test_returns_search_failed_message_on_vector_store_error(
+        self, context_dir, mocker: MockerFixture
+    ) -> None:
+        store = mocker.MagicMock()
+        store.collection_exists = mocker.AsyncMock(return_value=True)
+        store.query = mocker.AsyncMock(side_effect=VectorStoreError("connection lost"))
+        mocker.patch(_GET_VECTOR_STORE, return_value=store)
+        mocker.patch(_EMBED_CHUNK, new_callable=mocker.AsyncMock, return_value=[0.1])
+
+        result = await handle({"project_path": str(context_dir), "query": "q"})
+        assert "Search failed:" in result[0].text
+        assert "connection lost" in result[0].text
