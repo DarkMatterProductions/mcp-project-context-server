@@ -44,7 +44,10 @@ async def index_project_context(project_path: str | Path) -> str:
     if not all_chunks:
         return f"Indexed 0 chunks from {len(files)} files into collection '{col_name}'"
 
-    # Embed all chunks concurrently, bounded by semaphore
+    # Embed all chunks concurrently, bounded by semaphore.
+    # The async client is passed as a callable context object so that embed_chunk_async
+    # does not need to import any provider-specific types — it receives a generic object
+    # whose interface is resolved at call time.
     async_client = get_async_client()
     semaphore = asyncio.Semaphore(_EMBED_CONCURRENCY)
 

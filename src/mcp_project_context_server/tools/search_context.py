@@ -7,8 +7,8 @@ from typing import cast
 from mcp import types
 
 from mcp_project_context_server.helpers.context import collection_name_for, find_context_dir
+from mcp_project_context_server.indexing.ollama.embedder import embed_chunk
 from mcp_project_context_server.integrations.chroma.client import chroma_client
-from mcp_project_context_server.integrations.ollama.client import get_embedding
 
 
 async def handle(arguments: dict) -> list[types.TextContent]:
@@ -37,7 +37,7 @@ async def handle(arguments: dict) -> list[types.TextContent]:
             )
         ]
 
-    query_embedding = get_embedding(query)
+    query_embedding = embed_chunk(query)
     results = collection.query(
         query_embeddings=cast(list[Sequence[float]], [query_embedding]),
         n_results=min(n_results, collection.count()),

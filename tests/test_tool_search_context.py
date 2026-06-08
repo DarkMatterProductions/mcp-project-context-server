@@ -23,11 +23,12 @@ class TestSearchContext:
 
         mock_collection = mocker.MagicMock()
         mock_chroma = mocker.patch("mcp_project_context_server.tools.search_context.chroma_client")
-        mock_get_embedding = mocker.patch("mcp_project_context_server.tools.search_context.get_embedding")
+        # Patched via the indexing layer (embedder module), not the integration directly.
+        mock_embed_chunk = mocker.patch("mcp_project_context_server.tools.search_context.embed_chunk")
 
         mock_chroma.get_collection.return_value = mock_collection
         mock_collection.count.return_value = 10
-        mock_get_embedding.return_value = [0.1, 0.2]
+        mock_embed_chunk.return_value = [0.1, 0.2]
         mock_collection.query.return_value = {
             "documents": [["Doc 1", "Doc 2"]],
             "metadatas": [[{"file": "file1.md"}, {"file": "file2.md"}]],
@@ -59,3 +60,23 @@ class TestSearchContext:
 
         result = await handle(arguments)
         assert "not found. Run index_project_context first." in result[0].text
+
+    @pytest.mark.asyncio
+    async def test_search_context_no_results(self, tmp_path, mocker):
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        (project_dir / ".context").mkdir()
+
+        arguments = {"project_path": str(project_dir), "query": "nothing"}
+
+        mock_collection = mocker.MagicMock()
+        mock_chroma = mocker.patch("mcp_project_context_server.tools.search_context.chroma_client")
+        mock_embed_chunk = mocker.patch("mcp_project_context_server.tools.search_context.embed_chunk")
+
+        mock_chroma.get_collection.return_value = mock_collection
+        mock_collection.count.return_value = 5
+        mock_embed_chunk.return_value = [0.1]
+        mock_collection.query.return_value = {"documents": [[]], "metadatas": [[]]}
+
+        result = await handle(arguments)
+        assert "No results found." in result[0].text

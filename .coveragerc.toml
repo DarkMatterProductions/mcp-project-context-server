@@ -2,6 +2,11 @@
 # Source directory for coverage measurement
 source = ["src"]
 
+# Disable C-extension tracing to prevent segfaults with chromadb on Python 3.11
+# See: https://github.com/chroma-core/chroma/issues — chromadb C extensions conflict
+# with coverage's should_trace callback during collection.
+concurrency = ["thread"]
+
 # Files and directories to exclude from coverage measurement
 omit = [
     # Tests directory

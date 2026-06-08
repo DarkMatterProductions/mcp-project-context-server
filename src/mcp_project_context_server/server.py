@@ -16,7 +16,7 @@ from mcp_project_context_server.tools import (
     search_context,
 )
 
-_LOG_PATH = Path(r"C:\Users\drahk\.mcp-data\logs\project-context-server.log")
+_LOG_PATH = Path.home() / ".mcp-data" / "logs" / "project-context-server.log"
 _LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 logging.basicConfig(
