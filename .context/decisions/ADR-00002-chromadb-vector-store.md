@@ -33,3 +33,13 @@ ChromaDB's embedded mode eliminates all deployment prerequisites: no Docker, no 
 - **Qdrant / Weaviate**: Rejected. Both require Docker or a managed cloud service — disproportionate infrastructure for a local developer tool.
 - **pgvector**: Rejected. Requires a running PostgreSQL instance. Same infrastructure concern as above.
 - **In-memory numpy arrays**: Rejected. No persistence. The index is rebuilt from scratch on every server start, which defeats the purpose of a persistent context server.
+
+## Amendment — 2026-06-08 (Phase 5)
+
+ChromaDB is now ONE of three VectorStoreProvider implementations:
+
+- `chroma-local` (VECTOR_STORE_PROVIDER=chroma-local) — local PersistentClient, default
+- `chroma-http` (VECTOR_STORE_PROVIDER=chroma-http) — remote HttpClient for shared deployments
+- `pgvector` (VECTOR_STORE_PROVIDER=pgvector) — PostgreSQL with pgvector extension for enterprise
+
+See ADR-00015 for the full vector store abstraction design.

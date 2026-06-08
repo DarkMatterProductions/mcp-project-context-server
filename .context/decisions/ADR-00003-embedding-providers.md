@@ -50,3 +50,12 @@ The following design questions are open and must be resolved before cloud provid
 3. **Context window differences**: `nomic-embed-text` supports 8192 tokens. Cloud providers vary. The chunking strategy (ADR-00007) currently ignores provider limits. A provider abstraction should expose a `max_tokens` or `max_chars` property that the indexer can respect.
 
 4. **Re-index on provider switch**: Changing the provider must invalidate the existing ChromaDB collection. The index should record which provider and model it was built with, and warn (or auto-rebuild) on mismatch.
+
+## Amendment — 2026-06-08 (Phase 2/3)
+
+Ollama is no longer the default embedding provider. EMBED_PROVIDER environment
+variable is now required at startup. Supported values: ollama, voyage, openai,
+cohere, google, google-vertex. The server fails fast at startup if EMBED_PROVIDER
+is not set or is unrecognised — there is no silent fallback.
+
+See ADR-00014 for the full multi-provider embedding design.
