@@ -1,4 +1,5 @@
 """Tests for RepositoryProvider Protocol, RepositoryInfo dataclass, and RepositoryError."""
+
 import pytest
 
 from mcp_project_context_server.integrations.repository.base import (

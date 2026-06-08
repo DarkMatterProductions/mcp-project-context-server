@@ -93,9 +93,7 @@ class TestDeleteCollection:
 
 class TestUpsert:
     @pytest.mark.asyncio
-    async def test_upsert_calls_col_add(
-        self, provider: ChromaLocalVectorStoreProvider, mock_client: MagicMock
-    ) -> None:
+    async def test_upsert_calls_col_add(self, provider: ChromaLocalVectorStoreProvider, mock_client: MagicMock) -> None:
         mock_col = MagicMock()
         mock_client.get_collection.return_value = mock_col
 

@@ -16,7 +16,6 @@ import os
 
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingError
 
-
 _DEFAULT_MODEL: str = "text-embedding-004"
 # text-embedding-004: 2048 token context; conservative character limit
 _MAX_CHARS: int = 24_000
@@ -84,6 +83,4 @@ class GoogleEmbeddingProvider:
             result = await asyncio.to_thread(genai.embed_content, model=self._model, content=text)
             return list(result["embedding"])
         except Exception as exc:
-            raise EmbeddingError(
-                f"Google embedding failed (model={self._model}): {exc}"
-            ) from exc
+            raise EmbeddingError(f"Google embedding failed (model={self._model}): {exc}") from exc

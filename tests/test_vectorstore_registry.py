@@ -14,9 +14,7 @@ _CHROMA_LOCAL_CLS = (
 _CHROMA_HTTP_CLS = (
     "mcp_project_context_server.integrations.vectorstore.chroma_http.client.ChromaHttpVectorStoreProvider"
 )
-_PGVECTOR_CLS = (
-    "mcp_project_context_server.integrations.vectorstore.pgvector.client.PgVectorStoreProvider"
-)
+_PGVECTOR_CLS = "mcp_project_context_server.integrations.vectorstore.pgvector.client.PgVectorStoreProvider"
 
 
 @pytest.fixture(autouse=True)
@@ -62,16 +60,12 @@ class TestGetVectorStore:
         mock_cls.assert_called_once()
         assert store is mock_cls.return_value
 
-    def test_raises_environment_error_for_unknown_provider(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_raises_environment_error_for_unknown_provider(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("VECTOR_STORE_PROVIDER", "totally-unknown")
         with pytest.raises(EnvironmentError, match="Unsupported VECTOR_STORE_PROVIDER"):
             get_vector_store()
 
-    def test_provider_is_cached_after_first_call(
-        self, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
-    ) -> None:
+    def test_provider_is_cached_after_first_call(self, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture) -> None:
         monkeypatch.delenv("VECTOR_STORE_PROVIDER", raising=False)
         mock_cls = mocker.patch(_CHROMA_LOCAL_CLS)
         store1 = get_vector_store()

@@ -58,10 +58,7 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     stored_embed_model = stored_meta.get("embed_model", "")
 
     if stored_embed_provider and stored_embed_model:
-        if (
-            stored_embed_provider != current_provider.provider_name
-            or stored_embed_model != current_provider.model_name
-        ):
+        if stored_embed_provider != current_provider.provider_name or stored_embed_model != current_provider.model_name:
             warning_prefix = _MISMATCH_WARNING.format(
                 old_provider=stored_embed_provider,
                 old_model=stored_embed_model,
@@ -82,9 +79,6 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     if not result.documents:
         return [types.TextContent(type="text", text=f"{warning_prefix}No results found.")]
 
-    output_parts = [
-        f"**[{meta.get('file', '?')}]**\n{doc}"
-        for doc, meta in zip(result.documents, result.metadatas)
-    ]
+    output_parts = [f"**[{meta.get('file', '?')}]**\n{doc}" for doc, meta in zip(result.documents, result.metadatas)]
     body = "\n\n---\n\n".join(output_parts)
     return [types.TextContent(type="text", text=f"{warning_prefix}{body}")]

@@ -103,9 +103,7 @@ class ChromaHttpVectorStoreProvider:
             try:
                 col = client.get_collection(collection_name)
             except Exception as exc:
-                raise VectorStoreError(
-                    f"Collection '{collection_name}' not found: {exc}"
-                ) from exc
+                raise VectorStoreError(f"Collection '{collection_name}' not found: {exc}") from exc
             col.add(ids=ids, embeddings=embeddings, documents=documents, metadatas=metadatas)
 
         await asyncio.to_thread(_sync)
@@ -123,9 +121,7 @@ class ChromaHttpVectorStoreProvider:
             try:
                 col = client.get_collection(collection_name)
             except Exception as exc:
-                raise VectorStoreError(
-                    f"Collection '{collection_name}' not found: {exc}"
-                ) from exc
+                raise VectorStoreError(f"Collection '{collection_name}' not found: {exc}") from exc
             n = min(n_results, col.count())
             if n == 0:
                 return QueryResult(ids=[], documents=[], metadatas=[], distances=[])

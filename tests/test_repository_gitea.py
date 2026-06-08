@@ -1,6 +1,8 @@
 """Tests for the Gitea repository provider."""
-import pytest
+
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from mcp_project_context_server.integrations.repository.base import RepositoryError
 from mcp_project_context_server.integrations.repository.gitea.client import GiteaRepositoryProvider
@@ -276,9 +278,11 @@ class TestListRepositories:
     async def test_searches_repos_without_org(self, provider):
         api_response = MagicMock()
         api_response.raise_for_status = MagicMock()
-        api_response.json.return_value = {"data": [
-            {"full_name": "user/proj", "name": "proj", "description": ""},
-        ]}
+        api_response.json.return_value = {
+            "data": [
+                {"full_name": "user/proj", "name": "proj", "description": ""},
+            ]
+        }
 
         mock_client = AsyncMock()
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)

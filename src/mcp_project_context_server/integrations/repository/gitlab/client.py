@@ -1,4 +1,5 @@
 """GitLab repository provider implementation using the GitLab REST API."""
+
 import os
 from typing import Optional
 from urllib.parse import quote, urlparse
@@ -7,10 +8,7 @@ import httpx
 
 from mcp_project_context_server.integrations.repository.base import RepositoryError, RepositoryInfo
 
-
-_SOURCE_EXTENSIONS: frozenset[str] = frozenset(
-    {".py", ".ts", ".js", ".go", ".rs", ".cs", ".java", ".rb", ".php"}
-)
+_SOURCE_EXTENSIONS: frozenset[str] = frozenset({".py", ".ts", ".js", ".go", ".rs", ".cs", ".java", ".rb", ".php"})
 _MAX_SOURCE_FILES = 200
 
 
@@ -85,8 +83,7 @@ class GitLabRepositoryProvider:
                     file_path = item["path"]
                     encoded_path = quote(file_path, safe="")
                     raw = await client.get(
-                        f"{self._api_base}/projects/{encoded_id}/repository/files"
-                        f"/{encoded_path}/raw?ref={branch}",
+                        f"{self._api_base}/projects/{encoded_id}/repository/files" f"/{encoded_path}/raw?ref={branch}",
                         headers=self._headers(),
                     )
                     if raw.status_code == 200:
@@ -100,8 +97,7 @@ class GitLabRepositoryProvider:
         branch = await self.get_default_branch(repo_id)
         async with httpx.AsyncClient() as client:
             resp = await client.get(
-                f"{self._api_base}/projects/{encoded_id}/repository/files"
-                f"/.context%2FBUNDLE.md/raw?ref={branch}",
+                f"{self._api_base}/projects/{encoded_id}/repository/files" f"/.context%2FBUNDLE.md/raw?ref={branch}",
                 headers=self._headers(),
             )
             if resp.status_code == 200:
@@ -118,21 +114,20 @@ class GitLabRepositoryProvider:
         result: dict[str, str] = {}
         async with httpx.AsyncClient() as client:
             resp = await client.get(
-                f"{self._api_base}/projects/{encoded_id}/repository/tree"
-                f"?recursive=true&ref={branch}&per_page=100",
+                f"{self._api_base}/projects/{encoded_id}/repository/tree" f"?recursive=true&ref={branch}&per_page=100",
                 headers=self._headers(),
             )
             resp.raise_for_status()
             candidates = [
-                item for item in resp.json()
+                item
+                for item in resp.json()
                 if item.get("type") == "blob" and _has_source_extension(item.get("path", ""))
             ][:_MAX_SOURCE_FILES]
             for item in candidates:
                 path = item["path"]
                 encoded_path = quote(path, safe="")
                 raw = await client.get(
-                    f"{self._api_base}/projects/{encoded_id}/repository/files"
-                    f"/{encoded_path}/raw?ref={branch}",
+                    f"{self._api_base}/projects/{encoded_id}/repository/files" f"/{encoded_path}/raw?ref={branch}",
                     headers=self._headers(),
                 )
                 if raw.status_code == 200:
@@ -151,8 +146,7 @@ class GitLabRepositoryProvider:
         async with httpx.AsyncClient() as client:
             # Check if file exists
             head = await client.head(
-                f"{self._api_base}/projects/{encoded_id}/repository/files/{encoded_path}"
-                f"?ref={branch}",
+                f"{self._api_base}/projects/{encoded_id}/repository/files/{encoded_path}" f"?ref={branch}",
                 headers=self._headers(),
             )
             if head.status_code == 200:
@@ -165,9 +159,7 @@ class GitLabRepositoryProvider:
                 json=payload,
             )
             if not resp.is_success:
-                raise RepositoryError(
-                    f"GitLab write_file failed ({resp.status_code}): {resp.text}"
-                )
+                raise RepositoryError(f"GitLab write_file failed ({resp.status_code}): {resp.text}")
 
     async def get_default_branch(self, repo_id: str) -> str:
         """Return the default branch for *repo_id*, falling back to env / ``"main"``."""

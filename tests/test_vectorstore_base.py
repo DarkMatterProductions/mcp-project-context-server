@@ -10,7 +10,6 @@ from mcp_project_context_server.integrations.vectorstore.base import (
     VectorStoreProvider,
 )
 
-
 # ---------------------------------------------------------------------------
 # QueryResult dataclass
 # ---------------------------------------------------------------------------

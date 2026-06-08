@@ -158,23 +158,17 @@ def _build_auth_middleware(auth_type: str) -> list[Middleware]:
     if auth_type == "bearer":
         token = os.getenv("MCP_AUTH_TOKEN", "")
         if not token:
-            raise EnvironmentError(
-                "MCP_AUTH_TOKEN must be set when MCP_AUTH_TYPE=bearer"
-            )
+            raise EnvironmentError("MCP_AUTH_TOKEN must be set when MCP_AUTH_TYPE=bearer")
         return [Middleware(_BearerAuthMiddleware, token=token)]
 
     if auth_type == "google-iam":
         audience = os.getenv("GOOGLE_IAM_AUDIENCE") or None
         approved_raw = os.getenv("GOOGLE_APPROVED_SERVICE_ACCOUNTS", "")
-        approved: frozenset[str] | None = (
-            frozenset(a.strip() for a in approved_raw.split(",") if a.strip())
-            or None
-        )
+        approved: frozenset[str] | None = frozenset(a.strip() for a in approved_raw.split(",") if a.strip()) or None
         return [Middleware(_GoogleIAMAuthMiddleware, audience=audience, approved_accounts=approved)]
 
     raise EnvironmentError(
-        f"Unsupported MCP_AUTH_TYPE value '{auth_type}'.  "
-        "Supported values are: none, bearer, google-iam"
+        f"Unsupported MCP_AUTH_TYPE value '{auth_type}'.  " "Supported values are: none, bearer, google-iam"
     )
 
 
@@ -197,9 +191,7 @@ def build_sse_app(server: Server) -> Starlette:
     sse_transport = SseServerTransport("/messages/")
 
     async def handle_sse(request: Request) -> Response:
-        async with sse_transport.connect_sse(
-            request.scope, request.receive, request._send
-        ) as streams:
+        async with sse_transport.connect_sse(request.scope, request.receive, request._send) as streams:
             await server.run(streams[0], streams[1], server.create_initialization_options())
         return Response()
 

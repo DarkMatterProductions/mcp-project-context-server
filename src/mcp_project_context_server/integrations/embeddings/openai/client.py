@@ -15,7 +15,6 @@ import os
 
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingError
 
-
 _DEFAULT_MODEL: str = "text-embedding-3-small"
 # text-embedding-3-small: 8191 token context; conservative character limit
 _MAX_CHARS: int = 24_000
@@ -81,6 +80,4 @@ class OpenAIEmbeddingProvider:
             response = await client.embeddings.create(model=self._model, input=text)
             return list(response.data[0].embedding)
         except Exception as exc:
-            raise EmbeddingError(
-                f"OpenAI embedding failed (model={self._model}): {exc}"
-            ) from exc
+            raise EmbeddingError(f"OpenAI embedding failed (model={self._model}): {exc}") from exc

@@ -169,10 +169,7 @@ async def _main() -> None:
         await run_sse(server)
 
     else:
-        raise EnvironmentError(
-            f"Unsupported MCP_TRANSPORT value '{transport}'.  "
-            "Supported values are: stdio, sse"
-        )
+        raise EnvironmentError(f"Unsupported MCP_TRANSPORT value '{transport}'.  " "Supported values are: stdio, sse")
 
 
 def run() -> None:

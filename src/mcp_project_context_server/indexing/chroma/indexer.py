@@ -70,9 +70,7 @@ async def index_project_context(project_path: str | Path) -> str:
     # Build flat list of (doc_id, chunk_text, filename, chunk_index)
     all_chunks: list[tuple[str, str, str, int]] = []
     for filename, file_content in files.items():
-        for i, chunk in enumerate(
-            file_content[j : j + chunk_size] for j in range(0, len(file_content), chunk_size)
-        ):
+        for i, chunk in enumerate(file_content[j : j + chunk_size] for j in range(0, len(file_content), chunk_size)):
             if chunk.strip():
                 all_chunks.append((f"{filename}::{i}", chunk, filename, i))
 

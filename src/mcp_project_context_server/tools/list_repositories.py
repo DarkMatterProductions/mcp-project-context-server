@@ -1,4 +1,5 @@
 """Tool: list_repositories — list accessible repositories via the configured provider."""
+
 from mcp import types
 
 from mcp_project_context_server.integrations.repository.registry import get_repository_provider

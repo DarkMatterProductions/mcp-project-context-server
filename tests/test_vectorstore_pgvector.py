@@ -11,7 +11,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -112,9 +111,7 @@ class TestProviderName:
 
 class TestImportError:
     @pytest.mark.asyncio
-    async def test_raises_import_error_when_asyncpg_not_installed(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_raises_import_error_when_asyncpg_not_installed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("PGVECTOR_CONNECTION_STRING", "postgresql://x:***@h/db")
         # Remove asyncpg so the lazy import inside _get_pool() fails
         monkeypatch.delitem(sys.modules, "asyncpg", raising=False)
@@ -135,9 +132,7 @@ class TestImportError:
 
 class TestCreateCollection:
     @pytest.mark.asyncio
-    async def test_create_collection_executes_expected_sql(
-        self, pool_provider: tuple
-    ) -> None:
+    async def test_create_collection_executes_expected_sql(self, pool_provider: tuple) -> None:
         provider, pool, conn = pool_provider
         conn.reset_mock()
 
@@ -156,9 +151,7 @@ class TestCreateCollection:
 
 class TestDeleteCollection:
     @pytest.mark.asyncio
-    async def test_delete_collection_executes_drop_and_delete(
-        self, pool_provider: tuple
-    ) -> None:
+    async def test_delete_collection_executes_drop_and_delete(self, pool_provider: tuple) -> None:
         provider, pool, conn = pool_provider
         conn.reset_mock()
 
@@ -169,9 +162,7 @@ class TestDeleteCollection:
         assert any("DELETE FROM vs_collections" in c for c in calls)
 
     @pytest.mark.asyncio
-    async def test_delete_collection_silently_handles_exception(
-        self, provider, mock_asyncpg: MagicMock
-    ) -> None:
+    async def test_delete_collection_silently_handles_exception(self, provider, mock_asyncpg: MagicMock) -> None:
         mock_asyncpg.create_pool = AsyncMock(side_effect=Exception("connection refused"))
         # Must not raise
         await provider.delete_collection("anything")
@@ -184,9 +175,7 @@ class TestDeleteCollection:
 
 class TestUpsert:
     @pytest.mark.asyncio
-    async def test_upsert_calls_execute_for_each_document(
-        self, pool_provider: tuple
-    ) -> None:
+    async def test_upsert_calls_execute_for_each_document(self, pool_provider: tuple) -> None:
         provider, pool, conn = pool_provider
         conn.reset_mock()
 
@@ -211,9 +200,7 @@ class TestUpsert:
 
 class TestQuery:
     @pytest.mark.asyncio
-    async def test_query_returns_query_result_with_correct_fields(
-        self, pool_provider: tuple
-    ) -> None:
+    async def test_query_returns_query_result_with_correct_fields(self, pool_provider: tuple) -> None:
         provider, pool, conn = pool_provider
 
         rows = [
@@ -230,9 +217,7 @@ class TestQuery:
         assert result.distances == [0.9, 0.8]
 
     @pytest.mark.asyncio
-    async def test_query_raises_vector_store_error_on_sql_failure(
-        self, pool_provider: tuple
-    ) -> None:
+    async def test_query_raises_vector_store_error_on_sql_failure(self, pool_provider: tuple) -> None:
         provider, pool, conn = pool_provider
         conn.fetch = AsyncMock(side_effect=Exception("SQL error"))
 

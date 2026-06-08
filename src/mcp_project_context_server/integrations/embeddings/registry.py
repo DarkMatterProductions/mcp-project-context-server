@@ -52,9 +52,7 @@ from typing import Optional
 
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
 
-_SUPPORTED_PROVIDERS: frozenset[str] = frozenset(
-    {"ollama", "voyage", "openai", "cohere", "google", "google-vertex"}
-)
+_SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"ollama", "voyage", "openai", "cohere", "google", "google-vertex"})
 
 _provider_instance: Optional[EmbeddingProvider] = None
 
@@ -96,36 +94,42 @@ def _build_provider(provider_name: str) -> EmbeddingProvider:
         from mcp_project_context_server.integrations.embeddings.ollama.client import (
             OllamaEmbeddingProvider,
         )
+
         return OllamaEmbeddingProvider()
 
     if provider_name == "voyage":
         from mcp_project_context_server.integrations.embeddings.voyage.client import (
             VoyageEmbeddingProvider,
         )
+
         return VoyageEmbeddingProvider()
 
     if provider_name == "openai":
         from mcp_project_context_server.integrations.embeddings.openai.client import (
             OpenAIEmbeddingProvider,
         )
+
         return OpenAIEmbeddingProvider()
 
     if provider_name == "cohere":
         from mcp_project_context_server.integrations.embeddings.cohere.client import (
             CohereEmbeddingProvider,
         )
+
         return CohereEmbeddingProvider()
 
     if provider_name == "google":
         from mcp_project_context_server.integrations.embeddings.google.client import (
             GoogleEmbeddingProvider,
         )
+
         return GoogleEmbeddingProvider()
 
     if provider_name == "google-vertex":
         from mcp_project_context_server.integrations.embeddings.google_vertex.client import (
             GoogleVertexEmbeddingProvider,
         )
+
         return GoogleVertexEmbeddingProvider()
 
     # Should never reach here — guarded by the caller.

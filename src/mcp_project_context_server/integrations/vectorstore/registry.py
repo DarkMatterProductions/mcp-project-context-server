@@ -63,18 +63,21 @@ def _build_provider(provider_name: str) -> VectorStoreProvider:
         from mcp_project_context_server.integrations.vectorstore.chroma_local.client import (
             ChromaLocalVectorStoreProvider,
         )
+
         return ChromaLocalVectorStoreProvider()
 
     if provider_name == "chroma-http":
         from mcp_project_context_server.integrations.vectorstore.chroma_http.client import (
             ChromaHttpVectorStoreProvider,
         )
+
         return ChromaHttpVectorStoreProvider()
 
     if provider_name == "pgvector":
         from mcp_project_context_server.integrations.vectorstore.pgvector.client import (
             PgVectorStoreProvider,
         )
+
         return PgVectorStoreProvider()
 
     raise EnvironmentError(f"Internal error: unhandled provider '{provider_name}'")  # pragma: no cover

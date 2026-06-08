@@ -1,4 +1,5 @@
 """RepositoryProvider Protocol and shared data types."""
+
 from dataclasses import dataclass
 from typing import Optional, Protocol, runtime_checkable
 

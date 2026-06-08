@@ -96,9 +96,9 @@ class TestSettingsAuthConfig:
 
         p._get_client()
 
-        assert all("chroma_client_auth_provider" not in c for c in captured), (
-            f"Unexpected auth provider in settings calls: {captured}"
-        )
+        assert all(
+            "chroma_client_auth_provider" not in c for c in captured
+        ), f"Unexpected auth provider in settings calls: {captured}"
 
     def test_auth_config_included_when_api_key_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import sys
@@ -176,9 +176,7 @@ class TestDeleteCollection:
 
 class TestUpsert:
     @pytest.mark.asyncio
-    async def test_upsert_calls_col_add(
-        self, provider: ChromaHttpVectorStoreProvider, mock_client: MagicMock
-    ) -> None:
+    async def test_upsert_calls_col_add(self, provider: ChromaHttpVectorStoreProvider, mock_client: MagicMock) -> None:
         mock_col = MagicMock()
         mock_client.get_collection.return_value = mock_col
 
@@ -269,9 +267,7 @@ class TestQuery:
 
 class TestCount:
     @pytest.mark.asyncio
-    async def test_count_returns_integer(
-        self, provider: ChromaHttpVectorStoreProvider, mock_client: MagicMock
-    ) -> None:
+    async def test_count_returns_integer(self, provider: ChromaHttpVectorStoreProvider, mock_client: MagicMock) -> None:
         mock_col = MagicMock()
         mock_col.count.return_value = 7
         mock_client.get_collection.return_value = mock_col
@@ -316,9 +312,7 @@ class TestCollectionExists:
 
 class TestGetCollectionMetadata:
     @pytest.mark.asyncio
-    async def test_returns_metadata_dict(
-        self, provider: ChromaHttpVectorStoreProvider, mock_client: MagicMock
-    ) -> None:
+    async def test_returns_metadata_dict(self, provider: ChromaHttpVectorStoreProvider, mock_client: MagicMock) -> None:
         mock_col = MagicMock()
         mock_col.metadata = {"version": "2"}
         mock_client.get_collection.return_value = mock_col

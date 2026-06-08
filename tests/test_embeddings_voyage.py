@@ -127,6 +127,4 @@ class TestVoyageEmbeddingProvider:
         provider = VoyageEmbeddingProvider()
         await provider.embed("text")
 
-        mock_client_instance.embed.assert_called_once_with(
-            ["text"], model="voyage-large-2", input_type="document"
-        )
+        mock_client_instance.embed.assert_called_once_with(["text"], model="voyage-large-2", input_type="document")

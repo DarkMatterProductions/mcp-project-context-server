@@ -1,6 +1,8 @@
 """Tests for the list_repositories tool handler."""
-import pytest
+
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from mcp_project_context_server.integrations.repository.base import RepositoryInfo
 from mcp_project_context_server.tools.list_repositories import handle
@@ -12,7 +14,9 @@ class TestListRepositoriesTool:
     @pytest.mark.asyncio
     async def test_returns_formatted_list(self):
         repos = [
-            RepositoryInfo(identifier="org/repo1", name="repo1", description="First repo", indexed=True, last_indexed="2024-01-15"),
+            RepositoryInfo(
+                identifier="org/repo1", name="repo1", description="First repo", indexed=True, last_indexed="2024-01-15"
+            ),
             RepositoryInfo(identifier="org/repo2", name="repo2", description="", indexed=False),
         ]
         mock_provider = AsyncMock()

@@ -19,7 +19,6 @@ import os
 
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingError
 
-
 _DEFAULT_MODEL: str = "text-embedding-004"
 # Conservative character limit matching the model's context window
 _MAX_CHARS: int = 24_000

@@ -53,9 +53,7 @@ class TestOllamaEmbeddingProvider:
         result = await provider.embed("hello world")
 
         assert result == [0.1, 0.2, 0.3]
-        mock_client_instance.embed.assert_called_once_with(
-            model=provider.model_name, input="hello world"
-        )
+        mock_client_instance.embed.assert_called_once_with(model=provider.model_name, input="hello world")
 
     @pytest.mark.asyncio
     async def test_embed_raises_embedding_error_on_failure(self, mocker):

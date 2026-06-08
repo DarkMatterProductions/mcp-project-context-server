@@ -21,7 +21,6 @@ import ollama
 
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingError
 
-
 _DEFAULT_HOST: str = "http://localhost:11434"
 _DEFAULT_MODEL: str = "nomic-embed-text"
 # Conservative character limit for nomic-embed-text (8192 token context ≈ 32 000 chars)
@@ -78,6 +77,4 @@ class OllamaEmbeddingProvider:
             response = await client.embed(model=self._model, input=text)
             return list(response.embeddings[0])
         except Exception as exc:
-            raise EmbeddingError(
-                f"Ollama embedding failed (host={self._host}, model={self._model}): {exc}"
-            ) from exc
+            raise EmbeddingError(f"Ollama embedding failed (host={self._host}, model={self._model}): {exc}") from exc

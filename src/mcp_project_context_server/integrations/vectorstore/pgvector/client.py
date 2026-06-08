@@ -19,7 +19,7 @@ Design
 import asyncio
 import os
 import re
-from typing import Optional
+from typing import Any, Optional
 
 from mcp_project_context_server.integrations.vectorstore.base import (
     QueryResult,
@@ -48,16 +48,15 @@ class PgVectorStoreProvider:
         self._dsn: Optional[str] = os.getenv("PGVECTOR_CONNECTION_STRING")
         if not self._dsn:
             raise EnvironmentError(
-                "PGVECTOR_CONNECTION_STRING environment variable is required "
-                "when VECTOR_STORE_PROVIDER=pgvector"
+                "PGVECTOR_CONNECTION_STRING environment variable is required " "when VECTOR_STORE_PROVIDER=pgvector"
             )
-        self._pool: Optional[object] = None
+        self._pool: Optional[Any] = None
 
     @property
     def provider_name(self) -> str:
         return "pgvector"
 
-    async def _get_pool(self) -> object:
+    async def _get_pool(self) -> Any:
         """Return the asyncpg connection pool, creating it on first call."""
         if self._pool is None:
             try:
@@ -69,7 +68,7 @@ class PgVectorStoreProvider:
                 ) from exc
 
             # Register the pgvector codec so asyncpg can decode vector columns
-            async def _init(conn: object) -> None:
+            async def _init(conn: Any) -> None:
                 await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")  # type: ignore[attr-defined]
                 await conn.set_type_codec(  # type: ignore[attr-defined]
                     "vector",
@@ -109,9 +108,7 @@ class PgVectorStoreProvider:
 
         async with pool.acquire() as conn:  # type: ignore[attr-defined]
             await conn.execute(f"DROP TABLE IF EXISTS {tbl}")
-            await conn.execute(
-                "DELETE FROM vs_collections WHERE name = $1", name
-            )
+            await conn.execute("DELETE FROM vs_collections WHERE name = $1", name)
             await conn.execute(
                 "INSERT INTO vs_collections (name, dimension, metadata) VALUES ($1, NULL, $2::jsonb)",
                 name,
@@ -129,19 +126,17 @@ class PgVectorStoreProvider:
         except Exception:
             pass
 
-    async def _ensure_table(self, conn: object, name: str, dimension: int) -> None:
+    async def _ensure_table(self, conn: Any, name: str, dimension: int) -> None:
         """Create the vector table for *name* if it does not yet exist."""
         tbl = _table_name(name)
-        await conn.execute(  # type: ignore[attr-defined]
-            f"""
+        await conn.execute(f"""
             CREATE TABLE IF NOT EXISTS {tbl} (
                 id          TEXT PRIMARY KEY,
                 embedding   vector({dimension}),
                 document    TEXT,
                 metadata    JSONB DEFAULT '{{}}'
             )
-            """
-        )
+            """)  # type: ignore[attr-defined]
         await conn.execute(  # type: ignore[attr-defined]
             f"CREATE INDEX IF NOT EXISTS {tbl}_emb_idx ON {tbl} USING ivfflat (embedding vector_cosine_ops)"
         )
@@ -214,9 +209,7 @@ class PgVectorStoreProvider:
                     n_results,
                 )
         except Exception as exc:
-            raise VectorStoreError(
-                f"Query failed on collection '{collection_name}': {exc}"
-            ) from exc
+            raise VectorStoreError(f"Query failed on collection '{collection_name}': {exc}") from exc
 
         return QueryResult(
             ids=[r["id"] for r in rows],

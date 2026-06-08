@@ -1,4 +1,5 @@
 """GitHub repository provider implementation using the GitHub REST API."""
+
 import base64
 import os
 from typing import Optional
@@ -8,10 +9,7 @@ import httpx
 
 from mcp_project_context_server.integrations.repository.base import RepositoryError, RepositoryInfo
 
-
-_SOURCE_EXTENSIONS: frozenset[str] = frozenset(
-    {".py", ".ts", ".js", ".go", ".rs", ".cs", ".java", ".rb", ".php"}
-)
+_SOURCE_EXTENSIONS: frozenset[str] = frozenset({".py", ".ts", ".js", ".go", ".rs", ".cs", ".java", ".rb", ".php"})
 _MAX_SOURCE_FILES = 200
 
 
@@ -120,8 +118,7 @@ class GitHubRepositoryProvider:
             resp.raise_for_status()
             tree = resp.json().get("tree", [])
             candidates = [
-                item for item in tree
-                if item.get("type") == "blob" and _has_source_extension(item.get("path", ""))
+                item for item in tree if item.get("type") == "blob" and _has_source_extension(item.get("path", ""))
             ][:_MAX_SOURCE_FILES]
             for item in candidates:
                 path = item["path"]
@@ -164,9 +161,7 @@ class GitHubRepositoryProvider:
                 json=payload,
             )
             if not resp.is_success:
-                raise RepositoryError(
-                    f"GitHub write_file failed ({resp.status_code}): {resp.text}"
-                )
+                raise RepositoryError(f"GitHub write_file failed ({resp.status_code}): {resp.text}")
 
     async def get_default_branch(self, repo_id: str) -> str:
         """Return the default branch for *repo_id*, falling back to env / ``"main"``."""

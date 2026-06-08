@@ -1,4 +1,5 @@
 """Tests for the resolve_project_path helper in helpers/context.py."""
+
 import pytest
 
 from mcp_project_context_server.helpers.context import resolve_project_path

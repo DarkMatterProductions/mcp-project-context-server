@@ -1,4 +1,5 @@
 """Tests for the repository provider registry."""
+
 import os
 
 import pytest
@@ -27,6 +28,7 @@ class TestGetRepositoryProvider:
         from mcp_project_context_server.integrations.repository.local.client import (
             LocalRepositoryProvider,
         )
+
         provider = get_repository_provider()
         assert isinstance(provider, LocalRepositoryProvider)
 
@@ -35,6 +37,7 @@ class TestGetRepositoryProvider:
         from mcp_project_context_server.integrations.repository.local.client import (
             LocalRepositoryProvider,
         )
+
         provider = get_repository_provider()
         assert isinstance(provider, LocalRepositoryProvider)
 
@@ -43,6 +46,7 @@ class TestGetRepositoryProvider:
         from mcp_project_context_server.integrations.repository.github.client import (
             GitHubRepositoryProvider,
         )
+
         provider = get_repository_provider()
         assert isinstance(provider, GitHubRepositoryProvider)
 
@@ -51,6 +55,7 @@ class TestGetRepositoryProvider:
         from mcp_project_context_server.integrations.repository.gitlab.client import (
             GitLabRepositoryProvider,
         )
+
         provider = get_repository_provider()
         assert isinstance(provider, GitLabRepositoryProvider)
 
@@ -60,6 +65,7 @@ class TestGetRepositoryProvider:
         from mcp_project_context_server.integrations.repository.gitea.client import (
             GiteaRepositoryProvider,
         )
+
         provider = get_repository_provider()
         assert isinstance(provider, GiteaRepositoryProvider)
 

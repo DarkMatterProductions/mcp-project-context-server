@@ -45,7 +45,6 @@ from typing import Optional
 
 from mcp_project_context_server.integrations.repository.base import RepositoryError, RepositoryProvider
 
-
 _SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"local", "github", "gitlab", "gitea"})
 
 _provider_instance: Optional[RepositoryProvider] = None
@@ -84,8 +83,7 @@ def get_repository_provider() -> RepositoryProvider:
         repos_raw = os.getenv("APPROVED_REPOS", "").strip()
         if not orgs_raw and not repos_raw:
             raise EnvironmentError(
-                "REPO_MULTI_TENANT=true requires at least one of APPROVED_ORGS or "
-                "APPROVED_REPOS to be set."
+                "REPO_MULTI_TENANT=true requires at least one of APPROVED_ORGS or " "APPROVED_REPOS to be set."
             )
         _approved_orgs = frozenset(o.strip() for o in orgs_raw.split(",") if o.strip())
         _approved_repos = frozenset(r.strip() for r in repos_raw.split(",") if r.strip())
@@ -100,24 +98,28 @@ def _build_provider(provider_name: str) -> RepositoryProvider:
         from mcp_project_context_server.integrations.repository.local.client import (
             LocalRepositoryProvider,
         )
+
         return LocalRepositoryProvider()
 
     if provider_name == "github":
         from mcp_project_context_server.integrations.repository.github.client import (
             GitHubRepositoryProvider,
         )
+
         return GitHubRepositoryProvider()
 
     if provider_name == "gitlab":
         from mcp_project_context_server.integrations.repository.gitlab.client import (
             GitLabRepositoryProvider,
         )
+
         return GitLabRepositoryProvider()
 
     if provider_name == "gitea":
         from mcp_project_context_server.integrations.repository.gitea.client import (
             GiteaRepositoryProvider,
         )
+
         return GiteaRepositoryProvider()
 
     # Should never reach here — guarded by the caller.
@@ -151,8 +153,7 @@ def validate_repo_access(repo_id: str) -> None:
             return
 
     raise RepositoryError(
-        f"Access to repository '{repo_id}' is not permitted. "
-        "Check APPROVED_ORGS and APPROVED_REPOS configuration."
+        f"Access to repository '{repo_id}' is not permitted. " "Check APPROVED_ORGS and APPROVED_REPOS configuration."
     )
 
 

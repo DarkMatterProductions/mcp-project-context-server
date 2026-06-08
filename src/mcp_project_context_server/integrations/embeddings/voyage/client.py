@@ -15,7 +15,6 @@ import os
 
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingError
 
-
 _DEFAULT_MODEL: str = "voyage-code-3"
 # voyage-code-3 context ≈ 32k tokens; conservative character limit
 _MAX_CHARS: int = 24_000
@@ -81,6 +80,4 @@ class VoyageEmbeddingProvider:
             result = await client.embed([text], model=self._model, input_type="document")
             return list(result.embeddings[0])
         except Exception as exc:
-            raise EmbeddingError(
-                f"Voyage AI embedding failed (model={self._model}): {exc}"
-            ) from exc
+            raise EmbeddingError(f"Voyage AI embedding failed (model={self._model}): {exc}") from exc

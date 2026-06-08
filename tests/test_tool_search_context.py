@@ -4,9 +4,7 @@ import pytest
 
 from mcp_project_context_server.integrations.embeddings.registry import reset_provider_for_testing
 from mcp_project_context_server.integrations.vectorstore.base import QueryResult, VectorStoreError
-from mcp_project_context_server.integrations.vectorstore.registry import (
-    reset_provider_for_testing as reset_vs,
-)
+from mcp_project_context_server.integrations.vectorstore.registry import reset_provider_for_testing as reset_vs
 from mcp_project_context_server.tools.search_context import handle
 
 

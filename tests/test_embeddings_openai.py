@@ -73,9 +73,7 @@ class TestOpenAIEmbeddingProvider:
 
         assert result == [0.1, 0.2, 0.3]
         mock_async_openai_cls.assert_called_once_with(api_key="test-key")
-        mock_embeddings.create.assert_called_once_with(
-            model="text-embedding-3-small", input="hello world"
-        )
+        mock_embeddings.create.assert_called_once_with(model="text-embedding-3-small", input="hello world")
 
     @pytest.mark.asyncio
     async def test_embed_raises_embedding_error_on_failure(self, monkeypatch, mocker):
@@ -145,6 +143,4 @@ class TestOpenAIEmbeddingProvider:
         provider = OpenAIEmbeddingProvider()
         await provider.embed("text")
 
-        mock_embeddings.create.assert_called_once_with(
-            model="text-embedding-ada-002", input="text"
-        )
+        mock_embeddings.create.assert_called_once_with(model="text-embedding-ada-002", input="text")
