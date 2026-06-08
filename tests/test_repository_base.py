@@ -51,6 +51,10 @@ class TestRepositoryProviderProtocol:
         """A class implementing all required methods satisfies the Protocol."""
 
         class FakeProvider:
+            @property
+            def provider_name(self) -> str:
+                return "fake"
+
             async def fetch_context_files(self, repo_id: str) -> dict[str, str]:
                 return {}
 

@@ -32,6 +32,11 @@ class GitHubRepositoryProvider:
         self._base_url: str = os.getenv("REPO_BASE_URL", "https://api.github.com").rstrip("/")
         self._default_branch_fallback: str = os.getenv("REPO_DEFAULT_BRANCH", "main")
 
+    @property
+    def provider_name(self) -> str:
+        """Return the provider identifier."""
+        return "github"
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------

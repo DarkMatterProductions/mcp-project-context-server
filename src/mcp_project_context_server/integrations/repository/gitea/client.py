@@ -41,6 +41,11 @@ class GiteaRepositoryProvider:
         self._api_base: str = f"{base}/api/v1"
         self._default_branch_fallback: str = os.getenv("REPO_DEFAULT_BRANCH", "main")
 
+    @property
+    def provider_name(self) -> str:
+        """Return the provider identifier."""
+        return "gitea"
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------

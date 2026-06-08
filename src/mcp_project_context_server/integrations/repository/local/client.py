@@ -27,6 +27,11 @@ class LocalRepositoryProvider:
         """Initialise the provider, reading PROJECT_PATH from the environment."""
         self._project_path: str = os.getenv("PROJECT_PATH", "")
 
+    @property
+    def provider_name(self) -> str:
+        """Return the provider identifier."""
+        return "local"
+
     async def fetch_context_files(self, repo_id: str) -> dict[str, str]:
         """Read all .md files from ``<repo_id>/.context/`` recursively.
 

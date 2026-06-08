@@ -18,6 +18,11 @@ class RepositoryInfo:
 class RepositoryProvider(Protocol):
     """Protocol that all repository provider implementations must satisfy."""
 
+    @property
+    def provider_name(self) -> str:
+        """Short identifier, e.g. ``"local"``, ``"github"``, ``"gitlab"``, ``"gitea"``."""
+        ...
+
     async def fetch_context_files(self, repo_id: str) -> dict[str, str]:
         """Fetch all .md files from the .context/ directory of the repository."""
         ...

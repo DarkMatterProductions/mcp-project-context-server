@@ -8,7 +8,13 @@ the vector store implementation is imported directly here.
 import asyncio
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
+
+try:
+    from mcp_project_context_server._version import __version__
+except ImportError:
+    __version__ = "0.0.0.dev0"
 
 from mcp_project_context_server.helpers.context import (
     collection_name_for,
@@ -16,6 +22,8 @@ from mcp_project_context_server.helpers.context import (
     read_context_files,
 )
 from mcp_project_context_server.indexing.embedder import embed_chunk, get_max_chars
+from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
+from mcp_project_context_server.integrations.repository.registry import get_repository_provider
 from mcp_project_context_server.integrations.vectorstore.registry import get_vector_store
 
 _EMBED_CONCURRENCY: int = int(os.getenv("EMBED_CONCURRENCY", "4"))
@@ -24,8 +32,9 @@ _EMBED_CONCURRENCY: int = int(os.getenv("EMBED_CONCURRENCY", "4"))
 async def index_project_context(project_path: str | Path) -> str:
     """Chunk, embed concurrently, and batch-store all .context/ markdown files.
 
-    Chunk size is driven by the active embedding provider's ``max_chars``
-    so that chunks stay within the model's context window.
+    Stamps the collection with provenance metadata (embed provider/model,
+    vector store provider, repo provider, server version, indexed_at timestamp)
+    so that search can detect and warn on provider/model mismatches.
 
     Args:
         project_path: Path to the project root or any file within it.
@@ -40,9 +49,21 @@ async def index_project_context(project_path: str | Path) -> str:
     col_name = collection_name_for(context_dir)
     chunk_size = get_max_chars()
     store = get_vector_store()
+    embed_provider = get_embedding_provider()
+    repo_provider = get_repository_provider()
+
+    # Build provenance metadata to stamp onto the collection
+    collection_metadata = {
+        "embed_provider": embed_provider.provider_name,
+        "embed_model": embed_provider.model_name,
+        "vector_store_provider": store.provider_name,
+        "repo_provider": repo_provider.provider_name,
+        "server_version": __version__,
+        "indexed_at": datetime.now(timezone.utc).isoformat(),
+    }
 
     # Drop and recreate for a clean re-index (ADR-00006)
-    await store.create_collection(col_name)
+    await store.create_collection(col_name, metadata=collection_metadata)
 
     files = read_context_files(context_dir)
 
