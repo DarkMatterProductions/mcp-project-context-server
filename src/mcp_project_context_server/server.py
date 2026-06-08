@@ -1,13 +1,26 @@
-"""MCP server setup, tool registry, and entry point."""
+"""MCP server setup, tool registry, and entry point.
+
+Transport selection
+-------------------
+Set ``MCP_TRANSPORT`` to choose the transport:
+
+``stdio`` *(default)*
+    Standard input/output.  Used by Claude Desktop, Claude Code, Cursor,
+    JetBrains AI Assistant, Continue Dev, and GitHub Copilot.
+
+``sse``
+    HTTP/SSE.  Used for remote deployments, team servers, and Gemini
+    Enterprise Agent Engine.  See ``transport/sse.py`` for auth configuration.
+"""
 
 import asyncio
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
 from mcp import types
 from mcp.server import Server
-from mcp.server.stdio import stdio_server
 
 from mcp_project_context_server.tools import (
     index_context,
@@ -44,7 +57,10 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
             "properties": {
                 "project_path": {
                     "type": "string",
-                    "description": "Absolute path to the project root or any file within it.",
+                    "description": (
+                        "Absolute filesystem path, a short 'owner/repo' identifier, "
+                        "or a full https:// repository URL."
+                    ),
                 }
             },
             "required": ["project_path"],
@@ -101,15 +117,15 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
         name="list_repositories",
         description=(
             "List repositories accessible via the configured repository provider. "
-            "In multi-tenant mode, returns all approved repositories. "
-            "Optionally filter by organisation name."
+            "In multi-tenant deployments, use this to discover which repositories are "
+            "available before calling other tools.  Optionally filter by organisation name."
         ),
         inputSchema={
             "type": "object",
             "properties": {
                 "org": {
                     "type": "string",
-                    "description": "Optional organisation/group name to filter results.",
+                    "description": "Optional: filter results to repositories in this organisation.",
                 }
             },
             "required": [],
@@ -140,8 +156,23 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
 
 
 async def _main() -> None:
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream, server.create_initialization_options())
+    transport = os.getenv("MCP_TRANSPORT", "stdio").strip().lower()
+
+    if transport == "stdio":
+        from mcp_project_context_server.transport.stdio import run_stdio
+
+        await run_stdio(server)
+
+    elif transport == "sse":
+        from mcp_project_context_server.transport.sse import run_sse
+
+        await run_sse(server)
+
+    else:
+        raise EnvironmentError(
+            f"Unsupported MCP_TRANSPORT value '{transport}'.  "
+            "Supported values are: stdio, sse"
+        )
 
 
 def run() -> None:
