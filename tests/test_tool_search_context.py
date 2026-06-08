@@ -23,8 +23,11 @@ class TestSearchContext:
 
         mock_collection = mocker.MagicMock()
         mock_chroma = mocker.patch("mcp_project_context_server.tools.search_context.chroma_client")
-        # Patched via the indexing layer (embedder module), not the integration directly.
-        mock_embed_chunk = mocker.patch("mcp_project_context_server.tools.search_context.embed_chunk")
+        # embed_chunk is now async — must use AsyncMock
+        mock_embed_chunk = mocker.patch(
+            "mcp_project_context_server.tools.search_context.embed_chunk",
+            new_callable=mocker.AsyncMock,
+        )
 
         mock_chroma.get_collection.return_value = mock_collection
         mock_collection.count.return_value = 10
@@ -71,7 +74,10 @@ class TestSearchContext:
 
         mock_collection = mocker.MagicMock()
         mock_chroma = mocker.patch("mcp_project_context_server.tools.search_context.chroma_client")
-        mock_embed_chunk = mocker.patch("mcp_project_context_server.tools.search_context.embed_chunk")
+        mock_embed_chunk = mocker.patch(
+            "mcp_project_context_server.tools.search_context.embed_chunk",
+            new_callable=mocker.AsyncMock,
+        )
 
         mock_chroma.get_collection.return_value = mock_collection
         mock_collection.count.return_value = 5
