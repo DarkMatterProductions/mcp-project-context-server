@@ -22,3 +22,5 @@ AGENT.md
 # Virtual environment
 .venv/
 venv/
+*.pyc
+__pycache__/
