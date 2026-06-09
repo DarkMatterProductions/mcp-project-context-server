@@ -1,12 +1,18 @@
 """GitLab repository provider implementation using the GitLab REST API."""
-
+import logging
 import os
 from typing import Optional
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
 import httpx
 
-from mcp_project_context_server.integrations.repository.base import RepositoryError, RepositoryInfo
+from mcp_project_context_server.integrations.repository.base import (
+    RepositoryError,
+    RepositoryInfo,
+    normalize_repo_identifier,
+)
+
+logger = logging.getLogger(__name__)
 
 _SOURCE_EXTENSIONS: frozenset[str] = frozenset({".py", ".ts", ".js", ".go", ".rs", ".cs", ".java", ".rb", ".php"})
 _MAX_SOURCE_FILES = 200
@@ -24,7 +30,7 @@ class GitLabRepositoryProvider:
     """
 
     def __init__(self) -> None:
-        """Initialise the provider from environment variables."""
+        """Initialize the provider from environment variables."""
         self._token: str = os.getenv("REPO_AUTH_TOKEN", "")
         base = os.getenv("REPO_BASE_URL", "https://gitlab.com").rstrip("/")
         self._api_base: str = f"{base}/api/v4"
@@ -41,10 +47,7 @@ class GitLabRepositoryProvider:
 
     def _normalise_repo_id(self, repo_id: str) -> str:
         """Normalise *repo_id* to ``namespace/project`` form."""
-        if repo_id.startswith("http://") or repo_id.startswith("https://"):
-            parts = urlparse(repo_id).path.strip("/").split("/")
-            return "/".join(parts[-2:])
-        return repo_id
+        return normalize_repo_identifier(repo_id)
 
     def _url_encode_id(self, repo_id: str) -> str:
         """URL-encode the ``namespace/project`` string for GitLab's ``:id`` parameter."""
@@ -65,6 +68,9 @@ class GitLabRepositoryProvider:
         """Fetch all .md files from the ``.context/`` tree of the repository.
 
         Returns an empty dict on 404.
+
+        :param repo_id: (str) The ``namespace/project`` identifier or full URL of the repository.
+        :return: (dict) A mapping of relative markdown file paths to their contents.
         """
         encoded_id = self._url_encode_id(repo_id)
         branch = await self.get_default_branch(repo_id)
@@ -92,7 +98,11 @@ class GitLabRepositoryProvider:
         return result
 
     async def fetch_source_bundle(self, repo_id: str) -> Optional[str]:
-        """Fetch the content of ``.context/BUNDLE.md``, or ``None``."""
+        """Fetch the content of ``.context/BUNDLE.md``, or ``None``.
+
+        :param repo_id: (str) The ``namespace/project`` identifier or full URL of the repository.
+        :return: (str) The contents of ``BUNDLE.md``, or ``None`` if it does not exist.
+        """
         encoded_id = self._url_encode_id(repo_id)
         branch = await self.get_default_branch(repo_id)
         async with httpx.AsyncClient() as client:
@@ -108,6 +118,9 @@ class GitLabRepositoryProvider:
         """Fetch source code files from the repository tree.
 
         Capped at 200 files.
+
+        :param repo_id: (str) The ``namespace/project`` identifier or full URL of the repository.
+        :return: (dict) A mapping of relative source file paths to their contents.
         """
         encoded_id = self._url_encode_id(repo_id)
         branch = await self.get_default_branch(repo_id)
@@ -134,19 +147,30 @@ class GitLabRepositoryProvider:
                     result[path] = raw.text
         return result
 
-    async def write_file(self, repo_id: str, path: str, content: str, message: str) -> None:
+    async def write_file(
+        self, repo_id: str, path: str, content: str, message: str, branch: Optional[str] = None
+    ) -> None:
         """Create or update *path* in the repository.
 
-        Raises :exc:`RepositoryError` if the API returns a non-success status.
+        Writes to *branch* if given, otherwise the repository's default
+        branch.
+
+        :param repo_id: (str) The ``namespace/project`` identifier or full URL of the repository.
+        :param path: (str) The file path to write, relative to the repository root.
+        :param content: (str) The new full contents of the file.
+        :param message: (str) The commit message describing the write.
+        :param branch: (str) Target branch. Falls back to the repository's default branch when ``None``.
+        :return: (None) This method does not return a value.
+        :raises RepositoryError: If the API returns a non-success status.
         """
         encoded_id = self._url_encode_id(repo_id)
-        branch = await self.get_default_branch(repo_id)
+        target_branch = branch or await self.get_default_branch(repo_id)
         encoded_path = quote(path, safe="")
-        payload = {"branch": branch, "content": content, "commit_message": message}
+        payload = {"branch": target_branch, "content": content, "commit_message": message}
         async with httpx.AsyncClient() as client:
             # Check if file exists
             head = await client.head(
-                f"{self._api_base}/projects/{encoded_id}/repository/files/{encoded_path}" f"?ref={branch}",
+                f"{self._api_base}/projects/{encoded_id}/repository/files/{encoded_path}" f"?ref={target_branch}",
                 headers=self._headers(),
             )
             if head.status_code == 200:
@@ -161,8 +185,33 @@ class GitLabRepositoryProvider:
             if not resp.is_success:
                 raise RepositoryError(f"GitLab write_file failed ({resp.status_code}): {resp.text}")
 
+    async def create_branch(self, repo_id: str, new_branch: str, from_branch: Optional[str] = None) -> None:
+        """Create *new_branch* from *from_branch* (or the default branch).
+
+        :param repo_id: (str) The ``namespace/project`` identifier or full URL of the repository.
+        :param new_branch: (str) The name of the branch to create.
+        :param from_branch: (str) The branch to base the new branch on. Falls back to the
+            repository's default branch when ``None``.
+        :return: (None) This method does not return a value.
+        :raises RepositoryError: If the API returns a non-success status.
+        """
+        encoded_id = self._url_encode_id(repo_id)
+        base = from_branch or await self.get_default_branch(repo_id)
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{self._api_base}/projects/{encoded_id}/repository/branches",
+                headers=self._headers(),
+                params={"branch": new_branch, "ref": base},
+            )
+            if not resp.is_success:
+                raise RepositoryError(f"GitLab create_branch failed ({resp.status_code}): {resp.text}")
+
     async def get_default_branch(self, repo_id: str) -> str:
-        """Return the default branch for *repo_id*, falling back to env / ``"main"``."""
+        """Return the default branch for *repo_id*, falling back to env / ``"main"``.
+
+        :param repo_id: (str) The ``namespace/project`` identifier or full URL of the repository.
+        :return: (str) The repository's default branch name, or the configured/``"main"`` fallback.
+        """
         encoded_id = self._url_encode_id(repo_id)
         try:
             async with httpx.AsyncClient() as client:
@@ -181,6 +230,9 @@ class GitLabRepositoryProvider:
 
         If *org* is set, lists projects for that GitLab group.  Otherwise lists
         all projects the authenticated user is a member of.
+
+        :param org: (str) Optional GitLab group name to list projects for.
+        :return: (list) The accessible ``RepositoryInfo`` entries.
         """
         async with httpx.AsyncClient() as client:
             if org:

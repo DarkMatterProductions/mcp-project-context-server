@@ -14,8 +14,10 @@ Obtain a concrete instance from the registry::
     from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
     provider = get_embedding_provider()
 """
-
+import logging
 from typing import Protocol, runtime_checkable
+
+logger = logging.getLogger(__name__)
 
 
 @runtime_checkable
@@ -23,10 +25,9 @@ class EmbeddingProvider(Protocol):
     """Protocol that all embedding provider implementations must satisfy.
 
     Implementors should be importable without triggering any network calls,
-    file I/O, or expensive initialisation — those should be deferred to the
-    first call to ``embed()``.
+    file I/O, or expensive initialization — those should be deferred to the
+    first call to ``embed_chunk()``.
     """
-
     @property
     def provider_name(self) -> str:
         """Short identifier for the provider, e.g. ``"ollama"``, ``"voyage"``."""
@@ -46,20 +47,11 @@ class EmbeddingProvider(Protocol):
         """
         ...
 
-    async def embed(self, text: str) -> list[float]:
+    async def embed_chunk(self, text: str) -> list[float]:
         """Embed a single text string and return the embedding vector.
 
-        Args:
-            text: The text to embed.  May be up to ``max_chars`` in length.
-
-        Returns:
-            A list of floats representing the embedding vector.
-
-        Raises:
-            EmbeddingError: If the provider returns an error or is unreachable.
+        :param text: (str) The text to embed. May be up to ``max_chars`` in length.
+        :return: (list) A list of floats representing the embedding vector.
+        :raises EmbeddingError: If the provider returns an error or is unreachable.
         """
         ...
-
-
-class EmbeddingError(Exception):
-    """Raised when an embedding provider call fails."""

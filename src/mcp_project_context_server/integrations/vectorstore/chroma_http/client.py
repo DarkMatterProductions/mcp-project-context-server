@@ -14,6 +14,7 @@ Configuration
 """
 
 import asyncio
+import logging
 import os
 from typing import Any, Optional
 
@@ -22,14 +23,17 @@ from mcp_project_context_server.integrations.vectorstore.base import (
     VectorStoreError,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class ChromaHttpVectorStoreProvider:
     """Vector store backed by a remote ChromaDB HTTP server.
 
-    The chromadb ``HttpClient`` is initialised lazily on first use.
+    The chromadb ``HttpClient`` is initialized lazily on first use.
     """
 
     def __init__(self) -> None:
+        """Initialize the provider, reading connection settings from the environment."""
         self._host: str = os.getenv("CHROMA_HOST", "localhost")
         self._port: int = int(os.getenv("CHROMA_PORT", "8000"))
         self._api_key: Optional[str] = os.getenv("CHROMA_API_KEY") or None
@@ -37,6 +41,7 @@ class ChromaHttpVectorStoreProvider:
 
     @property
     def provider_name(self) -> str:
+        """Return the provider identifier."""
         return "chroma-http"
 
     def _get_client(self) -> Any:
@@ -64,7 +69,12 @@ class ChromaHttpVectorStoreProvider:
     # ------------------------------------------------------------------
 
     async def create_collection(self, name: str, metadata: dict | None = None) -> None:
-        """Drop and recreate *name* (ADR-00006)."""
+        """Drop and recreate *name* (ADR-00006).
+
+        :param name: (str) Collection name.
+        :param metadata: (dict) Optional key/value metadata to attach to the collection.
+        :return: (None) This method does not return a value.
+        """
         client = self._get_client()
 
         def _sync() -> None:
@@ -77,7 +87,11 @@ class ChromaHttpVectorStoreProvider:
         await asyncio.to_thread(_sync)
 
     async def delete_collection(self, name: str) -> None:
-        """Delete *name*, silently succeeding if absent."""
+        """Delete *name*, silently succeeding if absent.
+
+        :param name: (str) Collection name.
+        :return: (None) This method does not return a value.
+        """
         client = self._get_client()
 
         def _sync() -> None:
@@ -96,7 +110,16 @@ class ChromaHttpVectorStoreProvider:
         documents: list[str],
         metadatas: list[dict],
     ) -> None:
-        """Add or update documents."""
+        """Add or update documents.
+
+        :param collection_name: (str) Target collection.
+        :param ids: (list) Per-document unique identifiers.
+        :param embeddings: (list) Per-document embedding vectors (must all be the same length).
+        :param documents: (list) Raw text for each document.
+        :param metadatas: (list) Per-document metadata dicts.
+        :return: (None) This method does not return a value.
+        :raises VectorStoreError: If the collection does not exist.
+        """
         client = self._get_client()
 
         def _sync() -> None:
@@ -114,7 +137,14 @@ class ChromaHttpVectorStoreProvider:
         query_embedding: list[float],
         n_results: int = 5,
     ) -> QueryResult:
-        """Run a nearest-neighbour search."""
+        """Run a nearest-neighbour search.
+
+        :param collection_name: (str) Collection to search.
+        :param query_embedding: (list) Query vector (must match the dimension of stored embeddings).
+        :param n_results: (int) Maximum number of results to return.
+        :return: (QueryResult) A :class:`QueryResult` with the top-*n_results* matches.
+        :raises VectorStoreError: If the collection does not exist.
+        """
         client = self._get_client()
 
         def _sync() -> QueryResult:
@@ -136,7 +166,11 @@ class ChromaHttpVectorStoreProvider:
         return await asyncio.to_thread(_sync)
 
     async def count(self, collection_name: str) -> int:
-        """Return document count (0 if collection absent)."""
+        """Return document count (0 if collection absent).
+
+        :param collection_name: (str) Collection to count.
+        :return: (int) Document count. Returns 0 if the collection does not exist.
+        """
         client = self._get_client()
 
         def _sync() -> int:
@@ -148,7 +182,11 @@ class ChromaHttpVectorStoreProvider:
         return await asyncio.to_thread(_sync)
 
     async def collection_exists(self, collection_name: str) -> bool:
-        """Return ``True`` if *collection_name* exists."""
+        """Return ``True`` if *collection_name* exists.
+
+        :param collection_name: (str) Collection to check.
+        :return: (bool) ``True`` if the collection exists, ``False`` otherwise.
+        """
         client = self._get_client()
 
         def _sync() -> bool:
@@ -161,7 +199,11 @@ class ChromaHttpVectorStoreProvider:
         return await asyncio.to_thread(_sync)
 
     async def get_collection_metadata(self, collection_name: str) -> dict:
-        """Return collection metadata (``{}`` if absent)."""
+        """Return collection metadata (``{}`` if absent).
+
+        :param collection_name: (str) Collection to inspect.
+        :return: (dict) Metadata dict (may be empty). Returns ``{}`` if the collection does not exist.
+        """
         client = self._get_client()
 
         def _sync() -> dict:
@@ -174,5 +216,8 @@ class ChromaHttpVectorStoreProvider:
         return await asyncio.to_thread(_sync)
 
     def reset_for_testing(self) -> None:
-        """Reset the cached client.  **For use in tests only.**"""
+        """Reset the cached client.  **For use in tests only.**
+
+        :return: (None) This method does not return a value.
+        """
         self._client = None

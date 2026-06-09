@@ -4,6 +4,8 @@
 
 Claude Desktop is Anthropic's native desktop application for macOS and Windows. It supports MCP servers natively via **STDIO transport** — the server runs as a child process of Claude Desktop, and all communication happens over stdin/stdout. No network port or authentication is required.
 
+> **What this server does:** `mcp-project-context-server` indexes and searches the `.context/` directory of a project — `project.md`, ADRs under `.context/decisions/`, and session notes under `.context/sessions/`. It does not index or search your general source code.
+
 ---
 
 ## Prerequisites
@@ -17,19 +19,28 @@ Claude Desktop is Anthropic's native desktop application for macOS and Windows. 
 
 ## Installation
 
-Install the base package (plus any extras for your chosen embedding provider):
+Install the package with the extra that matches your chosen embedding provider:
 
 ```bash
-# Base — works with Ollama (default provider)
-pip install mcp-project-context-server
+# Ollama (local, no API key required)
+pip install "mcp-project-context-server[ollama]"
 
-# With Voyage AI embeddings (recommended for quality)
+# Voyage AI
 pip install "mcp-project-context-server[voyage]"
 
-# With OpenAI embeddings
+# OpenAI
 pip install "mcp-project-context-server[openai]"
 
-# With pgvector support
+# Cohere
+pip install "mcp-project-context-server[cohere]"
+
+# Google Gemini (AI Studio)
+pip install "mcp-project-context-server[google]"
+
+# Google Vertex AI
+pip install "mcp-project-context-server[google-vertex]"
+
+# PostgreSQL vector store (any embedding provider)
 pip install "mcp-project-context-server[pgvector]"
 
 # Everything
@@ -37,29 +48,50 @@ pip install "mcp-project-context-server[all]"
 ```
 
 Verify the entry point is available:
+
 ```bash
+# macOS / Linux
 which project-context-server
 # e.g. /usr/local/bin/project-context-server  or  ~/.local/bin/project-context-server
+
+# Windows (PowerShell)
+(Get-Command project-context-server).Source
+# e.g. C:\Users\yourname\AppData\Local\Programs\Python\Python312\Scripts\project-context-server.exe
 ```
 
 ---
 
-## Configuration
-
-The Claude Desktop config file lives at:
+## Configuration File Location
 
 | OS | Path |
-|---|---|
-| macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+|----|------|
+| **macOS** | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| **Windows** | `%APPDATA%\Claude\claude_desktop_config.json` |
 
-Open the file (create it if it does not exist) and add a `mcpServers` block. Examples for common configurations follow.
+Open the file (create it if it does not exist) and add a `mcpServers` block.
 
-> **Important:** Use the **full absolute path** returned by `which project-context-server`. Claude Desktop does not inherit your shell's `PATH`.
+> **Important:** Always use the **full absolute path** to `project-context-server`. Claude Desktop does not inherit your shell's `PATH`.
+
+> **Security note:** If any embedding provider requires an API key, avoid hardcoding it in the config file if the file is committed or shared. Set the variable in your shell profile (e.g., `~/.zshrc`) and reference it as `"VOYAGE_API_KEY": "${VOYAGE_API_KEY}"`, or use a secrets manager.
 
 ---
 
-### Example 1 — Ollama (fully local, free)
+## Embedding Provider Examples
+
+Each example below is a complete, working `claude_desktop_config.json`. All use `chroma-local` as the vector store (the default — no extra setup needed). To use a different vector store, see [Vector Store Configuration](#vector-store-configuration).
+
+---
+
+### Ollama (local, free)
+
+No API key required. Requires [Ollama](https://ollama.com) running locally.
+
+```bash
+# Pull the embedding model before first use
+ollama pull nomic-embed-text
+```
+
+**macOS / Linux:**
 
 ```json
 {
@@ -68,7 +100,7 @@ Open the file (create it if it does not exist) and add a `mcpServers` block. Exa
       "command": "/usr/local/bin/project-context-server",
       "env": {
         "EMBED_PROVIDER": "ollama",
-        "OLLAMA_BASE_URL": "http://localhost:11434",
+        "OLLAMA_HOST": "http://localhost:11434",
         "OLLAMA_EMBED_MODEL": "nomic-embed-text",
         "VECTOR_STORE_PROVIDER": "chroma-local",
         "REPO_PROVIDER": "local"
@@ -78,14 +110,38 @@ Open the file (create it if it does not exist) and add a `mcpServers` block. Exa
 }
 ```
 
-Before first use, pull the embedding model:
-```bash
-ollama pull nomic-embed-text
+**Windows:**
+
+```json
+{
+  "mcpServers": {
+    "project-context": {
+      "command": "C:\\Users\\yourname\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\project-context-server.exe",
+      "env": {
+        "EMBED_PROVIDER": "ollama",
+        "OLLAMA_HOST": "http://localhost:11434",
+        "OLLAMA_EMBED_MODEL": "nomic-embed-text",
+        "VECTOR_STORE_PROVIDER": "chroma-local",
+        "REPO_PROVIDER": "local"
+      }
+    }
+  }
+}
 ```
+
+**Popular Ollama embedding models:**
+
+| Model | Size | Notes |
+|-------|------|-------|
+| `nomic-embed-text` | ~274 MB | Fast, good general purpose (default) |
+| `mxbai-embed-large` | ~669 MB | Higher quality |
+| `all-minilm` | ~46 MB | Lightweight |
 
 ---
 
-### Example 2 — Voyage AI (best code retrieval quality)
+### Voyage AI
+
+Best retrieval quality for code and technical documentation. Get an API key at [dash.voyageai.com/api-keys](https://dash.voyageai.com/api-keys).
 
 ```json
 {
@@ -104,11 +160,19 @@ ollama pull nomic-embed-text
 }
 ```
 
-Get your Voyage API key at [dash.voyageai.com/api-keys](https://dash.voyageai.com/api-keys).
+**Available models:**
+
+| Model | Notes |
+|-------|-------|
+| `voyage-code-3` | Code-optimized, default |
+| `voyage-3` | General purpose |
+| `voyage-3-lite` | Faster, lower cost |
 
 ---
 
-### Example 3 — OpenAI Embeddings
+### OpenAI
+
+Get an API key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys).
 
 ```json
 {
@@ -127,90 +191,283 @@ Get your Voyage API key at [dash.voyageai.com/api-keys](https://dash.voyageai.co
 }
 ```
 
-Get your OpenAI API key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys).
+**Available models:**
+
+| Model | Dimensions | Notes |
+|-------|-----------|-------|
+| `text-embedding-3-small` | 1536 | Fast, cost-effective (default) |
+| `text-embedding-3-large` | 3072 | Highest quality |
 
 ---
 
-## Embedding Provider Options
+### Cohere
 
-| Provider | `EMBED_PROVIDER` value | Key variable | Notes |
-|---|---|---|---|
-| Ollama (local) | `ollama` | `OLLAMA_EMBED_MODEL` | Free, offline, requires Ollama running |
-| Voyage AI | `voyage` | `VOYAGE_API_KEY` | Best code retrieval quality |
-| OpenAI | `openai` | `OPENAI_API_KEY` | Good general quality |
-| Cohere | `cohere` | `COHERE_API_KEY` | Good multilingual support |
-| Google Gemini | `google` | `GOOGLE_API_KEY` | Uses AI Studio key |
-| Vertex AI | `google-vertex` | `GOOGLE_CLOUD_PROJECT` | GCP service account / ADC |
-
-See [Configuration Reference](../configuration-reference.md#1-embedding-providers) for all variables.
-
----
-
-## Vector Store Options
-
-### `chroma-local` (default — recommended for local use)
-
-Data is persisted to `~/.mcp-project-context/chroma` by default. No extra infrastructure needed.
+Good multilingual support. Get an API key at [dashboard.cohere.com](https://dashboard.cohere.com/).
 
 ```json
-"env": {
-  "VECTOR_STORE_PROVIDER": "chroma-local",
-  "CHROMA_PERSIST_DIR": "/Users/yourname/.mcp-project-context/chroma"
+{
+  "mcpServers": {
+    "project-context": {
+      "command": "/usr/local/bin/project-context-server",
+      "env": {
+        "EMBED_PROVIDER": "cohere",
+        "COHERE_API_KEY": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "COHERE_EMBED_MODEL": "embed-english-v3.0",
+        "VECTOR_STORE_PROVIDER": "chroma-local",
+        "REPO_PROVIDER": "local"
+      }
+    }
+  }
 }
 ```
 
-### `pgvector` (shared / team use)
+**Available models:**
 
-Point Claude Desktop at a shared PostgreSQL+pgvector instance:
-
-```json
-"env": {
-  "VECTOR_STORE_PROVIDER": "pgvector",
-  "PGVECTOR_CONNECTION_STRING": "postgresql://mcpuser:password@db.example.com:5432/mcp_context"
-}
-```
-
-Requires `pip install "mcp-project-context-server[pgvector]"` and `CREATE EXTENSION IF NOT EXISTS vector;` on the PostgreSQL database.
+| Model | Notes |
+|-------|-------|
+| `embed-english-v3.0` | English, default |
+| `embed-multilingual-v3.0` | 100+ languages |
 
 ---
 
-## Repository Provider Options
+### Google Gemini (AI Studio)
 
-### `local` (default)
+Uses the Google AI Studio API. Suitable for development and personal use. Get an API key at [aistudio.google.com](https://aistudio.google.com/).
 
-Claude Desktop always uses the `local` repo provider. Pass the absolute filesystem path to your project when calling tools:
+```json
+{
+  "mcpServers": {
+    "project-context": {
+      "command": "/usr/local/bin/project-context-server",
+      "env": {
+        "EMBED_PROVIDER": "google",
+        "GOOGLE_API_KEY": "AIzaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "GOOGLE_EMBED_MODEL": "gemini-embedding-2",
+        "VECTOR_STORE_PROVIDER": "chroma-local",
+        "REPO_PROVIDER": "local"
+      }
+    }
+  }
+}
+```
+
+> For production workloads with higher quotas and enterprise SLAs, use [Google Vertex AI](#google-vertex-ai) instead.
+
+---
+
+### Google Vertex AI
+
+Uses Application Default Credentials (ADC) — no API key file in the config. Authentication is handled via the Google Cloud SDK.
+
+> **Important:** `EMBED_PROVIDER=vertexai` cannot be combined with `chroma-local` or `chroma-http` — the Vertex AI and ChromaDB native dependencies deadlock when loaded into the same process on Windows. Use `VECTOR_STORE_PROVIDER=pgvector` with Vertex AI, as shown below.
+
+**Prerequisites:**
+
+1. Enable the Vertex AI API in your [Google Cloud project](https://console.cloud.google.com/apis/library)
+2. Authenticate locally:
+
+   ```bash
+   gcloud auth application-default login
+   ```
+3. A PostgreSQL instance with the `pgvector` extension (see [pgvector](#pgvector-postgresql) below), and `pip install "mcp-project-context-server[google-vertex,pgvector]"`
+
+```json
+{
+  "mcpServers": {
+    "project-context": {
+      "command": "/usr/local/bin/project-context-server",
+      "env": {
+        "EMBED_PROVIDER": "vertexai",
+        "VERTEXAI_PROJECT": "my-gcp-project-id",
+        "VERTEXAI_LOCATION": "us-central1",
+        "VERTEXAI_EMBED_MODEL": "text-embedding-004",
+        "VECTOR_STORE_PROVIDER": "pgvector",
+        "PGVECTOR_CONNECTION_STRING": "postgresql://mcpuser:password@localhost:5432/mcp_context",
+        "REPO_PROVIDER": "local"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Vector Store Configuration
+
+The examples above all use `chroma-local` (the default). To switch vector stores, replace the `VECTOR_STORE_PROVIDER` and related variables in any of the examples above.
+
+---
+
+### ChromaDB Local (default)
+
+No extra infrastructure required. Data persists to `~/.mcp-data/chroma` by default.
+
+```json
+{
+   "env": {
+      "VECTOR_STORE_PROVIDER": "chroma-local",
+      "CHROMA_DIR": "/Users/yourname/.mcp-data/chroma"
+   }
+}
+```
+
+`CHROMA_DIR` is optional — omit it to use the default path.
+
+---
+
+### ChromaDB HTTP
+
+Connects to a remote or containerized ChromaDB instance. No extra pip install required.
+
+```json
+{
+  "mcpServers": {
+    "project-context": {
+      "command": "/usr/local/bin/project-context-server",
+      "env": {
+        "EMBED_PROVIDER": "ollama",
+        "OLLAMA_HOST": "http://localhost:11434",
+        "OLLAMA_EMBED_MODEL": "nomic-embed-text",
+        "VECTOR_STORE_PROVIDER": "chroma-http",
+        "CHROMA_HOST": "chroma.example.com",
+        "CHROMA_PORT": "8000",
+        "CHROMA_API_KEY": "your-chroma-api-key",
+        "REPO_PROVIDER": "local"
+      }
+    }
+  }
+}
+```
+
+`CHROMA_API_KEY` is optional — omit it for unauthenticated instances. Replace the `EMBED_PROVIDER` block with your chosen provider.
+
+---
+
+### pgvector (PostgreSQL)
+
+Stores embeddings in PostgreSQL. Requires `pip install "mcp-project-context-server[pgvector]"` and the `pgvector` extension enabled on your database:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+```json
+{
+  "mcpServers": {
+    "project-context": {
+      "command": "/usr/local/bin/project-context-server",
+      "env": {
+        "EMBED_PROVIDER": "voyage",
+        "VOYAGE_API_KEY": "pa-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "VOYAGE_EMBED_MODEL": "voyage-code-3",
+        "VECTOR_STORE_PROVIDER": "pgvector",
+        "PGVECTOR_CONNECTION_STRING": "postgresql://mcpuser:password@db.example.com:5432/mcp_context",
+        "REPO_PROVIDER": "local"
+      }
+    }
+  }
+}
+```
+
+Replace the `EMBED_PROVIDER` block with your chosen provider.
+
+---
+
+## Repository Provider Configuration
+
+Claude Desktop most commonly uses the `local` provider. Remote providers are available when you want Claude to read from a hosted repository without a local clone.
+
+---
+
+### Local (default)
+
+No configuration required. Pass the absolute path to your project when calling tools:
 
 ```
 project_path: /Users/yourname/projects/my-app
 ```
 
-### `github` / `gitlab`
+Alternatively, set `PROJECT_PATH` in the server's `env` block to pin it to one project — the tools will use that value regardless of what is passed as `project_path`, which is convenient for a Claude Desktop config dedicated to a single project.
 
-You can point at remote repositories by setting `REPO_PROVIDER=github` and providing a token. This is useful if you want Claude Desktop to pull fresh code directly from GitHub rather than a local clone:
+---
+
+### GitHub / GitLab / Gitea
+
+> **Current scope:** setting `REPO_PROVIDER` to `github`, `gitlab`, or `gitea` lets every tool operate on a remote repository directly — `list_repositories` discovers repos, and `load_project_context`, `index_project_context`, `search_project_context` read `.context/` content (with `save_session_summary` writing to it) over the provider's REST API whenever `project_path` is an `owner/repo` identifier or a full repository URL. A plain filesystem `project_path` still reads/writes locally, regardless of `REPO_PROVIDER`.
 
 ```json
-"env": {
-  "REPO_PROVIDER": "github",
-  "GITHUB_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+{
+   "env": {
+      "REPO_PROVIDER": "github",
+      "REPO_AUTH_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   }
 }
 ```
 
-Get a GitHub token at [github.com/settings/tokens](https://github.com/settings/tokens) with `repo` scope. Then pass `project_path` as `owner/repo` (e.g., `acme/backend`).
+Get a token at [github.com/settings/tokens](https://github.com/settings/tokens) with `repo` scope (or `public_repo` for public repositories only). For GitHub Enterprise Server, also set `"REPO_BASE_URL": "https://github.example.com/api/v3"`.
+
+For GitLab, set `REPO_PROVIDER` to `gitlab` and get a token at **User Settings → Access Tokens** with `read_api` scope (add `"REPO_BASE_URL"` for self-hosted GitLab). For Gitea, set `REPO_PROVIDER` to `gitea`; `REPO_BASE_URL` is required (no default) and a token is available at **Settings → Applications → Manage Access Tokens**.
+
+---
+
+## Environment Variable Reference
+
+### Embedding Providers
+
+| Variable | Provider | Default | Required |
+|----------|----------|---------|----------|
+| `EMBED_PROVIDER` | All | — | **Yes** |
+| `OLLAMA_HOST` | `ollama` | `http://localhost:11434` | No |
+| `OLLAMA_EMBED_MODEL` | `ollama` | `nomic-embed-text` | No |
+| `VOYAGE_API_KEY` | `voyage` | — | **Yes** |
+| `VOYAGE_EMBED_MODEL` | `voyage` | `voyage-code-3` | No |
+| `OPENAI_API_KEY` | `openai` | — | **Yes** |
+| `OPENAI_EMBED_MODEL` | `openai` | `text-embedding-3-small` | No |
+| `COHERE_API_KEY` | `cohere` | — | **Yes** |
+| `COHERE_EMBED_MODEL` | `cohere` | `embed-english-v3.0` | No |
+| `GOOGLE_API_KEY` | `google` | — | **Yes** |
+| `GOOGLE_EMBED_MODEL` | `google` | `gemini-embedding-2` | No |
+| `VERTEXAI_PROJECT` | `vertexai` | — | **Yes** |
+| `VERTEXAI_LOCATION` | `vertexai` | — | **Yes** |
+| `VERTEXAI_EMBED_MODEL` | `vertexai` | `text-embedding-004` | No |
+
+### Vector Stores
+
+| Variable | Store | Default | Required |
+|----------|-------|---------|----------|
+| `VECTOR_STORE_PROVIDER` | All | `chroma-local` | No |
+| `CHROMA_DIR` | `chroma-local` | `~/.mcp-data/chroma` | No |
+| `CHROMA_HOST` | `chroma-http` | `localhost` | No |
+| `CHROMA_PORT` | `chroma-http` | `8000` | No |
+| `CHROMA_API_KEY` | `chroma-http` | _(none)_ | No |
+| `PGVECTOR_CONNECTION_STRING` | `pgvector` | — | **Yes** |
+
+### Repository Providers
+
+| Variable | Provider | Default | Required |
+|----------|----------|---------|----------|
+| `REPO_PROVIDER` | All | `local` | No |
+| `REPO_AUTH_TOKEN` | `github`, `gitlab`, `gitea` | _(empty)_ | No (required for private repos) |
+| `REPO_BASE_URL` | `github`, `gitlab`, `gitea` | _(provider default)_ | **Yes** for `gitea` |
+| `REPO_DEFAULT_BRANCH` | `github`, `gitlab`, `gitea` | `main` | No |
 
 ---
 
 ## Verification / Quick Test
 
 1. **Restart Claude Desktop** after editing `claude_desktop_config.json`
-2. Open a new conversation and look for the 🔌 (MCP) icon in the toolbar — `project-context` should be listed
-3. In the chat, ask:
+2. Open a new conversation and look for the MCP icon in the toolbar — `project-context` should be listed
+3. Make sure `/Users/yourname/projects/my-app/.context/project.md` exists (create a one-line `project.md` if the project has no `.context/` directory yet)
+4. In the chat, ask:
 
-   > "Use the project-context MCP server to index `/Users/yourname/projects/my-app` and tell me what it does."
+   > "Use the project-context MCP server to index `/Users/yourname/projects/my-app`, then load the project context and summarize project.md."
 
-4. Claude will call `index_project_context` and then answer based on the indexed content
-5. To confirm the index persisted, start a new conversation and ask a question about the same project — it should answer without re-indexing
+5. Claude will call `index_project_context`, then `load_project_context` or `search_project_context`, and answer based on the indexed `.context/` content
+6. To confirm the index persisted, start a new conversation and ask a question about the same project — it should answer without re-indexing
 
 **Troubleshooting:**
-- If the server does not appear, check `~/Library/Logs/Claude/` (macOS) for error output
-- Ensure the `command` path is absolute and the binary is executable (`chmod +x`)
+
+- If the server does not appear, check `~/Library/Logs/Claude/` (macOS) or `%APPDATA%\Claude\logs\` (Windows) for error output
+- Ensure the `command` path is absolute and the binary is executable
 - Ensure Ollama is running if using `EMBED_PROVIDER=ollama`
+- On Windows, use double backslashes (`\\`) in the `command` path or forward slashes

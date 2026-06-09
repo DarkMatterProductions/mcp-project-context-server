@@ -5,17 +5,25 @@ the collection at index time and compares it against the current provider
 configuration.  If the embedding provider or model has changed, a warning is
 prepended to the results so the user knows the index may need rebuilding.
 """
-
+import logging
 import os
-from typing import cast
 
 from mcp import types
 
-from mcp_project_context_server.helpers.context import collection_name_for, find_context_dir
-from mcp_project_context_server.indexing.embedder import embed_chunk
+from mcp_project_context_server.exceptions import EmbeddingError
+from mcp_project_context_server.helpers.context import (
+    collection_name_for,
+    collection_name_for_repo_id,
+    find_context_dir,
+    resolve_project_path,
+)
 from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
+from mcp_project_context_server.integrations.repository.base import RepositoryError
+from mcp_project_context_server.integrations.repository.registry import validate_repo_access
 from mcp_project_context_server.integrations.vectorstore.base import VectorStoreError
 from mcp_project_context_server.integrations.vectorstore.registry import get_vector_store
+
+logger = logging.getLogger(__name__)
 
 _MISMATCH_WARNING = (
     "⚠️  **Provider mismatch detected** — the index was built with "
@@ -26,20 +34,38 @@ _MISMATCH_WARNING = (
 
 
 async def handle(arguments: dict) -> list[types.TextContent]:
+    """Handle the ``search_project_context`` tool call.
+
+    :param arguments: (dict) Tool input dict. Requires keys ``"project_path"``
+        and ``"query"``; optional key ``"n_results"`` (defaults to 5).
+    :return: (list) A list containing a single :class:`~mcp.types.TextContent` item
+        with the matching context snippets (optionally prefixed with a
+        provider/model mismatch warning), or an error/"not found" message.
+    """
     query: str = arguments["query"]
     n_results: int = arguments.get("n_results", 5)
 
     _project_path = os.getenv("PROJECT_PATH", arguments["project_path"])
-    context_dir = find_context_dir(_project_path)
-    if not context_dir:
-        return [
-            types.TextContent(
-                type="text",
-                text=f"No .context/ directory found near {arguments['project_path']}",
-            )
-        ]
+    try:
+        validate_repo_access(_project_path)
+    except RepositoryError as exc:
+        return [types.TextContent(type="text", text=str(exc))]
 
-    col_name = collection_name_for(context_dir)
+    resolved_path, is_remote = resolve_project_path(_project_path)
+
+    if is_remote:
+        col_name = collection_name_for_repo_id(resolved_path)
+    else:
+        context_dir = find_context_dir(resolved_path)
+        if not context_dir:
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"No .context/ directory found near {arguments['project_path']}",
+                )
+            ]
+        col_name = collection_name_for(context_dir)
+
     store = get_vector_store()
 
     if not await store.collection_exists(col_name):
@@ -67,13 +93,14 @@ async def handle(arguments: dict) -> list[types.TextContent]:
             )
 
     try:
-        query_embedding = await embed_chunk(query)
+        provider = get_embedding_provider()
+        query_embedding = await provider.embed_chunk(query)
         result = await store.query(
             collection_name=col_name,
             query_embedding=query_embedding,
             n_results=n_results,
         )
-    except VectorStoreError as exc:
+    except (VectorStoreError, EmbeddingError) as exc:
         return [types.TextContent(type="text", text=f"Search failed: {exc}")]
 
     if not result.documents:

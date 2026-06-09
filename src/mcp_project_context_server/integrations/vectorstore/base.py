@@ -13,9 +13,11 @@ Usage
     store = get_vector_store()
     collection = await store.get_or_create_collection("my-project")
 """
-
+import logging
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -47,17 +49,17 @@ class VectorStoreProvider(Protocol):
         Implements the drop-and-recreate strategy (ADR-00006): any existing
         collection with *name* is deleted before the new one is created.
 
-        Args:
-            name:     Collection name.
-            metadata: Optional key/value metadata to attach to the collection.
+        :param name: (str) Collection name.
+        :param metadata: (dict) Optional key/value metadata to attach to the collection.
+        :return: (None) This method does not return a value.
         """
         ...
 
     async def delete_collection(self, name: str) -> None:
         """Delete a collection.  Silently succeeds if it does not exist.
 
-        Args:
-            name: Collection name.
+        :param name: (str) Collection name.
+        :return: (None) This method does not return a value.
         """
         ...
 
@@ -71,12 +73,12 @@ class VectorStoreProvider(Protocol):
     ) -> None:
         """Insert or update documents in a collection.
 
-        Args:
-            collection_name: Target collection.
-            ids:             Per-document unique identifiers.
-            embeddings:      Per-document embedding vectors (must all be the same length).
-            documents:       Raw text for each document.
-            metadatas:       Per-document metadata dicts.
+        :param collection_name: (str) Target collection.
+        :param ids: (list) Per-document unique identifiers.
+        :param embeddings: (list) Per-document embedding vectors (must all be the same length).
+        :param documents: (list) Raw text for each document.
+        :param metadatas: (list) Per-document metadata dicts.
+        :return: (None) This method does not return a value.
         """
         ...
 
@@ -88,46 +90,35 @@ class VectorStoreProvider(Protocol):
     ) -> QueryResult:
         """Run a nearest-neighbour search against a collection.
 
-        Args:
-            collection_name: Collection to search.
-            query_embedding: Query vector (must match the dimension of stored embeddings).
-            n_results:       Maximum number of results to return.
-
-        Returns:
-            A :class:`QueryResult` with the top-*n_results* matches.
-
-        Raises:
-            VectorStoreError: If the collection does not exist or the query fails.
+        :param collection_name: (str) Collection to search.
+        :param query_embedding: (list) Query vector (must match the dimension of stored embeddings).
+        :param n_results: (int) Maximum number of results to return.
+        :return: (QueryResult) A :class:`QueryResult` with the top-*n_results* matches.
+        :raises VectorStoreError: If the collection does not exist or the query fails.
         """
         ...
 
     async def count(self, collection_name: str) -> int:
         """Return the number of documents stored in *collection_name*.
 
-        Args:
-            collection_name: Collection to count.
-
-        Returns:
-            Document count.  Returns 0 if the collection does not exist.
+        :param collection_name: (str) Collection to count.
+        :return: (int) Document count. Returns 0 if the collection does not exist.
         """
         ...
 
     async def collection_exists(self, collection_name: str) -> bool:
         """Return ``True`` if *collection_name* exists in this store.
 
-        Args:
-            collection_name: Collection to check.
+        :param collection_name: (str) Collection to check.
+        :return: (bool) ``True`` if the collection exists, ``False`` otherwise.
         """
         ...
 
     async def get_collection_metadata(self, collection_name: str) -> dict:
         """Return the metadata dict stored on a collection.
 
-        Args:
-            collection_name: Collection to inspect.
-
-        Returns:
-            Metadata dict (may be empty).  Returns ``{}`` if the collection
+        :param collection_name: (str) Collection to inspect.
+        :return: (dict) Metadata dict (may be empty). Returns ``{}`` if the collection
             does not exist.
         """
         ...

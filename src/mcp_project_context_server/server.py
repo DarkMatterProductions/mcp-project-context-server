@@ -16,11 +16,17 @@ Set ``MCP_TRANSPORT`` to choose the transport:
 import asyncio
 import logging
 import os
-from pathlib import Path
-from typing import Any
 
-from mcp import types
-from mcp.server import Server
+
+from mcp.server import Server, ServerRequestContext
+from mcp.types import (
+    CallToolRequestParams,
+    CallToolResult,
+    ListToolsResult,
+    PaginatedRequestParams,
+    TextContent,
+    Tool,
+)
 
 from mcp_project_context_server.tools import (
     index_context,
@@ -30,29 +36,23 @@ from mcp_project_context_server.tools import (
     search_context,
 )
 
-_LOG_PATH = Path.home() / ".mcp-data" / "logs" / "project-context-server.log"
-_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+try:
+    from mcp_project_context_server._version import __version__
+except ImportError:
+    __version__ = "0.0.0.dev0"
 
-logging.basicConfig(
-    filename=_LOG_PATH,
-    filemode="a",
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 
-server = Server("project-context")
-
-_TOOL_DEFINITIONS: list[types.Tool] = [
-    types.Tool(
+_TOOL_DEFINITIONS: list[Tool] = [
+    Tool(
         name="load_project_context",
         description=(
             "Load the full project context for the given project path. "
             "Returns project.md, all ADRs, and the latest session summary. "
             "You MUST call this at the start of every session."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "project_path": {
@@ -66,14 +66,14 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
             "required": ["project_path"],
         },
     ),
-    types.Tool(
+    Tool(
         name="search_project_context",
         description=(
             "Semantically search the indexed project context. "
             "Use this to find relevant past decisions, architecture notes, "
             "or code summaries related to your current task."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "project_path": {"type": "string"},
@@ -83,13 +83,13 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
             "required": ["project_path", "query"],
         },
     ),
-    types.Tool(
+    Tool(
         name="save_session_summary",
         description=(
             "Save a summary of the current session to .context/sessions/YYYY-MM-DD.md. "
             "Call this at the end of a session with a concise summary of what was done."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "project_path": {"type": "string"},
@@ -101,26 +101,26 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
             "required": ["project_path", "summary"],
         },
     ),
-    types.Tool(
+    Tool(
         name="index_project_context",
         description=(
             "Re-index the .context/ directory into the vector store. "
             "Run this after updating project.md, adding ADRs, or refreshing BUNDLE.md."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {"project_path": {"type": "string"}},
             "required": ["project_path"],
         },
     ),
-    types.Tool(
+    Tool(
         name="list_repositories",
         description=(
             "List repositories accessible via the configured repository provider. "
             "In multi-tenant deployments, use this to discover which repositories are "
             "available before calling other tools.  Optionally filter by organisation name."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "org": {
@@ -142,17 +142,33 @@ _TOOL_HANDLERS = {
 }
 
 
-@server.list_tools()
-async def list_tools() -> list[types.Tool]:
-    return _TOOL_DEFINITIONS
+async def list_tools(ctx: ServerRequestContext, params: PaginatedRequestParams | None) -> ListToolsResult:
+    """List the MCP tools exposed by this context_server.
+
+    :return: (list) The registered ``Tool`` definitions advertised to MCP clients.
+    """
+    return ListToolsResult(tools=_TOOL_DEFINITIONS)
 
 
-@server.call_tool()
-async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextContent]:
-    handler = _TOOL_HANDLERS.get(name)
+async def call_tool(ctx: ServerRequestContext, params: CallToolRequestParams) -> CallToolResult:
+    """Dispatch an MCP tool call to its registered handler.
+
+    :param name: (str) The name of the tool to invoke.
+    :param arguments: (dict) The arguments supplied by the MCP client for this tool call.
+    :return: (CallToolResult) The handler's result normalised into a ``CallToolResult``,
+        or a single error message if ``name`` does not match a registered tool.
+    """
+    handler = _TOOL_HANDLERS.get(params.name)
     if not handler:
-        return [types.TextContent(type="text", text=f"Unknown tool: {name}")]
-    return await handler(arguments)
+        return CallToolResult(content=[TextContent(type="text", text=f"Unknown tool: {params.name}")])
+    try:
+        result = await handler(params.arguments)
+    except Exception as exc:
+        logger.exception("Tool '%s' raised an unhandled exception", params.name)
+        return CallToolResult(content=[TextContent(type="text", text=str(exc))], is_error=True)
+    if isinstance(result, CallToolResult):
+        return result
+    return CallToolResult(content=result)
 
 
 async def _main() -> None:
@@ -161,21 +177,36 @@ async def _main() -> None:
     if transport == "stdio":
         from mcp_project_context_server.transport.stdio import run_stdio
 
-        await run_stdio(server)
+        await run_stdio(context_server)
 
     elif transport == "sse":
         from mcp_project_context_server.transport.sse import run_sse
 
-        await run_sse(server)
+        await run_sse(context_server)
 
     else:
         raise EnvironmentError(f"Unsupported MCP_TRANSPORT value '{transport}'.  " "Supported values are: stdio, sse")
 
 
 def run() -> None:
+    """Start the MCP server, selecting transport via the ``MCP_TRANSPORT`` env var."""
     logger.info("project-context-server starting")
     try:
         asyncio.run(_main())
     except Exception:
         logger.exception("Server crashed at top level")
         raise
+
+
+context_server = Server(
+    name="project-context",
+    version=__version__,
+    description=(
+        "Project Context Server.  Provides access to project context, "
+        "including repomix BUNDLED.md, project.md, ADRs, and session summaries."
+        "Use as the primary tool for AI-assisted development, and as the source "
+        "of truth for decisions on project development."
+    ),
+    on_list_tools=list_tools,
+    on_call_tool=call_tool,
+)

@@ -31,9 +31,8 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence"
 ]
 dependencies = [
-    "mcp<=1.29.1",
+    "mcp>=2.1.1,<3",
     "chromadb",
-    "ollama",
     "watchdog",
     "httpx>=0.27",
     "starlette",
@@ -42,6 +41,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # --- Embedding providers ---
+ollama = ["ollama>=0.4.0"]
 voyage = ["voyageai"]
 openai = ["openai>=1.0"]
 cohere = ["cohere>=5.0"]
@@ -50,6 +50,7 @@ google-vertex = ["google-cloud-aiplatform"]
 
 # --- Vector store providers ---
 pgvector = ["asyncpg", "pgvector"]
+gcp-vector-search = ["google-cloud-aiplatform", "google-cloud-firestore"]
 
 # --- HTTP/SSE transport ---
 sse = ["starlette", "uvicorn", "google-auth"]
@@ -66,25 +67,28 @@ all = [
     "cohere>=5.0",
     "google-generativeai",
     "google-cloud-aiplatform",
+    "google-cloud-firestore",
     "asyncpg",
     "pgvector",
     "google-auth",
+    "starlette",
+    "uvicorn",
 ]
 
 [dependency-groups]
 testsuite = [
     "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
+    "pytest-order>=1.5.0",
     "pytest-mock>=3.15.1",
     "pytest-asyncio>=1.3.0",
     "pytest-benchmark>=4.0.0",
-    "httpx2",
 ]
 
 [tool.setuptools_scm]
 version_scheme = "guess-next-dev"
 local_scheme = "node-and-date"
-tag_regex = '^(?P<version>\d+\.\d+\.\d+)$'
+#tag_regex = '^(?P<version>\d+\.\d+\.\d+[.dev\d+]*$'
 
 [project.scripts]
 project-context-server = "mcp_project_context_server.server:run"
@@ -110,23 +114,25 @@ where = ["src"]  # Look for packages in src/
 [tool.setuptools.package-dir]
 "" = "src"
 
-[tool.pytest]
+[tool.pytest.ini_options]
 pythonpath = [
     "src"
 ]
 testpaths = [
     "tests"
 ]
-
-[tool.pytest_asyncio]
-asyncio_mode  = "auto"
-asyncio_default_fixture_loop_scope = "fixture"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "external_services: marks tests that require ChromaDB and an embedding provider (e.g. Ollama). Skip with: -m 'not external_services'",
+]
 
 [tool.black]
 line-length = 120
 target-version = [
     'py39',
-    'py310'
+    'py310',
+    'py311',
 ]
 include = '\.py$'
 exclude = '''
@@ -180,7 +186,22 @@ ignore="D100,D104,D105,D200,D204,D205,D301,D302,D400,D401,D402,D403,D404,E203,E7
 [tool.isort]
 profile = "black"
 line_length = 120
-known_third_party = ["jsonschema", "pyyaml"]
+known_third_party = [
+    "jsonschema",
+    "pyyaml",
+    "voyageai",
+    "openai>=1.0",
+    "cohere>=5.0",
+    "google-generativeai",
+    "google-cloud-aiplatform",
+    "google-cloud-firestore",
+    "asyncpg",
+    "pgvector",
+    "google-auth",
+    "starlette",
+    "uvicorn",
+    "google-auth"
+]
 
 [tool.mypy]
 mypy_path = ["src", "src/python"]

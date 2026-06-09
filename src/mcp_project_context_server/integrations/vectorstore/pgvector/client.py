@@ -4,7 +4,7 @@ Configuration
 -------------
 ``PGVECTOR_CONNECTION_STRING``
     A libpq-compatible connection string, e.g.:
-    ``postgresql://user:password@host:5432/dbname``
+    ``postgresql://{user}:{password}@{host}:5432/dbname``
 
 Design
 ------
@@ -15,8 +15,7 @@ Design
 * The drop-and-recreate indexing strategy (ADR-00006) is implemented by
   ``create_collection`` — it drops the table and recreates it.
 """
-
-import asyncio
+import logging
 import os
 import re
 from typing import Any, Optional
@@ -25,6 +24,8 @@ from mcp_project_context_server.integrations.vectorstore.base import (
     QueryResult,
     VectorStoreError,
 )
+
+logger = logging.getLogger(__name__)
 
 _TABLE_PREFIX = "vs_"
 
@@ -45,6 +46,10 @@ class PgVectorStoreProvider:
     """
 
     def __init__(self) -> None:
+        """Initialize the provider, reading ``PGVECTOR_CONNECTION_STRING`` from the environment.
+
+        :raises EnvironmentError: If ``PGVECTOR_CONNECTION_STRING`` is not set.
+        """
         self._dsn: Optional[str] = os.getenv("PGVECTOR_CONNECTION_STRING")
         if not self._dsn:
             raise EnvironmentError(
@@ -54,6 +59,7 @@ class PgVectorStoreProvider:
 
     @property
     def provider_name(self) -> str:
+        """Return the provider identifier."""
         return "pgvector"
 
     async def _get_pool(self) -> Any:
@@ -101,6 +107,10 @@ class PgVectorStoreProvider:
 
         Dimension is not known at creation time — the vector column is added
         on the first ``upsert`` call once the dimension is established.
+
+        :param name: (str) Collection name.
+        :param metadata: (dict) Optional key/value metadata to attach to the collection.
+        :return: (None) This method does not return a value.
         """
         pool = await self._get_pool()
         tbl = _table_name(name)
@@ -116,7 +126,11 @@ class PgVectorStoreProvider:
             )
 
     async def delete_collection(self, name: str) -> None:
-        """Drop the table for *name* and remove from sidecar."""
+        """Drop the table for *name* and remove from sidecar.
+
+        :param name: (str) Collection name.
+        :return: (None) This method does not return a value.
+        """
         try:
             pool = await self._get_pool()
             tbl = _table_name(name)
@@ -154,7 +168,15 @@ class PgVectorStoreProvider:
         documents: list[str],
         metadatas: list[dict],
     ) -> None:
-        """Insert or update documents in *collection_name*."""
+        """Insert or update documents in *collection_name*.
+
+        :param collection_name: (str) Target collection.
+        :param ids: (list) Per-document unique identifiers.
+        :param embeddings: (list) Per-document embedding vectors (must all be the same length).
+        :param documents: (list) Raw text for each document.
+        :param metadatas: (list) Per-document metadata dicts.
+        :return: (None) This method does not return a value.
+        """
         if not ids:
             return
         import json
@@ -188,7 +210,14 @@ class PgVectorStoreProvider:
         query_embedding: list[float],
         n_results: int = 5,
     ) -> QueryResult:
-        """Run cosine-similarity nearest-neighbour search."""
+        """Run cosine-similarity nearest-neighbour search.
+
+        :param collection_name: (str) Collection to search.
+        :param query_embedding: (list) Query vector (must match the dimension of stored embeddings).
+        :param n_results: (int) Maximum number of results to return.
+        :return: (QueryResult) A :class:`QueryResult` with the top-*n_results* matches.
+        :raises VectorStoreError: If the query fails.
+        """
         import json
 
         pool = await self._get_pool()
@@ -219,7 +248,11 @@ class PgVectorStoreProvider:
         )
 
     async def count(self, collection_name: str) -> int:
-        """Return document count (0 if table absent)."""
+        """Return document count (0 if table absent).
+
+        :param collection_name: (str) Collection to count.
+        :return: (int) Document count. Returns 0 if the collection does not exist.
+        """
         try:
             pool = await self._get_pool()
             tbl = _table_name(collection_name)
@@ -230,7 +263,11 @@ class PgVectorStoreProvider:
             return 0
 
     async def collection_exists(self, collection_name: str) -> bool:
-        """Return ``True`` if a row exists in the sidecar for *collection_name*."""
+        """Return ``True`` if a row exists in the sidecar for *collection_name*.
+
+        :param collection_name: (str) Collection to check.
+        :return: (bool) ``True`` if the collection exists, ``False`` otherwise.
+        """
         try:
             pool = await self._get_pool()
             async with pool.acquire() as conn:  # type: ignore[attr-defined]
@@ -242,7 +279,11 @@ class PgVectorStoreProvider:
             return False
 
     async def get_collection_metadata(self, collection_name: str) -> dict:
-        """Return metadata from the sidecar (``{}`` if absent)."""
+        """Return metadata from the sidecar (``{}`` if absent).
+
+        :param collection_name: (str) Collection to inspect.
+        :return: (dict) Metadata dict (may be empty). Returns ``{}`` if the collection does not exist.
+        """
         try:
             import json
 
@@ -258,11 +299,17 @@ class PgVectorStoreProvider:
             return {}
 
     async def close(self) -> None:
-        """Close the connection pool.  Call on server shutdown."""
+        """Close the connection pool.  Call on server shutdown.
+
+        :return: (None) This method does not return a value.
+        """
         if self._pool is not None:
             await self._pool.close()  # type: ignore[attr-defined]
             self._pool = None
 
     def reset_for_testing(self) -> None:
-        """Reset the cached pool.  **For use in tests only.**"""
+        """Reset the cached pool.  **For use in tests only.**
+
+        :return: (None) This method does not return a value.
+        """
         self._pool = None
