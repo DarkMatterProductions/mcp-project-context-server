@@ -130,7 +130,7 @@ class TestIndexContextWithExternalServices(MCPIntegrationBase):
         async with make_mcp_session({"EMBED_PROVIDER": embed_provider}) as session:
             await session.call_tool(_TOOL, {"project_path": str(project_dir)})
             search_result = await session.call_tool(
-                "search_project_context",
+                "search_context_index",
                 {"project_path": str(project_dir), "query": "ChromaDB vector store", "n_results": 1},
             )
 

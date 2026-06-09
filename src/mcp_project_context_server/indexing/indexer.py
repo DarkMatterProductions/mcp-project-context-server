@@ -51,7 +51,7 @@ async def run_index_pipeline(project_path: str | Path, store: VectorStoreProvide
     :return: (str) A human-readable summary string describing what was indexed.
     """
     repo_provider = get_repository_provider()
-    resolved_path, is_remote = resolve_project_path(str(project_path))
+    resolved_path, is_remote = resolve_project_path(str(project_path), repo_provider.provider_name)
 
     if is_remote:
         try:

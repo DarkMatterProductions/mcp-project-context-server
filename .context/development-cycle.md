@@ -2,8 +2,19 @@
 
 ## Session Initialization — Mandatory First Step
 
-At the start of every session, call `mcp__project_context__load_project_context`
-before doing anything else.
+At the start of every session, before doing anything else:
+
+1. Call `search_context_index` with a broad query (e.g. a project overview
+   query) to find `project.md` and any other broadly-relevant files.
+2. Call `find_latest_session_file` to get the path of the most recent session
+   summary.
+3. Call `load_context_files` with `project.md` plus the latest session path
+   from step 2.
+
+Do **not** load every ADR or every session file by default — that defeats the
+purpose of targeted loading. Only call `search_adr_index` / `search_session_files`
+(followed by `load_context_files` with the paths they return) when a specific
+task actually requires a past decision or past session's content.
 
 ---
 

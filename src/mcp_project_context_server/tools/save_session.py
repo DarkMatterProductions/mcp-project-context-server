@@ -6,7 +6,7 @@ from datetime import datetime
 from mcp import types
 
 from mcp_project_context_server.helpers.context import find_context_dir, resolve_project_path
-from mcp_project_context_server.integrations.repository.base import RepositoryError
+from mcp_project_context_server.integrations.repository.base import RepositoryError, RepositoryProvider
 from mcp_project_context_server.integrations.repository.registry import get_repository_provider, validate_repo_access
 
 logger = logging.getLogger(__name__)
@@ -29,10 +29,11 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     except RepositoryError as exc:
         return [types.TextContent(type="text", text=str(exc))]
 
-    resolved_path, is_remote = resolve_project_path(_project_path)
+    provider = get_repository_provider()
+    resolved_path, is_remote = resolve_project_path(_project_path, provider.provider_name)
 
     if is_remote:
-        return await _handle_remote(resolved_path, summary)
+        return await _handle_remote(provider, resolved_path, summary)
 
     context_dir = find_context_dir(resolved_path)
     if not context_dir:
@@ -65,7 +66,7 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     ]
 
 
-async def _handle_remote(repo_id: str, summary: str) -> list[types.TextContent]:
+async def _handle_remote(provider: RepositoryProvider, repo_id: str, summary: str) -> list[types.TextContent]:
     """Save a session summary to a remote repository's ``.context/sessions/``.
 
     Write target is configurable via ``REPO_SESSION_WRITE_MODE``:
@@ -76,8 +77,6 @@ async def _handle_remote(repo_id: str, summary: str) -> list[types.TextContent]:
       off the default branch and write there, leaving the target branch
       untouched for review.
     """
-    provider = get_repository_provider()
-
     today = datetime.now().strftime("%Y-%m-%d")
     session_key = f"sessions/{today}.md"
     target_path = f".context/{session_key}"

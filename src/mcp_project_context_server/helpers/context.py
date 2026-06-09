@@ -71,20 +71,30 @@ def read_context_files(context_dir: Path) -> dict[str, str]:
 _SHORT_IDENTIFIER_RE = re.compile(r"^[\w.-]+/[\w.-]+$")
 
 
-def resolve_project_path(raw: str) -> tuple[str, bool]:
+def resolve_project_path(raw: str, provider_name: str) -> tuple[str, bool]:
     """Resolve a raw project path string and determine whether it is remote.
+
+    Remote resolution only applies when *provider_name* is not ``"local"``
+    (i.e. ``REPO_PROVIDER`` has been explicitly set to a remote provider).
+    When the provider is local, *raw* is always treated as a filesystem path,
+    regardless of its shape. See ADR-00024.
 
     Returns a ``(resolved_path, is_remote)`` tuple.
 
+    * If *provider_name* is ``"local"``: ``is_remote=False`` unconditionally.
     * If *raw* starts with ``http://`` or ``https://``: ``is_remote=True``.
     * If *raw* matches the ``owner/repo`` short identifier pattern
       (``^[\\w.-]+/[\\w.-]+$``): ``is_remote=True``.
     * Otherwise: ``is_remote=False`` (filesystem path — existing behaviour).
 
     :param raw: (str) The raw project path or identifier supplied by the caller.
+    :param provider_name: (str) The active repository provider's name, from
+        ``get_repository_provider().provider_name`` (i.e. ``REPO_PROVIDER``).
     :return: (tuple) A two-element tuple ``(resolved_path, is_remote)``.
     """
-    logger.debug(f"Executing 'resolve_project_path' with the argument raw: {raw}")
+    logger.debug(f"Executing 'resolve_project_path' with raw: {raw}, provider_name: {provider_name}")
+    if provider_name == "local":
+        return raw, False
     if raw.startswith("http://") or raw.startswith("https://"):
         return raw, True
     if _SHORT_IDENTIFIER_RE.match(raw):

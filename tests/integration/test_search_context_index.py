@@ -1,4 +1,4 @@
-"""Integration tests — `search_project_context` tool.
+"""Integration tests — `search_context_index` tool.
 
 Tests that do NOT require external services (ChromaDB, Ollama) are included
 here unconditionally.  Tests that require a running ChromaDB / embedding model
@@ -26,10 +26,10 @@ If the variable is *not* set the test runs — and fails if the provider is
 unreachable or not configured.
 
 Run the full suite (including external-service tests) with:
-    pytest tests/integration/test_search_context.py -v
+    pytest tests/integration/test_search_context_index.py -v
 
 Run only tests that require no external services:
-    pytest tests/integration/test_search_context.py -v -m "not external_services"
+    pytest tests/integration/test_search_context_index.py -v -m "not external_services"
 """
 import os
 
@@ -40,7 +40,7 @@ from integration.base import MCPIntegrationBase
 
 pytestmark = pytest.mark.asyncio
 
-_TOOL = "search_project_context"
+_TOOL = "search_context_index"
 
 
 def _provider_param(provider_name: str) -> pytest.param:
@@ -51,7 +51,7 @@ def _provider_param(provider_name: str) -> pytest.param:
     return pytest.param(provider_name)
 
 
-class TestSearchContextErrors(MCPIntegrationBase):
+class TestSearchContextIndexErrors(MCPIntegrationBase):
     """Error-path tests that require no external services."""
 
     async def test_missing_context_dir_returns_error_text(self, make_mcp_session, tmp_path):
@@ -109,7 +109,7 @@ class TestIncompatibleProviders(MCPIntegrationBase):
 
 @pytest.mark.external_services
 @pytest.mark.parametrize("embed_provider", [_provider_param(p) for p in CHROMA_COMPATIBLE_PROVIDERS])
-class TestSearchContextWithVectorStore(MCPIntegrationBase):
+class TestSearchContextIndexWithVectorStore(MCPIntegrationBase):
     """Tests that require a running ChromaDB and an embedding provider.
 
     Parametrized over all supported providers.  Set
@@ -141,3 +141,21 @@ class TestSearchContextWithVectorStore(MCPIntegrationBase):
 
         assert len(result.content) >= 1
         assert result.content[0].type == "text"
+
+    async def test_index_then_search_returns_structured_results(self, make_mcp_session, tmp_path, embed_provider):
+        project_dir = self.make_project(
+            tmp_path,
+            project_md="# ChromaDB Decision\n\nWe chose ChromaDB because it is embeddable.",
+        )
+
+        async with make_mcp_session({"EMBED_PROVIDER": embed_provider}) as session:
+            await session.call_tool("index_project_context", {"project_path": str(project_dir)})
+            result = await session.call_tool(
+                _TOOL,
+                {"project_path": str(project_dir), "query": "ChromaDB vector store", "n_results": 1},
+            )
+
+        self.assert_tool_not_error(result)
+        results = result.structured_content["results"]
+        assert len(results) >= 1
+        assert results[0]["file"] == "project.md"

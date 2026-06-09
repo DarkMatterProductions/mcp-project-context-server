@@ -3,6 +3,7 @@
 All chromadb calls are mocked — no real filesystem or ChromaDB required.
 """
 
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -29,6 +30,26 @@ def mock_client(provider: ChromaLocalVectorStoreProvider) -> MagicMock:
     client = MagicMock()
     provider._client = client
     return client
+
+
+# ---------------------------------------------------------------------------
+# CHROMA_DIR resolution
+# ---------------------------------------------------------------------------
+
+
+class TestChromaDirResolution:
+    def test_tilde_prefixed_chroma_dir_is_expanded_to_home(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("CHROMA_DIR", "~/.mcp-data/Projects/example/chroma")
+        provider = ChromaLocalVectorStoreProvider()
+        assert provider._dir == Path.home() / ".mcp-data" / "Projects" / "example" / "chroma"
+        assert "~" not in provider._dir.parts
+
+    def test_absolute_chroma_dir_is_unchanged(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        monkeypatch.setenv("CHROMA_DIR", str(tmp_path))
+        provider = ChromaLocalVectorStoreProvider()
+        assert provider._dir == tmp_path
 
 
 # ---------------------------------------------------------------------------

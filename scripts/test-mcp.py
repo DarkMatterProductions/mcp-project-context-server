@@ -33,16 +33,43 @@ parser.add_argument("--details", "-d", action="store_true")
 args = parser.parse_args()
 
 TEST_PAYLOADS = {
-    "load_project_context": {
-        "name": "load_project_context",
-        "arguments": {"project_path": TEST_PATH}
-    },
-    "search_project_context": {
-        "name": "search_project_context",
+    "search_context_index": {
+        "name": "search_context_index",
         "arguments": {
             "project_path": TEST_PATH,
             "query": "architecture notes",
             "n_results": 2
+        }
+    },
+    "search_adr_index": {
+        "name": "search_adr_index",
+        "arguments": {
+            "project_path": TEST_PATH,
+            "query": "architecture decisions",
+            "n_results": 2
+        }
+    },
+    "search_session_files": {
+        "name": "search_session_files",
+        "arguments": {
+            "project_path": TEST_PATH,
+            "query": "session summary",
+            "n_results": 2
+        }
+    },
+    "find_latest_session_file": {
+        "name": "find_latest_session_file",
+        "arguments": {"project_path": TEST_PATH}
+    },
+    "load_context_files": {
+        "name": "load_context_files",
+        "arguments": {"project_path": TEST_PATH, "files": ["project.md"]}
+    },
+    "reload_active_context_file": {
+        "name": "reload_active_context_file",
+        "arguments": {
+            "project_path": TEST_PATH,
+            "files": [{"path": "project.md", "known_sha512": "deadbeef"}]
         }
     },
     "save_session_summary": {
@@ -55,12 +82,15 @@ TEST_PAYLOADS = {
     "index_project_context": {
         "name": "index_project_context",
         "arguments": {"project_path": TEST_PATH}
-    },
-    "list_repositories": {
+    }
+}
+
+if args.gh_org:
+    print(f"Listing repositories for organization: {args.gh_org}")
+    TEST_PAYLOADS["list_repositories"] = {
         "name": "list_repositories",
         "arguments": {"org": f"{args.gh_org}"}
     }
-}
 
 async def read_response(reader):
     """Reads a single line/message from the server stdout safely on Windows."""

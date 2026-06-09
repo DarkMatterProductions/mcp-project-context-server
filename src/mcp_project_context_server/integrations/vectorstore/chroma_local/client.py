@@ -32,7 +32,7 @@ class ChromaLocalVectorStoreProvider:
 
     def __init__(self) -> None:
         """Initialize the provider, reading ``CHROMA_DIR`` from the environment."""
-        self._dir: Path = Path(os.getenv("CHROMA_DIR", str(_DEFAULT_DIR)))
+        self._dir: Path = Path(os.getenv("CHROMA_DIR", str(_DEFAULT_DIR))).expanduser()
         self._client: Optional[Any] = None
 
     @property

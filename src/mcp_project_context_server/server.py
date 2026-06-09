@@ -29,11 +29,15 @@ from mcp.types import (
 )
 
 from mcp_project_context_server.tools import (
+    find_latest_session_file,
     index_context,
     list_repositories,
-    load_context,
+    load_context_files,
+    reload_active_context_file,
     save_session,
-    search_context,
+    search_adr_index,
+    search_context_index,
+    search_session_files,
 )
 
 try:
@@ -44,43 +48,158 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+_PROJECT_PATH_PROPERTY = {
+    "type": "string",
+    "description": (
+        "Absolute filesystem path, a short 'owner/repo' identifier, " "or a full https:// repository URL."
+    ),
+}
+
+_SEARCH_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "results": {
+            "type": "array",
+            "description": "Individual matching hits, one per matched chunk.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "file": {"type": "string", "description": ".context/-relative path of the matched file."},
+                    "chunk": {"type": ["integer", "null"], "description": "Chunk index within the file, if known."},
+                    "content": {"type": "string", "description": "The matching chunk's text."},
+                    "distance": {"type": ["number", "null"], "description": "Vector distance to the query, if known."},
+                },
+                "required": ["file", "content"],
+            },
+        },
+        "warning": {
+            "type": "string",
+            "description": "Present only when the index was built with a different embedding provider/model.",
+        },
+    },
+    "required": ["results"],
+}
+
 _TOOL_DEFINITIONS: list[Tool] = [
     Tool(
-        name="load_project_context",
+        name="search_context_index",
         description=(
-            "Load the full project context for the given project path. "
-            "Returns project.md, all ADRs, and the latest session summary. "
-            "You MUST call this at the start of every session."
+            "Semantically search the whole indexed project context. "
+            "Use this first to find which files are relevant to your task, then "
+            "pass their paths to `load_context_files` — do not rely on this tool's "
+            "snippets alone."
         ),
         input_schema={
             "type": "object",
             "properties": {
-                "project_path": {
-                    "type": "string",
-                    "description": (
-                        "Absolute filesystem path, a short 'owner/repo' identifier, "
-                        "or a full https:// repository URL."
-                    ),
-                }
-            },
-            "required": ["project_path"],
-        },
-    ),
-    Tool(
-        name="search_project_context",
-        description=(
-            "Semantically search the indexed project context. "
-            "Use this to find relevant past decisions, architecture notes, "
-            "or code summaries related to your current task."
-        ),
-        input_schema={
-            "type": "object",
-            "properties": {
-                "project_path": {"type": "string"},
+                "project_path": _PROJECT_PATH_PROPERTY,
                 "query": {"type": "string", "description": "Natural language search query"},
                 "n_results": {"type": "integer", "default": 5},
             },
             "required": ["project_path", "query"],
+        },
+        output_schema=_SEARCH_OUTPUT_SCHEMA,
+    ),
+    Tool(
+        name="search_adr_index",
+        description=(
+            "Semantically search only the architecture decision records under "
+            ".context/decisions/. Use this to find ADRs relevant to your current "
+            "task, then pass their paths to `load_context_files` — do not rely on this tool's "
+            "snippets alone. If you need to search across all files in the project, use "
+            "`search_project_files` instead."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project_path": _PROJECT_PATH_PROPERTY,
+                "query": {"type": "string", "description": "Natural language search query"},
+                "n_results": {"type": "integer", "default": 5},
+            },
+            "required": ["project_path", "query"],
+        },
+        output_schema=_SEARCH_OUTPUT_SCHEMA,
+    ),
+    Tool(
+        name="search_session_files",
+        description=(
+            "Semantically search only past session summaries under .context/sessions/. "
+            "Use this to find prior session notes relevant to a topic, then pass their "
+            "paths to `load_context_files` — do not rely on this tool's "
+            "snippets alone."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project_path": _PROJECT_PATH_PROPERTY,
+                "query": {"type": "string", "description": "Natural language search query"},
+                "n_results": {"type": "integer", "default": 5},
+            },
+            "required": ["project_path", "query"],
+        },
+        output_schema=_SEARCH_OUTPUT_SCHEMA,
+    ),
+    Tool(
+        name="find_latest_session_file",
+        description=(
+            "Deterministically find the most recent .context/sessions/*.md file "
+            "(sorted by filename, not semantic relevance). Pass the returned path "
+            "to `load_context_files` to load it — do not rely on this tool's "
+            "snippets alone."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {"project_path": _PROJECT_PATH_PROPERTY},
+            "required": ["project_path"],
+        },
+    ),
+    Tool(
+        name="load_context_files",
+        description=(
+            "Load specific .context/-relative files into the active context. "
+            "Each loaded file is tagged with its path and a SHA-512 hash of its "
+            "contents so `reload_active_context_file` can later detect changes. "
+            "Only pass files you actually need — do not load the whole .context/ tree."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project_path": _PROJECT_PATH_PROPERTY,
+                "files": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of .context/-relative file paths to load, e.g. 'decisions/0007-use-pgvector.md'.",
+                },
+            },
+            "required": ["project_path", "files"],
+        },
+    ),
+    Tool(
+        name="reload_active_context_file",
+        description=(
+            "Check whether files currently held in active context (previously loaded via "
+            "`load_context_files`) have changed on disk, by comparing their known SHA-512 "
+            "hash against the current one. Returns fresh tagged content for changed files, "
+            "a short 'no change' message for unchanged files, and 'not found' for deleted files."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project_path": _PROJECT_PATH_PROPERTY,
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "path": {"type": "string"},
+                            "known_sha512": {"type": "string"},
+                        },
+                        "required": ["path", "known_sha512"],
+                    },
+                    "description": "List of {path, known_sha512} entries for files currently in active context.",
+                },
+            },
+            "required": ["project_path", "files"],
         },
     ),
     Tool(
@@ -134,8 +253,12 @@ _TOOL_DEFINITIONS: list[Tool] = [
 ]
 
 _TOOL_HANDLERS = {
-    "load_project_context": load_context.handle,
-    "search_project_context": search_context.handle,
+    "search_context_index": search_context_index.handle,
+    "search_adr_index": search_adr_index.handle,
+    "search_session_files": search_session_files.handle,
+    "find_latest_session_file": find_latest_session_file.handle,
+    "load_context_files": load_context_files.handle,
+    "reload_active_context_file": reload_active_context_file.handle,
     "save_session_summary": save_session.handle,
     "index_project_context": index_context.handle,
     "list_repositories": list_repositories.handle,

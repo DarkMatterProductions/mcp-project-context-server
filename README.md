@@ -48,6 +48,7 @@
 ## 📋 Table of Contents
 
 - [About the Server](#-about-the-server)
+- [Prerequisites](#-Prerequisites)
 - [Installation](#-installation)
 - [Embedding Providers](#-embedding-providers)
   - [Ollama](#ollama)
@@ -86,6 +87,15 @@
 - [Acknowledgments](#-acknowledgments)
 
 ---
+
+## Prerequisites
+
+Before installing, ensure you have:
+
+- **Python 3.11+** installed
+- **Ollama** running with an embedding model (e.g., `nomic-embed-text`)
+- At least **2GB RAM** available
+- **4.5GB disk space** for ChromaDB (minimum)
 
 ## 🚀 Installation
 
