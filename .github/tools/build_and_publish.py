@@ -198,31 +198,6 @@ def determine_bump(commits: List[str]) -> str:
         subject, body = get_commit_message(commit_hash)
 
         # Extract scope; certain scopes always suppress a release regardless of type
-        scope_match = re.match(r'^\w+!?\(([^)]+)\):', subject)
-        if scope_match and scope_match.group(1) in NO_RELEASE_SCOPES:
-            scope = scope_match.group(1)
-            print(f"Commit scope '{scope}' is a no-release scope. Not building a release.")
-            has_none = True
-            continue
-
-        chore_or_doc_check = re.findall(r'^(docs|test|chore)\(.*\):', subject)
-        if chore_or_doc_check:
-            commit_type = chore_or_doc_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Not building a release.")
-            has_none = True
-
-        patch_bump_check = re.findall(r'^(fix|refactor|adr[s]*)\(.*\):', subject)
-        if patch_bump_check:
-            commit_type = patch_bump_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing patch version.")
-            has_patch = True
-
-        minor_bump_check = re.findall(r'^(feature|license)\(.*\):', subject)
-        if minor_bump_check:
-            commit_type = minor_bump_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing minor version.")
-            has_minor = True
-
         major_bump_check = re.findall(r'^(breaking|rewrite|milestone|deprecate|eos|license|security)\(.*\):', subject)
         if major_bump_check:
             commit_type = major_bump_check[0]
@@ -236,6 +211,31 @@ def determine_bump(commits: List[str]) -> str:
             print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing major version.")
             has_major = True
             break
+
+        minor_bump_check = re.findall(r'^(feature|license)\(.*\):', subject)
+        if minor_bump_check:
+            commit_type = minor_bump_check[0]
+            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing minor version.")
+            has_minor = True
+
+        patch_bump_check = re.findall(r'^(fix|refactor|adr[s]*)\(.*\):', subject)
+        if patch_bump_check:
+            commit_type = patch_bump_check[0]
+            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing patch version.")
+            has_patch = True
+
+        scope_match = re.match(r'^\w+!?\(([^)]+)\):', subject)
+        if scope_match and scope_match.group(1) in NO_RELEASE_SCOPES:
+            scope = scope_match.group(1)
+            print(f"Commit scope '{scope}' is a no-release scope. Not building a release.")
+            has_none = True
+            continue
+
+        chore_or_doc_check = re.findall(r'^(docs|test|chore)\(.*\):', subject)
+        if chore_or_doc_check:
+            commit_type = chore_or_doc_check[0]
+            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Not building a release.")
+            has_none = True
 
     if has_major:
         bump = 'major'
@@ -489,6 +489,11 @@ def main():
     # Step 2: Get commits since last version
     commits = get_commits_since_tag(current_version)
     print(f"Found {len(commits)} new commits\n")
+    if args.verbose:
+        print("Commits since last version:")
+        for commit in commits:
+            print(f"  {commit}")
+        print("\n")
 
     # Step 3: Resolve forced bump type from CLI flags (overrides commit analysis)
     if args.major:
