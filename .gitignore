@@ -19,3 +19,8 @@ build/*
 .claude/settings.local.json
 src/**/_version.py
 AGENT.md
+# Virtual environment
+.venv/
+venv/
+*.pyc
+__pycache__/

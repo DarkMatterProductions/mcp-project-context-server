@@ -45,3 +45,13 @@ doc_id = f"{str(path)}::chunk::{chunk_idx}"
 - **`str(Path(...))`**: Rejected. OS-dependent output. Would produce `\\` separators on Windows, making document IDs non-portable.
 - **`path.replace("\\", "/")`**: Rejected. Fragile — easy to miss at new call sites, and only fixes the backslash issue without providing the other normalization guarantees that `.as_posix()` provides (e.g., consistent drive letter handling on Windows).
 - **Storing only the relative path (not absolute)**: Considered as a complementary measure. Relative paths from the `.context/` directory root would be shorter and more portable. Not yet implemented — would change the document ID format and require a re-index migration.
+
+## Amendment — 2026-06-08 (Phase 4)
+
+project_path now also accepts two additional forms:
+
+- Short identifier: `owner/repo` (resolved against REPO_BASE_URL)
+- Full URL: `https://github.com/owner/repo` (host auto-detected)
+
+Filesystem paths continue to work as before. resolve_project_path() in
+helpers/context.py detects the form and routes accordingly.

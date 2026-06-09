@@ -1,5 +1,6 @@
 """Shared helpers for .context/ directory resolution and file reading."""
 
+import re
 from pathlib import Path
 
 
@@ -33,3 +34,29 @@ def read_context_files(context_dir: Path) -> dict[str, str]:
         md_file.relative_to(context_dir).as_posix(): md_file.read_text(encoding="utf-8")
         for md_file in context_dir.rglob("*.md")
     }
+
+
+_SHORT_IDENTIFIER_RE = re.compile(r"^[\w.-]+/[\w.-]+$")
+
+
+def resolve_project_path(raw: str) -> tuple[str, bool]:
+    """Resolve a raw project path string and determine whether it is remote.
+
+    Returns a ``(resolved_path, is_remote)`` tuple.
+
+    * If *raw* starts with ``http://`` or ``https://``: ``is_remote=True``.
+    * If *raw* matches the ``owner/repo`` short identifier pattern
+      (``^[\\w.-]+/[\\w.-]+$``): ``is_remote=True``.
+    * Otherwise: ``is_remote=False`` (filesystem path — existing behaviour).
+
+    Args:
+        raw: The raw project path or identifier supplied by the caller.
+
+    Returns:
+        A two-element tuple ``(resolved_path, is_remote)``.
+    """
+    if raw.startswith("http://") or raw.startswith("https://"):
+        return raw, True
+    if _SHORT_IDENTIFIER_RE.match(raw):
+        return raw, True
+    return raw, False
