@@ -9,9 +9,9 @@ import re
 import argparse
 import sys
 import platform
+from collections import defaultdict
 from pathlib import Path
-from typing import Tuple, List, Optional
-
+from typing import Tuple, List, Optional, Dict, Any
 
 # Use 'git.exe' on Windows, 'git' on all other platforms
 GIT_CMD = 'git.exe' if platform.system() == 'Windows' else 'git'
@@ -136,7 +136,7 @@ def get_commits_since_tag(tag: str) -> List[str]:
         return []
 
 
-def get_commit_message(commit_hash: str) -> Tuple[str, str]:
+def get_commit_message(commit_hash: str) -> Dict[str, str]:
     """Get commit subject and body."""
     try:
         result = subprocess.run(
@@ -148,42 +148,75 @@ def get_commit_message(commit_hash: str) -> Tuple[str, str]:
         lines = result.stdout.split('\n', 1)
         subject = lines[0] if lines else ''
         body = lines[1] if len(lines) > 1 else ''
-        return subject, body
+        return {
+            "subject": subject,
+            "body": body
+        }
     except subprocess.CalledProcessError as e:
         print(f"Error getting commit message for {commit_hash}: {e}")
         if e.stdout:
             print(f"stdout: {e.stdout.strip()}")
         if e.stderr:
             print(f"stderr: {e.stderr.strip()}")
-        return '', ''
+        return {
+            "subject": "",
+            "body": ""
+        }
     except Exception as e:
         print(f"Error getting commit message for {commit_hash}: {e}")
-        return '', ''
+        return {
+            "subject": "",
+            "body": ""
+        }
 
 
 COMMIT_TYPES = {
-    'breaking':  'A backwards incompatible change to the API or Tools',
-    'rewrite':   'Complete rewrites / architectural overhauls',
-    'milestone': 'Significant feature milestones / stable releases',
-    'deprecate': 'Major deprecation cleanups',
-    'eos':       'End of support for a runtime/platform',
-    'license':   'License changes',
-    'security':  'Security-mandated incompatible changes',
-    'feature':   'A new feature or capability',
-    'fix':       'A bug fix',
-    'test':      'Adding or updating tests',
-    'docs':      'Documentation changes only',
-    'refactor':  'Code restructuring with no behaviour change',
-    'chore':     'Build system, tooling, or dependency changes',
-    'adrs':      'Adding or updating an Architecture Decision Record',
-    'adr':       'Adding or updating an Architecture Decision Record',
+    'breaking': {'name': 'breaking', 'description': 'A backwards incompatible change to the API or Tools', 'bump_type': 'major'},
+    'rewrite': {'name': 'rewrite', 'description': 'Complete rewrites / architectural overhauls', 'bump_type': 'major'},
+    'milestone': {'name': 'milestone', 'description': 'Significant feature milestones / stable releases', 'bump_type': 'major'},
+    'deprecate': {'name': 'deprecate', 'description': 'Major deprecation cleanups', 'bump_type': 'major'},
+    'eos': {'name': 'eos', 'description': 'End of support for a runtime/platform', 'bump_type': 'major'},
+    'license': {'name': 'license', 'description': 'License changes', 'bump_type': 'major'},
+    'security': {'name': 'security', 'description': 'Security-mandated incompatible changes', 'bump_type': 'major'},
+    'feature': {'name': 'feature', 'description': 'A new feature or capability', 'bump_type': 'minor'},
+    'fix': {'name': 'fix', 'description': 'A bug fix', 'bump_type': 'minor'},
+    'test': {'name': 'test', 'description': 'Adding or updating tests', 'bump_type': 'none'},
+    'docs': {'name': 'docs', 'description': 'Documentation changes only', 'bump_type': 'none'},
+    'refactor': {'name': 'refactor', 'description': 'Code restructuring with no behaviour change', 'bump_type': 'minor'},
+    'chore': {'name': 'chore', 'description': 'Build system, tooling, or dependency changes', 'bump_type': 'none'},
+    'adrs': {'name': 'adrs', 'description': 'Adding or updating an Architecture Decision Record', 'bump_type': 'minor'},
 }
 
-# Scopes that suppress version bumping regardless of commit type.
-NO_RELEASE_SCOPES = {'ci', 'tools'}
+
+INCREMENT_BUMP_TYPE_MESSAGES = {
+    'major': 'Incrementing major version.',
+    'minor': 'Incrementing minor version.',
+    'patch': 'Incrementing patch version.',
+    'none': 'No version change.',
+}
 
 
-def determine_bump(commits: List[str]) -> str:
+RELEASE_OVERRIDE_SCOPES = {
+    'ci': {'name': 'ci', 'description': 'Changes to CI configuration files and scripts', 'bump_type': 'none'},
+    'tools': {'name': 'tools', 'description': 'Changes to build, release, or dependency tools', 'bump_type': 'none'},
+    'packaging': {'name': 'packaging', 'description': 'Changes to packaging configuration files and scripts', 'bump_type': 'none'},
+}
+
+
+def key_id_lookup(_type_scope_match: str, mapping: dict) -> dict[str, str | bool]:
+    __type_id = _type_scope_match.group("type") if _type_scope_match else None
+    __force_major = _type_scope_match.group("force_major") if _type_scope_match else False
+    __scope_skip_version = _type_scope_match.group("scope") if _type_scope_match else False
+    key_ids = [key_id for key_id in mapping.keys() if key_id is not None and (key_id.startswith(__type_id) if __type_id else False)]
+    for key_id in key_ids:
+        type_id = mapping[key_id].copy()
+        type_id["force_major"] = __force_major
+        type_id["skip_version"] = __scope_skip_version
+        return type_id
+    return {'name': 'invalid', 'description': 'Invalid Type', 'bump_type': 'invalid', 'force_major': False, 'skip_version': False}
+
+
+def determine_bump(commits: List[str], verbose: bool = False, debug: bool=False) -> str:
     """
     Determine the semantic version bump based on commits.
     Returns 'major', 'minor', 'patch', or 'none' when all commits are docs/test/chore-only
@@ -193,89 +226,94 @@ def determine_bump(commits: List[str]) -> str:
     has_minor = False
     has_patch = False
     has_none = False
+    has_invalid = False
+    type_id_entry = lambda typescope_match: key_id_lookup(typescope_match, COMMIT_TYPES)
+    commit_ids: defaultdict[Any, dict[str, str | Dict[str, str]]] = defaultdict(dict)
 
     for commit_hash in commits:
-        subject, body = get_commit_message(commit_hash)
+        commit_ids[commit_hash] = get_commit_message(commit_hash)
+        commit_ids[commit_hash]["hash"] = commit_hash
+        commit_ids[commit_hash]["short_hash"] = commit_hash[:7]
+        type_scope_match = re.match(r'(?P<type>\w+)(?P<force_major>!?)\((?P<scope>\w+)\):[ ]+', commit_ids[commit_hash]["subject"])
+        commit_ids[commit_hash]["type_id"] = type_id_entry(type_scope_match)
 
-        # Extract scope; certain scopes always suppress a release regardless of type
-        major_bump_check = re.findall(r'^(breaking|rewrite|milestone|deprecate|eos|license|security)\(.*\):', subject)
-        if major_bump_check:
-            commit_type = major_bump_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing major version.")
+        if commit_ids[commit_hash]["type_id"] is None:
+            raise ValueError(f"\"type_id_entry()\" should not have returned None for commit {commit_ids[commit_hash]['hash']} with subject: {commit_ids[commit_hash]['subject']}")
+        elif commit_ids[commit_hash]["type_id"]["force_major"] and not commit_ids[commit_hash]["type_id"]["skip_version"]:
             has_major = True
-            break
-
-        major_bump_check = re.findall(r'^(feature|fix)!\(.*\):', subject)
-        if major_bump_check:
-            commit_type = major_bump_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing major version.")
+            print("** FORCE MAJOR OVERRIDE ENABLED **")
+            print("  Skipping version bump analysis.")
+            print()
+        elif commit_ids[commit_hash]["type_id"]["bump_type"] == "major":
             has_major = True
-            break
-
-        minor_bump_check = re.findall(r'^(feature|license)\(.*\):', subject)
-        if minor_bump_check:
-            commit_type = minor_bump_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing minor version.")
+        elif commit_ids[commit_hash]["type_id"]["bump_type"] == "minor":
             has_minor = True
-
-        patch_bump_check = re.findall(r'^(fix|refactor|adr[s]*)\(.*\):', subject)
-        if patch_bump_check:
-            commit_type = patch_bump_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing patch version.")
+        elif commit_ids[commit_hash]["type_id"]["bump_type"] == "patch":
             has_patch = True
-
-        scope_match = re.match(r'^\w+!?\(([^)]+)\):', subject)
-        if scope_match and scope_match.group(1) in NO_RELEASE_SCOPES:
-            scope = scope_match.group(1)
-            print(f"Commit scope '{scope}' is a no-release scope. Not building a release.")
+        elif commit_ids[commit_hash]["type_id"]["bump_type"] == "none" or commit_ids[commit_hash]["type_id"]["skip_version"]:
             has_none = True
-            continue
+        elif commit_ids[commit_hash]["type_id"]["bump_type"] == "invalid":
+            has_invalid = True
 
-        chore_or_doc_check = re.findall(r'^(docs|test|chore)\(.*\):', subject)
-        if chore_or_doc_check:
-            commit_type = chore_or_doc_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Not building a release.")
-            has_none = True
 
-    if has_major:
-        bump = 'major'
+    for commit_data in commit_ids.values():
+        if debug:
+            if commit_data["type_id"]:
+                print(f"Commit {commit_data['hash']}: ({commit_data['type_id']['name']}: {commit_data['subject']})")
+
+    if not any([has_major, has_minor, has_patch, has_none]) or has_invalid:
+        invalid_commits = [commit_ids[commit_hash] for commit_hash in commits if commit_ids[commit_hash]["type_id"] is None or commit_ids[commit_hash]["type_id"]["bump_type"] == "invalid"]
+        invalid_count = len(invalid_commits)
+        if invalid_count > 0:
+            print("\nInvalid commit details -")
+            for commit_hash in invalid_commits:
+                if debug:
+                    print(f"    Commit {commit_hash['hash']} has no recognized type in subject: '{commit_hash['subject']}'")
+            print(f"Unrecognized types identified in {invalid_count} commit(s) subject line(s). Exiting process.")
+        else:
+            print("\nNo valid commits found. Exiting process.")
+        sys.exit(-1)
+    elif has_major:
+        bump = "major"
     elif has_minor:
-        bump = 'minor'
+        bump = "minor"
     elif has_patch:
-        bump = 'patch'
+        bump = "patch"
     elif has_none:
-        bump = 'none'
+        bump = "none"
     else:
-        raise ValueError(f"No recognised commit type found in {len(commits)} commit(s). Cannot determine bump type.")
+        raise ValueError(f"Cannot determine bump type.")
 
-    print(f"Determined bump type: {bump}")
+
+    print()
+    print(f"Determined bump type: {bump} ({INCREMENT_BUMP_TYPE_MESSAGES[bump]})")
     return bump
 
 def increment_version(version: str, bump: str) -> Optional[str]:
     """Increment the version based on bump type."""
     major, minor, patch = map(int, version.split('.'))
 
-    if bump == 'major':
+    if bump == "major":
         major += 1
         minor = 0
         patch = 0
-    elif bump == 'minor':
+    elif bump == "minor":
         minor += 1
         patch = 0
-    elif bump == 'patch':
+    elif bump == "patch":
         patch += 1
-    elif bump == 'none':
+    elif bump == "none":
         pass  # No version change
     else:
         raise ValueError(f"Unknown Increment Type: {bump}")
 
-    if bump == 'none':
+    if bump == "none":
         return None
     else:
         return f'{major}.{minor}.{patch}'
 
 
-def determine_new_version(current_version: str, commits: List[str], force_bump: Optional[str] = None) -> Tuple[Optional[str], str]:
+def determine_new_version(current_version: str, commits: List[str], force_bump: Optional[str] = None, verbose: bool = False, debug: bool = False) -> Tuple[Optional[str], str]:
     """
     Determine the new version based on current version and commits.
 
@@ -284,6 +322,8 @@ def determine_new_version(current_version: str, commits: List[str], force_bump: 
         commits: List of commit hashes since the last version tag.
         force_bump: Optional override for bump type ('major', 'minor', or 'patch').
                     When provided, skips commit analysis and uses this bump type directly.
+        verbose: Whether to print verbose output.
+        debug: Whether to print debug output.
 
     Returns:
         A tuple of (new_version, bump_used). new_version is None when there is nothing
@@ -292,11 +332,11 @@ def determine_new_version(current_version: str, commits: List[str], force_bump: 
     """
     if not commits and not force_bump:
         print("No new commits since last version")
-        return None, 'none'
+        return None, "none"
 
     if current_version == '0.0.0':
         # Apply forced bump from initial version, or default to 0.0.1
-        bump = force_bump or 'patch'
+        bump = force_bump or "patch"
         first_version = increment_version(current_version, bump)
         if force_bump:
             print(f"No previous version found. Setting first version to {first_version} (forced {force_bump})")
@@ -304,16 +344,16 @@ def determine_new_version(current_version: str, commits: List[str], force_bump: 
             print(f"No previous version found. Setting first version to {first_version}")
         return first_version, bump
 
-    # Use forced bump if provided, otherwise analyse commits
+    # Use forced bump if provided, otherwise analyze commits
     if force_bump:
         bump = force_bump
         print(f"Using forced bump type: {bump}")
     else:
-        bump = determine_bump(commits)
+        bump = determine_bump(commits, verbose, debug)
 
-    if bump == 'none':
+    if bump == "none":
         print("No version-bumping commits found. Skipping release.")
-        return None, 'none'
+        return None, "none"
 
     new_version = increment_version(current_version, bump)
     return new_version, bump
@@ -325,7 +365,7 @@ def build_artifacts(new_version: str, verbose: bool = False) -> List[Path]:
 
     # Run build, capturing stdout/stderr and optionally echoing to the console
     process = subprocess.Popen(
-        [sys.executable, '-m', 'build'],
+        [sys.executable, "-m", "build"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         env={
@@ -376,8 +416,8 @@ def build_artifacts(new_version: str, verbose: bool = False) -> List[Path]:
 def create_git_tag(version: str):
     """Create and push a git tag for the new version."""
     try:
-        subprocess.run([GIT_CMD, 'tag', version], check=True)
-        subprocess.run([GIT_CMD, 'push', 'origin', version], check=True)
+        subprocess.run([GIT_CMD, "tag", version], check=True)
+        subprocess.run([GIT_CMD, "push", "origin", version], check=True)
         print(f"Created and pushed git tag: {version}")
     except subprocess.CalledProcessError as e:
         print(f"Error creating git tag: {e}")
@@ -419,7 +459,7 @@ def create_github_release(version: str, artifacts: List, dry_run: bool = False):
 
     process = subprocess.Popen(
         [
-            'gh', 'release', 'create', version,
+            "gh", "release", "create", version,
             *[f"./dist/{str(a)}" for a in artifacts],
             '--title', f'{version}',
             '--notes', f'Automated release for {version}'
@@ -445,25 +485,27 @@ def create_github_release(version: str, artifacts: List, dry_run: bool = False):
 
 def main():
     """Main versioning workflow."""
-    # Setup argument parser
+    # Set up argument parser
     parser = argparse.ArgumentParser(
         description='Semantic Versioning Script for Git Repositories'
     )
     version_increment = parser.add_mutually_exclusive_group(required=False)
-    version_increment.add_argument('--major', action='store_true',
+    version_increment.add_argument('--major', action="store_true",
                                    help='Increment the major version (X.0.0)')
-    version_increment.add_argument('--minor', action='store_true',
+    version_increment.add_argument('--minor', action="store_true",
                                    help='Increment the minor version (X.Y.0)')
-    version_increment.add_argument('--patch', action='store_true',
+    version_increment.add_argument('--patch', action="store_true",
                                    help='Increment the patch version (X.Y.Z)')
-    parser.add_argument('--build', action='store_true',
+    parser.add_argument('--build', action="store_true",
                         help='Build distribution artifacts using python -m build')
-    parser.add_argument('--publish', action='store_true',
+    parser.add_argument('--publish', action="store_true",
                         help='Publish a GitHub release with built artifacts (requires --build)')
-    parser.add_argument('--dry-run', action='store_true',
+    parser.add_argument('--dry-run', action="store_true",
                         help='Perform a dry run without creating tags, builds, or releases')
-    parser.add_argument('--verbose', action='store_true',
-                        help='Stream build output to the console during python -m build')
+    parser.add_argument('--verbose', action="store_true",
+                        help='Enable verbose output for expanded console output')
+    parser.add_argument('--debug', action="store_true",
+                        help='Enable debug output')
 
     args = parser.parse_args()
 
@@ -489,29 +531,24 @@ def main():
     # Step 2: Get commits since last version
     commits = get_commits_since_tag(current_version)
     print(f"Found {len(commits)} new commits\n")
-    if args.verbose:
-        print("Commits since last version:")
-        for commit in commits:
-            print(f"  {commit}")
-        print("\n")
 
     # Step 3: Resolve forced bump type from CLI flags (overrides commit analysis)
     if args.major:
-        force_bump = 'major'
+        force_bump = "major"
     elif args.minor:
-        force_bump = 'minor'
+        force_bump = "minor"
     elif args.patch:
-        force_bump = 'patch'
+        force_bump = "patch"
     else:
         force_bump = None
 
     # Step 4: Determine new base version
-    new_version, bump_used = determine_new_version(current_version, commits, force_bump)
+    new_version, bump_used = determine_new_version(current_version, commits, force_bump, args.verbose, args.debug)
 
     # Output version and bump type for GitHub Actions
-    github_output = os.environ.get('GITHUB_OUTPUT', None)
+    github_output = os.environ.get("GITHUB_OUTPUT", None)
     if github_output:
-        with open(github_output, 'a') as f:
+        with open(github_output, "a") as f:
             f.write(f'version={new_version}\n')
             f.write(f'bump={bump_used}\n')
 
