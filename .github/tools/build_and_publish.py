@@ -189,10 +189,10 @@ COMMIT_TYPES = {
 
 
 INCREMENT_BUMP_TYPE_MESSAGES = {
-    'major': 'Incrementing major version.',
-    'minor': 'Incrementing minor version.',
-    'patch': 'Incrementing patch version.',
-    'none': 'No version change.',
+    'major': 'Incrementing major version',
+    'minor': 'Incrementing minor version',
+    'patch': 'Incrementing patch versio.',
+    'none': 'No release',
 }
 
 
@@ -284,9 +284,9 @@ def determine_bump(commits: List[str], verbose: bool = False, debug: bool=False)
     else:
         raise ValueError(f"Cannot determine bump type.")
 
-
-    print()
-    print(f"Determined bump type: {bump} ({INCREMENT_BUMP_TYPE_MESSAGES[bump]})")
+    if debug:
+        print(f"Determined bump type: {bump} ({INCREMENT_BUMP_TYPE_MESSAGES[bump]})")
+        print()
     return bump
 
 def increment_version(version: str, bump: str) -> Optional[str]:
@@ -350,10 +350,6 @@ def determine_new_version(current_version: str, commits: List[str], force_bump: 
         print(f"Using forced bump type: {bump}")
     else:
         bump = determine_bump(commits, verbose, debug)
-
-    if bump == "none":
-        print("No version-bumping commits found. Skipping release.")
-        return None, "none"
 
     new_version = increment_version(current_version, bump)
     return new_version, bump
