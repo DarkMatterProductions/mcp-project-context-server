@@ -203,7 +203,7 @@ RELEASE_OVERRIDE_SCOPES = {
 }
 
 
-def key_id_lookup(_type_scope_match: str, mapping: dict) -> dict[str, str | bool]:
+def key_id_lookup(_type_scope_match: re.Match, mapping: dict) -> dict[str, str | bool]:
     __type_id = _type_scope_match.group("type") if _type_scope_match else None
     __force_major = _type_scope_match.group("force_major") if _type_scope_match else False
     __scope_skip_version = _type_scope_match.group("scope") if _type_scope_match else False
