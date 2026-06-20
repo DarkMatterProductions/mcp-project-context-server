@@ -1,28 +1,27 @@
-"""Ollama client configuration and raw embedding API calls (sync + async)."""
+"""Ollama client — DEPRECATED.
 
-import os
+This module has been superseded by ``integrations.embeddings``.
+Calling any function here will raise a ``RuntimeError``.
+"""
 
-import ollama
-
-OLLAMA_BASE_URL: str = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-EMBED_MODEL: str = os.getenv("EMBED_MODEL", "nomic-embed-text")
-
-
-def get_client() -> ollama.Client:
-    return ollama.Client(host=OLLAMA_BASE_URL)
-
-
-def get_async_client() -> ollama.AsyncClient:
-    return ollama.AsyncClient(host=OLLAMA_BASE_URL)
+_DEPRECATION_MSG = (
+    "integrations.ollama is deprecated and no longer supported.\n"
+    "Use integrations.embeddings.registry.get_embedding_provider() instead.\n"
+    "Set the EMBED_PROVIDER environment variable to 'ollama'."
+)
 
 
-def get_embedding(text: str) -> list[float]:
-    """Call the Ollama embed endpoint and return the embedding vector."""
-    response = get_client().embed(model=EMBED_MODEL, input=text)
-    return list(response.embeddings[0])
+def get_client():  # type: ignore[return]
+    raise RuntimeError(_DEPRECATION_MSG)
 
 
-async def get_embedding_async(text: str, client: ollama.AsyncClient) -> list[float]:
-    """Async: Call the Ollama embed endpoint and return the embedding vector."""
-    response = await client.embed(model=EMBED_MODEL, input=text)
-    return list(response.embeddings[0])
+def get_async_client():  # type: ignore[return]
+    raise RuntimeError(_DEPRECATION_MSG)
+
+
+def get_embedding(text: str) -> list[float]:  # type: ignore[return]
+    raise RuntimeError(_DEPRECATION_MSG)
+
+
+async def get_embedding_async(text: str, client) -> list[float]:  # type: ignore[return]
+    raise RuntimeError(_DEPRECATION_MSG)
