@@ -13,6 +13,8 @@ from mcp import StdioServerParameters
 _KNOWN_INTERFERING_ENV_VARS = ("PROJECT_PATH",)
 _SRC_DIR = str(Path(__file__).parent.parent.parent / "src")
 
+ALL_PROVIDERS = ["ollama", "voyage", "openai", "cohere", "google", "vertexai"]
+
 
 class MCPIntegrationBase:
     """Helpers shared across all MCP server integration test classes.
