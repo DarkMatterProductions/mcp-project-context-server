@@ -2,12 +2,27 @@
 
 The "no .context/ directory" error path is exercised without any external
 services.  All remaining tests require a running ChromaDB instance and an
-embedding provider (Ollama by default) and are marked
-``pytest.mark.external_services``.
+embedding provider and are marked ``pytest.mark.external_services``.
+
+External-service tests are parametrized over every supported embedding
+provider.  A provider is skipped when its opt-out environment variable is set
+to a non-empty value:
+
+    SKIP_EMBED_PROVIDER_OLLAMA=1
+    SKIP_EMBED_PROVIDER_VOYAGE=1
+    SKIP_EMBED_PROVIDER_OPENAI=1
+    SKIP_EMBED_PROVIDER_COHERE=1
+    SKIP_EMBED_PROVIDER_GOOGLE=1
+    SKIP_EMBED_PROVIDER_GOOGLE_VERTEX=1
+
+If the variable is *not* set the test runs — and fails if the provider is
+unreachable or not configured.
 
 Run only tests that require no external services:
     pytest tests/integration/test_index_context.py -v -m "not external_services"
 """
+import os
+
 import pytest
 
 from tests.integration.base import MCPIntegrationBase
@@ -15,6 +30,16 @@ from tests.integration.base import MCPIntegrationBase
 pytestmark = pytest.mark.asyncio
 
 _TOOL = "index_project_context"
+
+_ALL_PROVIDERS = ["ollama", "voyage", "openai", "cohere", "google", "google-vertex"]
+
+
+def _provider_param(provider_name: str) -> pytest.param:
+    """Return a pytest.param for *provider_name*, marked skip when opted out."""
+    env_key = f"SKIP_EMBED_PROVIDER_{provider_name.upper().replace('-', '_')}"
+    if os.getenv(env_key):
+        return pytest.param(provider_name, marks=pytest.mark.skip(reason=f"{env_key} is set"))
+    return pytest.param(provider_name)
 
 
 class TestIndexContextErrors(MCPIntegrationBase):
@@ -42,38 +67,41 @@ class TestIndexContextErrors(MCPIntegrationBase):
 
 
 @pytest.mark.external_services
+@pytest.mark.parametrize("embed_provider", [_provider_param(p) for p in _ALL_PROVIDERS])
 class TestIndexContextWithExternalServices(MCPIntegrationBase):
-    """Tests that require a running ChromaDB and embedding provider (Ollama by default).
+    """Tests that require a running ChromaDB and an embedding provider.
 
-    Skip with: pytest -m "not external_services"
+    Parametrized over all supported providers.  Set
+    ``SKIP_EMBED_PROVIDER_<NAME>=1`` to skip a specific provider.
+    Skip all with: pytest -m "not external_services"
     """
 
-    async def test_empty_context_dir_indexes_zero_chunks(self, make_mcp_session, tmp_path):
+    async def test_empty_context_dir_indexes_zero_chunks(self, make_mcp_session, tmp_path, embed_provider):
         project_dir = self.make_project(tmp_path)
 
-        async with make_mcp_session() as session:
+        async with make_mcp_session({"EMBED_PROVIDER": embed_provider}) as session:
             result = await session.call_tool(_TOOL, {"project_path": str(project_dir)})
 
         text = self.assert_tool_not_error(result)
         assert "Indexed 0 chunks" in text
 
-    async def test_project_md_is_indexed_and_summary_returned(self, make_mcp_session, tmp_path):
+    async def test_project_md_is_indexed_and_summary_returned(self, make_mcp_session, tmp_path, embed_provider):
         project_dir = self.make_project(tmp_path, project_md="# Indexed Project\n\nSome content here.")
 
-        async with make_mcp_session() as session:
+        async with make_mcp_session({"EMBED_PROVIDER": embed_provider}) as session:
             result = await session.call_tool(_TOOL, {"project_path": str(project_dir)})
 
         text = self.assert_tool_not_error(result)
         assert "Indexed" in text
         assert "chunks" in text
 
-    async def test_index_then_search_returns_results(self, make_mcp_session, tmp_path):
+    async def test_index_then_search_returns_results(self, make_mcp_session, tmp_path, embed_provider):
         project_dir = self.make_project(
             tmp_path,
             project_md="# Chromadb Decision\n\nWe chose ChromaDB because it is embeddable.",
         )
 
-        async with make_mcp_session() as session:
+        async with make_mcp_session({"EMBED_PROVIDER": embed_provider}) as session:
             await session.call_tool(_TOOL, {"project_path": str(project_dir)})
             search_result = await session.call_tool(
                 "search_project_context",
