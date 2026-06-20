@@ -1,33 +1,22 @@
-"""Embedding generation for the indexing pipeline (sync + async).
+"""Ollama-specific embedder — DEPRECATED.
 
-The functions here are the single access point for embedding within the indexing
-pipeline.  They deliberately accept only standard Python types so that no
-provider-specific imports (ollama, openai, etc.) bleed into this layer.
-The caller is responsible for passing a client object whose interface matches
-what the underlying provider expects — provider coupling lives in
-integrations/*/client.py, not here.
+This module has been superseded by ``indexing.embedder``, which is provider-agnostic
+and selects the embedding backend via the ``EMBED_PROVIDER`` environment variable.
+Calling any function here will raise a ``RuntimeError``.
 """
 
 from typing import Any
 
-from mcp_project_context_server.integrations.ollama.client import (
-    get_embedding,
-    get_embedding_async,
+_DEPRECATION_MSG = (
+    "indexing.ollama.embedder is deprecated and no longer supported.\n"
+    "Use mcp_project_context_server.indexing.embedder.embed_chunk() instead.\n"
+    "Set the EMBED_PROVIDER environment variable to configure the embedding backend."
 )
 
 
-def embed_chunk(text: str) -> list[float]:
-    """Generate an embedding vector for a single text chunk."""
-    return get_embedding(text)
+def embed_chunk(text: str) -> list[float]:  # type: ignore[return]
+    raise RuntimeError(_DEPRECATION_MSG)
 
 
-async def embed_chunk_async(text: str, client: Any) -> list[float]:
-    """Async: Generate an embedding vector for a single text chunk.
-
-    Args:
-        text:   The text to embed.
-        client: An async client object whose interface is resolved by the
-                underlying provider implementation.  Typed as ``Any`` so that
-                this module remains free of provider-specific imports.
-    """
-    return await get_embedding_async(text, client)
+async def embed_chunk_async(text: str, client: Any) -> list[float]:  # type: ignore[return]
+    raise RuntimeError(_DEPRECATION_MSG)
