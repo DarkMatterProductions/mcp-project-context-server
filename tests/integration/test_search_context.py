@@ -29,13 +29,11 @@ import os
 
 import pytest
 
-from tests.integration.base import MCPIntegrationBase
+from tests.integration.base import MCPIntegrationBase, ALL_PROVIDERS
 
 pytestmark = pytest.mark.asyncio
 
 _TOOL = "search_project_context"
-
-_ALL_PROVIDERS = ["ollama", "voyage", "openai", "cohere", "google", "google-vertex"]
 
 
 def _provider_param(provider_name: str) -> pytest.param:
@@ -77,7 +75,7 @@ class TestSearchContextErrors(MCPIntegrationBase):
 
 
 @pytest.mark.external_services
-@pytest.mark.parametrize("embed_provider", [_provider_param(p) for p in _ALL_PROVIDERS])
+@pytest.mark.parametrize("embed_provider", [_provider_param(p) for p in ALL_PROVIDERS])
 class TestSearchContextWithVectorStore(MCPIntegrationBase):
     """Tests that require a running ChromaDB and an embedding provider.
 
