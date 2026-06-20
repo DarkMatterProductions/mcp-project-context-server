@@ -7,14 +7,133 @@ import subprocess
 import os
 import re
 import argparse
+import shutil
 import sys
 import platform
+import tarfile
+import tempfile
+import zipfile
 from collections import defaultdict
 from pathlib import Path
 from typing import Tuple, List, Optional, Dict, Any
 
-# Use 'git.exe' on Windows, 'git' on all other platforms
+import requests
+
+# ── Constants ────────────────────────────────────────────────────────────────
+GH_CMD = "gh.exe" if platform.system() == "Windows" else "gh"
+GH_API_URL = "https://api.github.com/repos/cli/cli/releases/latest"
+INSTALL_DIR = Path.home() / "bin"
 GIT_CMD = 'git.exe' if platform.system() == 'Windows' else 'git'
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+def get_installed_version() -> str | None:
+    """Return the installed gh version string (e.g. '2.50.0'), or None."""
+    gh_path = shutil.which(GH_CMD) or INSTALL_DIR / GH_CMD
+    try:
+        result = subprocess.run(
+            [str(gh_path), "--version"],
+            capture_output=True, text=True, check=True
+        )
+        # Output: "gh version 2.50.0 (2024-05-01)"
+        return result.stdout.split()[2]
+    except (subprocess.CalledProcessError, FileNotFoundError, IndexError):
+        return None
+
+
+def get_latest_release() -> tuple[str, str]:
+    """Return (version, download_url) for the current platform from the GitHub API."""
+    system = platform.system()   # 'Linux', 'Darwin', 'Windows'
+    machine = platform.machine() # 'x86_64', 'arm64', 'AMD64', etc.
+
+    # Normalise OS label to match GitHub asset naming
+    os_map = {"Linux": "linux", "Darwin": "macOS", "Windows": "windows"}
+    os_label = os_map.get(system, system.lower())
+
+    # Normalise arch label
+    arch_map = {"x86_64": "amd64", "AMD64": "amd64", "aarch64": "arm64", "arm64": "arm64"}
+    arch_label = arch_map.get(machine, machine.lower())
+
+    response = requests.get(GH_API_URL, timeout=10)
+    response.raise_for_status()
+    data = response.json()
+
+    version = data["tag_name"].lstrip("v")  # e.g. '2.50.0'
+
+    # Asset names look like: gh_2.50.0_linux_amd64.tar.gz / gh_2.50.0_windows_amd64.zip
+    ext = "zip" if system == "Windows" else "tar.gz"
+    expected_name = f"gh_{version}_{os_label}_{arch_label}.{ext}"
+
+    for asset in data["assets"]:
+        if asset["name"] == expected_name:
+            return version, asset["browser_download_url"]
+
+    raise RuntimeError(
+        f"No matching asset found for {os_label}/{arch_label}. "
+        f"Looked for: {expected_name}"
+    )
+
+
+def version_tuple(v: str) -> tuple[int, ...]:
+    return tuple(int(x) for x in v.split("."))
+
+
+def download_and_install(url: str, version: str, dry_run: bool = False) -> None:
+    """Download the release archive and extract the gh binary to INSTALL_DIR."""
+    system = platform.system()
+    if dry_run:
+        print(f"Dry run mode. Would download and install gh {version} from {url} ...")
+        return
+
+    INSTALL_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"  Downloading from {url} ...")
+    response = requests.get(url, stream=True, timeout=60)
+    response.raise_for_status()
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        archive_path = tmp_path / ("gh_release.zip" if system == "Windows" else "gh_release.tar.gz")
+
+        with open(archive_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+        # Extract
+        if system == "Windows":
+            with zipfile.ZipFile(archive_path) as zf:
+                zf.extractall(tmp_path)
+        else:
+            with tarfile.open(archive_path, "r:gz") as tf:
+                tf.extractall(tmp_path)
+
+        # Find the binary inside the extracted tree
+        binary = next(tmp_path.rglob(GH_CMD), None)
+        if binary is None:
+            raise FileNotFoundError(f"Could not locate '{GH_CMD}' in downloaded archive.")
+
+        dest = INSTALL_DIR / GH_CMD
+        shutil.copy2(binary, dest)
+        dest.chmod(0o755)  # no-op on Windows, harmless
+        print(f"  Installed gh {version} → {dest}")
+
+
+def ensure_gh_cli(dry_run: bool = False) -> None:
+    print("Checking GitHub CLI (gh) ...")
+
+    latest_version, download_url = get_latest_release()
+    print(f"  Latest release : v{latest_version}")
+
+    installed_version = get_installed_version()
+
+    if installed_version is None:
+        print("  gh not found. Installing ...")
+        download_and_install(download_url, latest_version, dry_run)
+    elif version_tuple(installed_version) < version_tuple(latest_version):
+        print(f"  Installed version v{installed_version} is outdated. Upgrading ...")
+        download_and_install(download_url, latest_version, dry_run)
+    else:
+        print(f"  gh v{installed_version} is up to date. Nothing to do.")
 
 
 def get_distance_from_main() -> int:
@@ -192,7 +311,7 @@ INCREMENT_BUMP_TYPE_MESSAGES = {
     'major': 'Incrementing major version',
     'minor': 'Incrementing minor version',
     'patch': 'Incrementing patch versio.',
-    'none': 'No release',
+    'none': 'Skip building and publishing artifacts',
 }
 
 
@@ -283,10 +402,6 @@ def determine_bump(commits: List[str], verbose: bool = False, debug: bool=False)
         bump = "none"
     else:
         raise ValueError(f"Cannot determine bump type.")
-
-    if debug:
-        print(f"Determined bump type: {bump} ({INCREMENT_BUMP_TYPE_MESSAGES[bump]})")
-        print()
     return bump
 
 def increment_version(version: str, bump: str) -> Optional[str]:
@@ -308,14 +423,16 @@ def increment_version(version: str, bump: str) -> Optional[str]:
         raise ValueError(f"Unknown Increment Type: {bump}")
 
     if bump == "none":
-        return None
+        return version
     else:
         return f'{major}.{minor}.{patch}'
 
 
-def determine_new_version(current_version: str, commits: List[str], force_bump: Optional[str] = None, verbose: bool = False, debug: bool = False) -> Tuple[Optional[str], str]:
+def determine_new_version(
+        current_version: str, commits: List[str], force_bump: Optional[str] = None,
+        verbose: bool = False, debug: bool = False) -> Tuple[Optional[str], str]:
     """
-    Determine the new version based on current version and commits.
+    Determine the new version based on the current version and commits.
 
     Args:
         current_version: The current semantic version string (e.g. '1.2.3').
@@ -447,6 +564,7 @@ def get_repository_name():
 
 def create_github_release(version: str, artifacts: List, dry_run: bool = False):
     """Create a GitHub release with the provided artifacts."""
+    ensure_gh_cli(dry_run)
     if dry_run:
         print(f"[DRY-RUN] Would create GitHub release for {version} with artifacts:")
         for artifact in artifacts:
@@ -494,6 +612,8 @@ def main():
                                    help='Increment the patch version (X.Y.Z)')
     parser.add_argument('--build', action="store_true",
                         help='Build distribution artifacts using python -m build')
+    parser.add_argument('--rebuild', action="store_true",
+                        help='Force rebuild latest tag artifacts (Overrides --build)')
     parser.add_argument('--publish', action="store_true",
                         help='Publish a GitHub release with built artifacts (requires --build)')
     parser.add_argument('--dry-run', action="store_true",
@@ -505,12 +625,16 @@ def main():
 
     args = parser.parse_args()
 
+    if args.rebuild:
+        args.build = True
+
     if args.publish and not args.build:
         print("Error: --publish requires --build")
         sys.exit(1)
 
     print("=== Semantic Versioning Script ===\n")
 
+    # Check if dry-run mode is active
     # Check if dry-run mode is active
     if args.dry_run:
         print("🔍 DRY-RUN MODE ACTIVE - No tags, releases, or artifacts will be created\n")
@@ -526,7 +650,6 @@ def main():
 
     # Step 2: Get commits since last version
     commits = get_commits_since_tag(current_version)
-    print(f"Found {len(commits)} new commits\n")
 
     # Step 3: Resolve forced bump type from CLI flags (overrides commit analysis)
     if args.major:
@@ -540,6 +663,13 @@ def main():
 
     # Step 4: Determine new base version
     new_version, bump_used = determine_new_version(current_version, commits, force_bump, args.verbose, args.debug)
+    if args.rebuild:
+        new_version = current_version
+    elif new_version is None:
+        print("No new commits since last version. Exiting.")
+        sys.exit(0)
+    print(f"New version: {new_version} ({INCREMENT_BUMP_TYPE_MESSAGES[bump_used]})")
+    print(f"Found {len(commits)} new commits\n")
 
     # Output version and bump type for GitHub Actions
     github_output = os.environ.get("GITHUB_OUTPUT", None)
@@ -548,16 +678,13 @@ def main():
             f.write(f'version={new_version}\n')
             f.write(f'bump={bump_used}\n')
 
-    if bump_used == 'none':
-        print("No release needed based on commit analysis. Exiting.")
+    if new_version == current_version and bump_used == 'none':
+        print("Tagged for skipping Build & Release. Exiting.")
         sys.exit(0)
-    elif new_version is None:
-        print("Cannot determine new version")
-        sys.exit(1)
 
     # Step 5: Build artifacts
     artifacts = []
-    if args.build:
+    if args.build or args.rebuild:
         if args.dry_run:
             print("\n[DRY-RUN] Would run python -m build")
             artifacts = [
@@ -573,18 +700,19 @@ def main():
                 new_version=new_version,
                 verbose=args.verbose
             )
+    else:
+        print("Skipping build step.")
 
     # Step 6: Create git tag
     if args.dry_run:
         print("[DRY-RUN] Would create git tag:", new_version)
     else:
-        print("Creating git tag...")
-        create_git_tag(new_version)
-
-    # Step 7: Publish GitHub release
-    if args.publish:
-        print("\nCreating GitHub release...")
-        create_github_release(new_version, artifacts, dry_run=args.dry_run)
+        # Step 7: Publish GitHub release
+        if args.publish and not args.rebuild:
+            print(f"Creating git tag: {new_version}")
+            create_git_tag(new_version)
+            print("\nCreating GitHub release...")
+            create_github_release(new_version, artifacts, dry_run=args.dry_run)
 
     print("\n=== Versioning Complete ===")
 
