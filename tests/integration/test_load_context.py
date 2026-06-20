@@ -6,7 +6,11 @@ as well as the expected error response when no ``.context/`` directory exists.
 No external services (ChromaDB, Ollama) are required.
 """
 
+import pytest
+
 from tests.integration.base import MCPIntegrationBase
+
+pytestmark = pytest.mark.asyncio
 
 _TOOL = "load_project_context"
 
