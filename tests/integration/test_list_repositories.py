@@ -15,6 +15,8 @@ import pytest
 
 from tests.integration.base import MCPIntegrationBase
 
+pytestmark = pytest.mark.asyncio
+
 _TOOL = "list_repositories"
 
 

@@ -12,21 +12,28 @@ Skip tests that need external services (ChromaDB, Ollama) with:
 import os
 import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import pytest
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+
+_SRC_DIR = str(Path(__file__).parent.parent.parent / "src")
 
 
 def _build_server_params(extra_env: dict[str, str] | None = None) -> StdioServerParameters:
     """Return ``StdioServerParameters`` for the project-context-server module.
 
     Strips variables that would silently override tool arguments unless the
-    caller explicitly supplies them via *extra_env*.
+    caller explicitly supplies them via *extra_env*.  Always injects the
+    project ``src/`` directory into ``PYTHONPATH`` so the subprocess uses the
+    current source tree rather than any previously installed wheel.
     """
     env = {**os.environ}
     env.pop("PROJECT_PATH", None)
     env["MCP_TRANSPORT"] = "stdio"
+    existing_pythonpath = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = f"{_SRC_DIR}{os.pathsep}{existing_pythonpath}" if existing_pythonpath else _SRC_DIR
     if extra_env:
         env.update(extra_env)
     return StdioServerParameters(
@@ -37,26 +44,12 @@ def _build_server_params(extra_env: dict[str, str] | None = None) -> StdioServer
 
 
 @pytest.fixture
-def server_params() -> StdioServerParameters:
-    """Default server parameters with no extra environment overrides."""
-    return _build_server_params()
-
-
-@pytest.fixture
-async def mcp_session(server_params: StdioServerParameters):
-    """A connected, initialised MCP session (function-scoped).
-
-    Spawns a fresh server subprocess per test so tests are fully isolated.
-    """
-    async with stdio_client(server_params) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            yield session
-
-
-@pytest.fixture
 def make_mcp_session():
     """Factory fixture for sessions with custom environment variables.
+
+    Opens a fresh server subprocess per call so tests are fully isolated.
+    The async context manager is entered and exited within the test's own
+    coroutine, avoiding anyio cancel-scope cross-task issues.
 
     Usage::
 

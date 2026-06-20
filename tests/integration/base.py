@@ -11,6 +11,7 @@ from pathlib import Path
 from mcp import StdioServerParameters
 
 _KNOWN_INTERFERING_ENV_VARS = ("PROJECT_PATH",)
+_SRC_DIR = str(Path(__file__).parent.parent.parent / "src")
 
 
 class MCPIntegrationBase:
@@ -46,6 +47,8 @@ class MCPIntegrationBase:
         for var in _KNOWN_INTERFERING_ENV_VARS:
             env.pop(var, None)
         env["MCP_TRANSPORT"] = "stdio"
+        existing_pythonpath = env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = f"{_SRC_DIR}{os.pathsep}{existing_pythonpath}" if existing_pythonpath else _SRC_DIR
         if extra_env:
             env.update(extra_env)
         return StdioServerParameters(
