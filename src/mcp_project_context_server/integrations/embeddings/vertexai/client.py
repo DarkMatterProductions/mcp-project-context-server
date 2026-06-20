@@ -56,7 +56,7 @@ class GoogleVertexEmbeddingProvider:
     @property
     def provider_name(self) -> str:
         """Short identifier for this provider."""
-        return "google_vertex"
+        return "vertexai"
 
     @property
     def model_name(self) -> str:

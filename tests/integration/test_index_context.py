@@ -31,7 +31,7 @@ pytestmark = pytest.mark.asyncio
 
 _TOOL = "index_project_context"
 
-_ALL_PROVIDERS = ["ollama", "voyage", "openai", "cohere", "google", "google-vertex"]
+_ALL_PROVIDERS = ["ollama", "voyage", "openai", "cohere", "google", "vertexai"]
 
 
 def _provider_param(provider_name: str) -> pytest.param:
