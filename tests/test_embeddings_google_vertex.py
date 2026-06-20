@@ -3,7 +3,7 @@
 import pytest
 
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingError
-from mcp_project_context_server.integrations.embeddings.google_vertex.client import (
+from mcp_project_context_server.integrations.embeddings.vertexai.client import (
     GoogleVertexEmbeddingProvider,
 )
 
@@ -15,7 +15,7 @@ class TestGoogleVertexEmbeddingProvider:
         monkeypatch.setenv("GOOGLE_VERTEX_LOCATION", "us-central1")
         monkeypatch.delenv("GOOGLE_VERTEX_EMBED_MODEL", raising=False)
         provider = GoogleVertexEmbeddingProvider()
-        assert provider.provider_name == "google_vertex"
+        assert provider.provider_name == "vertexai"
         assert provider.model_name == "text-embedding-004"
         assert provider.max_chars == 24_000
 
@@ -95,7 +95,7 @@ class TestGoogleVertexEmbeddingProvider:
             return fn(*args, **kwargs)
 
         mocker.patch(
-            "mcp_project_context_server.integrations.embeddings.google_vertex.client.asyncio.to_thread",
+            "mcp_project_context_server.integrations.embeddings.vertexai.client.asyncio.to_thread",
             side_effect=fake_to_thread,
         )
 
@@ -125,7 +125,7 @@ class TestGoogleVertexEmbeddingProvider:
         )
 
         mocker.patch(
-            "mcp_project_context_server.integrations.embeddings.google_vertex.client.asyncio.to_thread",
+            "mcp_project_context_server.integrations.embeddings.vertexai.client.asyncio.to_thread",
             new=mocker.AsyncMock(side_effect=ConnectionError("refused")),
         )
 
@@ -152,7 +152,7 @@ class TestGoogleVertexEmbeddingProvider:
         )
 
         mocker.patch(
-            "mcp_project_context_server.integrations.embeddings.google_vertex.client.asyncio.to_thread",
+            "mcp_project_context_server.integrations.embeddings.vertexai.client.asyncio.to_thread",
             new=mocker.AsyncMock(side_effect=original),
         )
 
@@ -193,7 +193,7 @@ class TestGoogleVertexEmbeddingProvider:
             return fn(*args, **kwargs)
 
         mocker.patch(
-            "mcp_project_context_server.integrations.embeddings.google_vertex.client.asyncio.to_thread",
+            "mcp_project_context_server.integrations.embeddings.vertexai.client.asyncio.to_thread",
             side_effect=fake_to_thread,
         )
 

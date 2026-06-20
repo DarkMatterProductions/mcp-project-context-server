@@ -41,7 +41,7 @@ Supported ``EMBED_PROVIDER`` values
     Google Gemini API (google-generativeai).  Requires ``GOOGLE_API_KEY``.
     Optional: ``GOOGLE_EMBED_MODEL`` (default: text-embedding-004).
 
-``google-vertex``
+``vertexai``
     Google Vertex AI.  Requires ``GOOGLE_VERTEX_PROJECT`` and
     ``GOOGLE_VERTEX_LOCATION``.
     Optional: ``GOOGLE_VERTEX_EMBED_MODEL`` (default: text-embedding-004).
@@ -52,7 +52,7 @@ from typing import Optional
 
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
 
-_SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"ollama", "voyage", "openai", "cohere", "google", "google-vertex"})
+_SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"ollama", "voyage", "openai", "cohere", "google", "vertexai"})
 
 _provider_instance: Optional[EmbeddingProvider] = None
 
@@ -125,8 +125,8 @@ def _build_provider(provider_name: str) -> EmbeddingProvider:
 
         return GoogleEmbeddingProvider()
 
-    if provider_name == "google-vertex":
-        from mcp_project_context_server.integrations.embeddings.google_vertex.client import (
+    if provider_name == "vertexai":
+        from mcp_project_context_server.integrations.embeddings.vertexai.client import (
             GoogleVertexEmbeddingProvider,
         )
 
