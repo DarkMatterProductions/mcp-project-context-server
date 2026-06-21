@@ -19,7 +19,7 @@ import os
 
 import ollama
 
-from mcp_project_context_server.integrations.embeddings.base import EmbeddingError
+from mcp_project_context_server.exceptions import EmbeddingError
 
 _DEFAULT_HOST: str = "http://localhost:11434"
 _DEFAULT_MODEL: str = "nomic-embed-text"
