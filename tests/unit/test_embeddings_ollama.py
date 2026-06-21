@@ -42,10 +42,10 @@ class TestOllamaEmbeddingProvider:
     async def test_embed_returns_vector(self, mocker):
         mock_response = mocker.MagicMock()
         mock_response.embeddings = [[0.1, 0.2, 0.3]]
-        mock_client_instance = mocker.AsyncMock()
+        mock_client_instance = mocker.MagicMock()
         mock_client_instance.embed.return_value = mock_response
         mocker.patch(
-            "mcp_project_context_server.integrations.embeddings.ollama.client.ollama.AsyncClient",
+            "mcp_project_context_server.integrations.embeddings.ollama.client.ollama.Client",
             return_value=mock_client_instance,
         )
 
@@ -57,10 +57,10 @@ class TestOllamaEmbeddingProvider:
 
     @pytest.mark.asyncio
     async def test_embed_raises_embedding_error_on_failure(self, mocker):
-        mock_client_instance = mocker.AsyncMock()
+        mock_client_instance = mocker.MagicMock()
         mock_client_instance.embed.side_effect = ConnectionError("refused")
         mocker.patch(
-            "mcp_project_context_server.integrations.embeddings.ollama.client.ollama.AsyncClient",
+            "mcp_project_context_server.integrations.embeddings.ollama.client.ollama.Client",
             return_value=mock_client_instance,
         )
 
@@ -71,10 +71,10 @@ class TestOllamaEmbeddingProvider:
     @pytest.mark.asyncio
     async def test_embed_error_chains_original_exception(self, mocker):
         original = RuntimeError("original error")
-        mock_client_instance = mocker.AsyncMock()
+        mock_client_instance = mocker.MagicMock()
         mock_client_instance.embed.side_effect = original
         mocker.patch(
-            "mcp_project_context_server.integrations.embeddings.ollama.client.ollama.AsyncClient",
+            "mcp_project_context_server.integrations.embeddings.ollama.client.ollama.Client",
             return_value=mock_client_instance,
         )
 
