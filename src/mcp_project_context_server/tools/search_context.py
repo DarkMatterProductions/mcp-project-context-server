@@ -11,6 +11,7 @@ from typing import cast
 
 from mcp import types
 
+from mcp_project_context_server.exceptions import EmbeddingError
 from mcp_project_context_server.helpers.context import collection_name_for, find_context_dir
 from mcp_project_context_server.indexing.embedder import embed_chunk
 from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
@@ -73,7 +74,7 @@ async def handle(arguments: dict) -> list[types.TextContent]:
             query_embedding=query_embedding,
             n_results=n_results,
         )
-    except VectorStoreError as exc:
+    except (VectorStoreError, EmbeddingError) as exc:
         return [types.TextContent(type="text", text=f"Search failed: {exc}")]
 
     if not result.documents:
