@@ -130,7 +130,7 @@ class MCPIntegrationBase:
         Returns:
             The project root :class:`~pathlib.Path` (the parent of ``.context/``).
         """
-        project_dir = tmp_path / "project"
+        project_dir = tmp_path / f"project_{tmp_path.name}"
         project_dir.mkdir()
         context_dir = project_dir / ".context"
         context_dir.mkdir()

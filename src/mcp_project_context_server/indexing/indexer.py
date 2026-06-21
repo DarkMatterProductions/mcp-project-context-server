@@ -15,8 +15,6 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from mcp_project_context_server.exceptions import EmbeddingError
-
 try:
     from mcp_project_context_server._version import __version__
 except ImportError:
@@ -88,7 +86,8 @@ async def run_index_pipeline(project_path: str | Path, store: VectorStoreProvide
                 embedding = await embed_chunk(chunk)
                 return (doc_id, chunk, embedding, filename, chunk_idx)
             except Exception as e:
-                raise EmbeddingError(f"Warning: failed to embed {doc_id}: {e}")
+                print(f"Warning: failed to embed {doc_id}: {e}", file=sys.stderr)
+                return None
 
     results = await asyncio.gather(*[_embed(*c) for c in all_chunks])
 
