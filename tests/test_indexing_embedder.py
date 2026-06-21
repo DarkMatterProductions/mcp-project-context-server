@@ -31,7 +31,7 @@ class TestEmbedChunk:
 
     @pytest.mark.asyncio
     async def test_propagates_provider_error(self, mocker):
-        from mcp_project_context_server.integrations.embeddings.base import EmbeddingError
+        from mcp_project_context_server.exceptions import EmbeddingError
 
         mock_provider = mocker.AsyncMock()
         mock_provider.embed.side_effect = EmbeddingError("provider down")

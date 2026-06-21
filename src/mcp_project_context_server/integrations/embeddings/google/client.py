@@ -14,7 +14,7 @@ Set these environment variables to control the provider:
 import asyncio
 import os
 
-from mcp_project_context_server.integrations.embeddings.base import EmbeddingError
+from mcp_project_context_server.exceptions import EmbeddingError
 
 _DEFAULT_MODEL: str = "text-embedding-004"
 # text-embedding-004: 2048 token context; conservative character limit

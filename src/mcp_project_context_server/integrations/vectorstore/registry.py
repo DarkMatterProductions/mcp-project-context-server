@@ -23,14 +23,22 @@ Supported ``VECTOR_STORE_PROVIDER`` values
 """
 
 import os
-from typing import Optional
+from collections.abc import Callable, Coroutine
+from pathlib import Path
+from typing import Any, Optional
 
+from mcp_project_context_server.indexing.indexer import run_index_pipeline
 from mcp_project_context_server.integrations.vectorstore.base import VectorStoreProvider
+from mcp_project_context_server.integrations.vectorstore.chroma_http.client import ChromaHttpVectorStoreProvider
+from mcp_project_context_server.integrations.vectorstore.chroma_local.client import ChromaLocalVectorStoreProvider
+from mcp_project_context_server.integrations.vectorstore.pgvector.client import PgVectorStoreProvider
 
 _SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"chroma-local", "chroma-http", "pgvector"})
 _DEFAULT_PROVIDER: str = "chroma-local"
 
 _provider_instance: Optional[VectorStoreProvider] = None
+
+IndexFn = Callable[[str | Path], Coroutine[Any, Any, str]]
 
 
 def get_vector_store() -> VectorStoreProvider:
@@ -79,6 +87,51 @@ def _build_provider(provider_name: str) -> VectorStoreProvider:
         )
 
         return PgVectorStoreProvider()
+
+    raise EnvironmentError(f"Internal error: unhandled provider '{provider_name}'")  # pragma: no cover
+
+
+def get_indexer() -> IndexFn:
+    """Return the ``index_project_context`` callable for the configured provider.
+
+    Each vector store provider owns its indexer in
+    ``integrations/vectorstore/{provider}/indexer.py``.  This function resolves
+    the correct one based on ``VECTOR_STORE_PROVIDER``, mirroring the dispatch
+    logic of :func:`get_vector_store`.
+
+    Raises:
+        EnvironmentError: If ``VECTOR_STORE_PROVIDER`` is set to an unrecognised value.
+    """
+    provider_name = os.getenv("VECTOR_STORE_PROVIDER", _DEFAULT_PROVIDER).strip().lower()
+
+    if provider_name not in _SUPPORTED_PROVIDERS:
+        raise EnvironmentError(
+            f"Unsupported VECTOR_STORE_PROVIDER value '{provider_name}'.  "
+            f"Supported values are: {', '.join(sorted(_SUPPORTED_PROVIDERS))}"
+        )
+
+    if provider_name == "chroma-local":
+        store = ChromaLocalVectorStoreProvider()
+
+    if provider_name == "chroma-http":
+        store = ChromaHttpVectorStoreProvider()
+
+    if provider_name == "pgvector":
+        store = PgVectorStoreProvider()
+
+    async def index_project_context(project_path: str | Path) -> str:
+        """Run the indexing pipeline against a local ChromaDB PersistentClient.
+
+        Args:
+            project_path: Path to the project root or any file within it.
+
+        Returns:
+            A human-readable summary string describing what was indexed.
+        """
+
+        return await run_index_pipeline(project_path, store)
+
+    return index_project_context
 
     raise EnvironmentError(f"Internal error: unhandled provider '{provider_name}'")  # pragma: no cover
 

@@ -13,7 +13,7 @@ Set these environment variables to control the provider:
 
 import os
 
-from mcp_project_context_server.integrations.embeddings.base import EmbeddingError
+from mcp_project_context_server.exceptions import EmbeddingError
 
 _DEFAULT_MODEL: str = "embed-english-v3.0"
 # embed-english-v3.0: 512 token context; conservative character limit

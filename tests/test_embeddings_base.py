@@ -3,9 +3,9 @@
 import pytest
 
 from mcp_project_context_server.integrations.embeddings.base import (
-    EmbeddingError,
     EmbeddingProvider,
 )
+from mcp_project_context_server.exceptions import EmbeddingError
 
 
 class _ConcreteProvider:

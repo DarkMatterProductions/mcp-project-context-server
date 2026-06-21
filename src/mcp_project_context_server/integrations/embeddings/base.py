@@ -59,7 +59,3 @@ class EmbeddingProvider(Protocol):
             EmbeddingError: If the provider returns an error or is unreachable.
         """
         ...
-
-
-class EmbeddingError(Exception):
-    """Raised when an embedding provider call fails."""
