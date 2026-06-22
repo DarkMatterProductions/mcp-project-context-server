@@ -20,7 +20,7 @@ class LocalRepositoryProvider:
     """
 
     def __init__(self) -> None:
-        """Initialise the provider, reading PROJECT_PATH from the environment."""
+        """Initialize the provider, reading PROJECT_PATH from the environment."""
         self._project_path: str = os.getenv("PROJECT_PATH", "")
 
     @property

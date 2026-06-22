@@ -69,7 +69,7 @@ class TestOpenAIEmbeddingProvider:
         mocker.patch.dict("sys.modules", {"openai": mock_openai})
 
         provider = OpenAIEmbeddingProvider()
-        result = await provider.embed("hello world")
+        result = await provider.embed_chunk("hello world")
 
         assert result == [0.1, 0.2, 0.3]
         mock_async_openai_cls.assert_called_once_with(api_key="test-key")
@@ -93,7 +93,7 @@ class TestOpenAIEmbeddingProvider:
 
         provider = OpenAIEmbeddingProvider()
         with pytest.raises(EmbeddingError, match="OpenAI embedding failed"):
-            await provider.embed("test")
+            await provider.embed_chunk("test")
 
     @pytest.mark.asyncio
     async def test_embed_error_chains_original_exception(self, monkeypatch, mocker):
@@ -114,7 +114,7 @@ class TestOpenAIEmbeddingProvider:
 
         provider = OpenAIEmbeddingProvider()
         with pytest.raises(EmbeddingError) as exc_info:
-            await provider.embed("test")
+            await provider.embed_chunk("test")
         assert exc_info.value.__cause__ is original
 
     @pytest.mark.asyncio
@@ -141,6 +141,6 @@ class TestOpenAIEmbeddingProvider:
         mocker.patch.dict("sys.modules", {"openai": mock_openai})
 
         provider = OpenAIEmbeddingProvider()
-        await provider.embed("text")
+        await provider.embed_chunk("text")
 
         mock_embeddings.create.assert_called_once_with(model="text-embedding-ada-002", input="text")

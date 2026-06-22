@@ -4,15 +4,16 @@ Configuration
 -------------
 Set these environment variables to control the provider:
 
-``COHERE_API_KEY``
+`COHERE_API_KEY`
     API key for the Cohere service.  **Required.**
 
-``COHERE_EMBED_MODEL``
-    Name of the embedding model to use.  Defaults to ``embed-english-v3.0``.
+`COHERE_EMBED_MODEL`
+    Name of the embedding model to use.  Defaults to `embed-english-v3.0`.
 """
 
 import os
 
+from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
 from mcp_project_context_server.exceptions import EmbeddingError
 
 _DEFAULT_MODEL: str = "embed-english-v3.0"
@@ -20,18 +21,18 @@ _DEFAULT_MODEL: str = "embed-english-v3.0"
 _MAX_CHARS: int = 20_000
 
 
-class CohereEmbeddingProvider:
+class CohereEmbeddingProvider(EmbeddingProvider):
     """Embedding provider backed by the Cohere Embed API.
 
-    The ``cohere`` package is imported lazily inside ``embed()`` so that the
+    The `cohere` package is imported lazily inside `embed_chunk()` so that the
     provider can be imported without requiring the package to be installed.
 
     Raises:
-        EnvironmentError: At construction time if ``COHERE_API_KEY`` is not set.
+        EnvironmentError: At construction time if `COHERE_API_KEY` is not set.
     """
 
     def __init__(self) -> None:
-        """Initialise the provider, reading configuration from environment variables."""
+        """Initialize the provider, reading configuration from environment variables."""
         api_key = os.getenv("COHERE_API_KEY")
         if not api_key:
             raise EnvironmentError("COHERE_API_KEY environment variable is not set.")
@@ -61,11 +62,11 @@ class CohereEmbeddingProvider:
     # Core embedding method
     # ------------------------------------------------------------------
 
-    async def embed(self, text: str) -> list[float]:
+    async def embed_chunk(self, text: str) -> list[float]:
         """Embed *text* using the configured Cohere embedding model.
 
         Args:
-            text: Text to embed.  Should be at most ``max_chars`` long.
+            text: Text to embed.  Should be at most `max_chars` long.
 
         Returns:
             Embedding vector as a list of floats.
@@ -77,7 +78,7 @@ class CohereEmbeddingProvider:
             import cohere  # lazy import
 
             client = cohere.AsyncClientV2(api_key=self._api_key)
-            response = await client.embed(
+            response = await client.embed_chunk(
                 texts=[text],
                 model=self._model,
                 input_type="search_document",

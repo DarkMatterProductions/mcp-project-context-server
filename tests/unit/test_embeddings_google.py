@@ -72,7 +72,7 @@ class TestGoogleEmbeddingProvider:
         )
 
         provider = GoogleEmbeddingProvider()
-        result = await provider.embed("hello world")
+        result = await provider.embed_chunk("hello world")
 
         assert result == [0.1, 0.2, 0.3]
 
@@ -91,7 +91,7 @@ class TestGoogleEmbeddingProvider:
         )
 
         provider = GoogleEmbeddingProvider()
-        result = await provider.embed("hello world")
+        result = await provider.embed_chunk("hello world")
 
         mock_genai.configure.assert_called_once_with(api_key="test-key")
         # to_thread(genai.embed_content, model=..., content=...)
@@ -116,7 +116,7 @@ class TestGoogleEmbeddingProvider:
 
         provider = GoogleEmbeddingProvider()
         with pytest.raises(EmbeddingError, match="Google embedding failed"):
-            await provider.embed("test")
+            await provider.embed_chunk("test")
 
     @pytest.mark.asyncio
     async def test_embed_error_chains_original_exception(self, monkeypatch, mocker):
@@ -134,7 +134,7 @@ class TestGoogleEmbeddingProvider:
 
         provider = GoogleEmbeddingProvider()
         with pytest.raises(EmbeddingError) as exc_info:
-            await provider.embed("test")
+            await provider.embed_chunk("test")
         assert exc_info.value.__cause__ is original
 
     @pytest.mark.asyncio
@@ -153,7 +153,7 @@ class TestGoogleEmbeddingProvider:
         )
 
         provider = GoogleEmbeddingProvider()
-        await provider.embed("text")
+        await provider.embed_chunk("text")
 
         mock_to_thread.assert_called_once()
         call_kwargs = mock_to_thread.call_args.kwargs

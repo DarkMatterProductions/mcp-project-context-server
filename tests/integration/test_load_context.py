@@ -1,7 +1,7 @@
-"""Integration tests — ``load_project_context`` tool.
+"""Integration tests — `load_project_context` tool.
 
 Tests cover the full range of valid filesystem layouts that the tool supports
-as well as the expected error response when no ``.context/`` directory exists.
+as well as the expected error response when no `.context/` directory exists.
 
 No external services (ChromaDB, Ollama) are required.
 """

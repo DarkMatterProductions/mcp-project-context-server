@@ -4,14 +4,14 @@ Configuration
 -------------
 Set these environment variables to control the provider:
 
-``OLLAMA_HOST``
-    Base URL for the Ollama server.  Defaults to ``http://localhost:11434``.
+`OLLAMA_HOST`
+    Base URL for the Ollama server.  Defaults to `http://localhost:11434`.
 
-``OLLAMA_EMBED_MODEL``
-    Name of the embedding model to use.  Defaults to ``nomic-embed-text``.
+`OLLAMA_EMBED_MODEL`
+    Name of the embedding model to use.  Defaults to `nomic-embed-text`.
 
-``EMBED_CONCURRENCY``
-    Maximum number of concurrent embedding requests.  Defaults to ``4``.
+`EMBED_CONCURRENCY`
+    Maximum number of concurrent embedding requests.  Defaults to `4`.
     (Respected by the caller — not enforced here.)
 """
 
@@ -19,6 +19,7 @@ import asyncio
 import os
 
 import ollama
+from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
 
 from mcp_project_context_server.exceptions import EmbeddingError
 
@@ -28,11 +29,11 @@ _DEFAULT_MODEL: str = "nomic-embed-text"
 _MAX_CHARS: int = 32_000
 
 
-class OllamaEmbeddingProvider:
+class OllamaEmbeddingProvider(EmbeddingProvider):
     """Embedding provider backed by a locally running Ollama server.
 
     This class is intentionally stateless with respect to the Ollama client —
-    a fresh ``AsyncClient`` is obtained per call so that there are no
+    a fresh `AsyncClient` is obtained per call so that there are no
     long-lived connection objects to manage.
     """
 
@@ -60,11 +61,11 @@ class OllamaEmbeddingProvider:
     # Core embedding method
     # ------------------------------------------------------------------
 
-    async def embed(self, text: str) -> list[float]:
+    async def embed_chunk(self, text: str) -> list[float]:
         """Embed *text* using the configured Ollama model.
 
         Args:
-            text: Text to embed.  Should be at most ``max_chars`` long.
+            text: Text to embed.  Should be at most `max_chars` long.
 
         Returns:
             Embedding vector as a list of floats.
@@ -75,7 +76,7 @@ class OllamaEmbeddingProvider:
         """
         try:
             client = ollama.Client(host=self._host)
-            response = await asyncio.to_thread(client.embed, model=self._model, input=text)
+            response = await asyncio.to_thread(client.embed_chunk, model=self._model, input=text)
             return list(response.embeddings[0])
         except Exception as exc:
             raise EmbeddingError(f"Ollama embedding failed (host={self._host}, model={self._model}): {exc}") from exc

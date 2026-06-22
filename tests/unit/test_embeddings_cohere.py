@@ -56,7 +56,7 @@ class TestCohereEmbeddingProvider:
         mock_response.embeddings = mock_embeddings_obj
 
         mock_client_instance = mocker.AsyncMock()
-        mock_client_instance.embed.return_value = mock_response
+        mock_client_instance.embed_chunk.return_value = mock_response
 
         mock_async_client_cls = mocker.MagicMock(return_value=mock_client_instance)
 
@@ -66,11 +66,11 @@ class TestCohereEmbeddingProvider:
         mocker.patch.dict("sys.modules", {"cohere": mock_cohere})
 
         provider = CohereEmbeddingProvider()
-        result = await provider.embed("hello world")
+        result = await provider.embed_chunk("hello world")
 
         assert result == [0.1, 0.2, 0.3]
         mock_async_client_cls.assert_called_once_with(api_key="test-key")
-        mock_client_instance.embed.assert_called_once_with(
+        mock_client_instance.embed_chunk.assert_called_once_with(
             texts=["hello world"],
             model="embed-english-v3.0",
             input_type="search_document",
@@ -83,7 +83,7 @@ class TestCohereEmbeddingProvider:
         monkeypatch.setenv("COHERE_API_KEY", "test-key")
 
         mock_client_instance = mocker.AsyncMock()
-        mock_client_instance.embed.side_effect = ConnectionError("refused")
+        mock_client_instance.embed_chunk.side_effect = ConnectionError("refused")
 
         mock_cohere = mocker.MagicMock()
         mock_cohere.AsyncClientV2 = mocker.MagicMock(return_value=mock_client_instance)
@@ -92,7 +92,7 @@ class TestCohereEmbeddingProvider:
 
         provider = CohereEmbeddingProvider()
         with pytest.raises(EmbeddingError, match="Cohere embedding failed"):
-            await provider.embed("test")
+            await provider.embed_chunk("test")
 
     @pytest.mark.asyncio
     async def test_embed_error_chains_original_exception(self, monkeypatch, mocker):
@@ -101,7 +101,7 @@ class TestCohereEmbeddingProvider:
         original = RuntimeError("original error")
 
         mock_client_instance = mocker.AsyncMock()
-        mock_client_instance.embed.side_effect = original
+        mock_client_instance.embed_chunk.side_effect = original
 
         mock_cohere = mocker.MagicMock()
         mock_cohere.AsyncClientV2 = mocker.MagicMock(return_value=mock_client_instance)
@@ -110,7 +110,7 @@ class TestCohereEmbeddingProvider:
 
         provider = CohereEmbeddingProvider()
         with pytest.raises(EmbeddingError) as exc_info:
-            await provider.embed("test")
+            await provider.embed_chunk("test")
         assert exc_info.value.__cause__ is original
 
     @pytest.mark.asyncio
@@ -126,7 +126,7 @@ class TestCohereEmbeddingProvider:
         mock_response.embeddings = mock_embeddings_obj
 
         mock_client_instance = mocker.AsyncMock()
-        mock_client_instance.embed.return_value = mock_response
+        mock_client_instance.embed_chunk.return_value = mock_response
 
         mock_cohere = mocker.MagicMock()
         mock_cohere.AsyncClientV2 = mocker.MagicMock(return_value=mock_client_instance)
@@ -134,9 +134,9 @@ class TestCohereEmbeddingProvider:
         mocker.patch.dict("sys.modules", {"cohere": mock_cohere})
 
         provider = CohereEmbeddingProvider()
-        await provider.embed("text")
+        await provider.embed_chunk("text")
 
-        mock_client_instance.embed.assert_called_once_with(
+        mock_client_instance.embed_chunk.assert_called_once_with(
             texts=["text"],
             model="embed-multilingual-v3.0",
             input_type="search_document",

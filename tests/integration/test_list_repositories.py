@@ -1,14 +1,14 @@
-"""Integration tests — ``list_repositories`` tool.
+"""Integration tests — `list_repositories` tool.
 
 The local filesystem provider (default) is used throughout.  No remote API
 credentials or external services are required.
 
 Scenarios covered:
-- No ``PROJECT_PATH`` set → "No repositories found."
-- ``PROJECT_PATH`` set to an existing directory → single repository entry.
-- ``PROJECT_PATH`` set with ``org`` filter → ``org`` is accepted (ignored by
+- No `PROJECT_PATH` set → "No repositories found."
+- `PROJECT_PATH` set to an existing directory → single repository entry.
+- `PROJECT_PATH` set with `org` filter → `org` is accepted (ignored by
   local provider) and the response still lists the local repository.
-- Invalid ``REPO_PROVIDER`` value → graceful error text.
+- Invalid `REPO_PROVIDER` value → graceful error text.
 - Response is always a single text content block.
 """
 import pytest

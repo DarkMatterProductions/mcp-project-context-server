@@ -1,8 +1,8 @@
-"""Integration tests — ``save_session_summary`` tool.
+"""Integration tests — `save_session_summary` tool.
 
 Tests cover:
-- Error when ``.context/`` is absent.
-- Creation of the ``sessions/`` sub-directory when it does not yet exist.
+- Error when `.context/` is absent.
+- Creation of the `sessions/` sub-directory when it does not yet exist.
 - Writing a new session file whose name matches today's date.
 - Appending a timestamped block when called a second time on the same day.
 - The response text containing the saved file path.

@@ -23,8 +23,8 @@ class EmbeddingProvider(Protocol):
     """Protocol that all embedding provider implementations must satisfy.
 
     Implementors should be importable without triggering any network calls,
-    file I/O, or expensive initialisation — those should be deferred to the
-    first call to ``embed()``.
+    file I/O, or expensive initialization — those should be deferred to the
+    first call to ``embed_chunk()``.
     """
 
     @property
@@ -46,7 +46,7 @@ class EmbeddingProvider(Protocol):
         """
         ...
 
-    async def embed(self, text: str) -> list[float]:
+    async def embed_chunk(self, text: str) -> list[float]:
         """Embed a single text string and return the embedding vector.
 
         Args:

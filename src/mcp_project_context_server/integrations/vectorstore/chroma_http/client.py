@@ -26,7 +26,7 @@ from mcp_project_context_server.integrations.vectorstore.base import (
 class ChromaHttpVectorStoreProvider:
     """Vector store backed by a remote ChromaDB HTTP server.
 
-    The chromadb ``HttpClient`` is initialised lazily on first use.
+    The chromadb ``HttpClient`` is initialized lazily on first use.
     """
 
     def __init__(self) -> None:

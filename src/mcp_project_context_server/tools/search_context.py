@@ -7,13 +7,11 @@ prepended to the results so the user knows the index may need rebuilding.
 """
 
 import os
-from typing import cast
 
 from mcp import types
 
 from mcp_project_context_server.exceptions import EmbeddingError
 from mcp_project_context_server.helpers.context import collection_name_for, find_context_dir
-from mcp_project_context_server.indexing.embedder import embed_chunk
 from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
 from mcp_project_context_server.integrations.vectorstore.base import VectorStoreError
 from mcp_project_context_server.integrations.vectorstore.registry import get_vector_store
@@ -68,7 +66,8 @@ async def handle(arguments: dict) -> list[types.TextContent]:
             )
 
     try:
-        query_embedding = await embed_chunk(query)
+        provider = get_embedding_provider()
+        query_embedding = await provider.embed_chunk(query)
         result = await store.query(
             collection_name=col_name,
             query_embedding=query_embedding,

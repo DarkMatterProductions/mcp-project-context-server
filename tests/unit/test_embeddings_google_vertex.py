@@ -100,7 +100,7 @@ class TestGoogleVertexEmbeddingProvider:
         )
 
         provider = GoogleVertexEmbeddingProvider()
-        result = await provider.embed("hello world")
+        result = await provider.embed_chunk("hello world")
 
         assert result == [0.1, 0.2, 0.3]
         mock_vertexai.init.assert_called_once_with(project="my-project", location="us-central1")
@@ -131,7 +131,7 @@ class TestGoogleVertexEmbeddingProvider:
 
         provider = GoogleVertexEmbeddingProvider()
         with pytest.raises(EmbeddingError, match="Google Vertex AI embedding failed"):
-            await provider.embed("test")
+            await provider.embed_chunk("test")
 
     @pytest.mark.asyncio
     async def test_embed_error_chains_original_exception(self, monkeypatch, mocker):
@@ -158,7 +158,7 @@ class TestGoogleVertexEmbeddingProvider:
 
         provider = GoogleVertexEmbeddingProvider()
         with pytest.raises(EmbeddingError) as exc_info:
-            await provider.embed("test")
+            await provider.embed_chunk("test")
         assert exc_info.value.__cause__ is original
 
     @pytest.mark.asyncio
@@ -198,6 +198,6 @@ class TestGoogleVertexEmbeddingProvider:
         )
 
         provider = GoogleVertexEmbeddingProvider()
-        await provider.embed("text")
+        await provider.embed_chunk("text")
 
         mock_text_embedding_model.from_pretrained.assert_called_once_with("text-multilingual-embedding-002")

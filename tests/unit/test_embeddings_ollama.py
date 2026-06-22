@@ -43,22 +43,22 @@ class TestOllamaEmbeddingProvider:
         mock_response = mocker.MagicMock()
         mock_response.embeddings = [[0.1, 0.2, 0.3]]
         mock_client_instance = mocker.MagicMock()
-        mock_client_instance.embed.return_value = mock_response
+        mock_client_instance.embed_chunk.return_value = mock_response
         mocker.patch(
             "mcp_project_context_server.integrations.embeddings.ollama.client.ollama.Client",
             return_value=mock_client_instance,
         )
 
         provider = OllamaEmbeddingProvider()
-        result = await provider.embed("hello world")
+        result = await provider.embed_chunk("hello world")
 
         assert result == [0.1, 0.2, 0.3]
-        mock_client_instance.embed.assert_called_once_with(model=provider.model_name, input="hello world")
+        mock_client_instance.embed_chunk.assert_called_once_with(model=provider.model_name, input="hello world")
 
     @pytest.mark.asyncio
     async def test_embed_raises_embedding_error_on_failure(self, mocker):
         mock_client_instance = mocker.MagicMock()
-        mock_client_instance.embed.side_effect = ConnectionError("refused")
+        mock_client_instance.embed_chunk.side_effect = ConnectionError("refused")
         mocker.patch(
             "mcp_project_context_server.integrations.embeddings.ollama.client.ollama.Client",
             return_value=mock_client_instance,
@@ -66,13 +66,13 @@ class TestOllamaEmbeddingProvider:
 
         provider = OllamaEmbeddingProvider()
         with pytest.raises(EmbeddingError, match="Ollama embedding failed"):
-            await provider.embed("test")
+            await provider.embed_chunk("test")
 
     @pytest.mark.asyncio
     async def test_embed_error_chains_original_exception(self, mocker):
         original = RuntimeError("original error")
         mock_client_instance = mocker.MagicMock()
-        mock_client_instance.embed.side_effect = original
+        mock_client_instance.embed_chunk.side_effect = original
         mocker.patch(
             "mcp_project_context_server.integrations.embeddings.ollama.client.ollama.Client",
             return_value=mock_client_instance,
@@ -80,5 +80,5 @@ class TestOllamaEmbeddingProvider:
 
         provider = OllamaEmbeddingProvider()
         with pytest.raises(EmbeddingError) as exc_info:
-            await provider.embed("test")
+            await provider.embed_chunk("test")
         assert exc_info.value.__cause__ is original
