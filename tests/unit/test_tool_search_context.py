@@ -2,19 +2,8 @@
 
 import pytest
 
-from mcp_project_context_server.integrations.embeddings.registry import reset_provider_for_testing
 from mcp_project_context_server.integrations.vectorstore.base import QueryResult, VectorStoreError
-from mcp_project_context_server.integrations.vectorstore.registry import reset_provider_for_testing as reset_vs
 from mcp_project_context_server.tools.search_context import handle
-
-
-@pytest.fixture(autouse=True)
-def reset_registries():
-    reset_provider_for_testing()
-    reset_vs()
-    yield
-    reset_provider_for_testing()
-    reset_vs()
 
 
 def _make_store(mocker, *, exists=True, meta=None, docs=None, metas=None, raise_query=False):

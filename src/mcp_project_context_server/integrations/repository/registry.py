@@ -47,7 +47,7 @@ from mcp_project_context_server.integrations.repository.base import RepositoryEr
 
 _SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"local", "github", "gitlab", "gitea"})
 
-_provider_instance: Optional[RepositoryProvider] = None
+provider_instance: Optional[RepositoryProvider] = None
 
 # Multi-tenant state — populated lazily alongside the provider singleton.
 _multi_tenant_enabled: bool = False
@@ -63,7 +63,7 @@ def get_repository_provider() -> RepositoryProvider:
             or if multi-tenant mode is active but no approved orgs/repos are
             configured.
     """
-    global _provider_instance, _multi_tenant_enabled, _approved_orgs, _approved_repos
+    global provider_instance, _multi_tenant_enabled, _approved_orgs, _approved_repos
 
     if _provider_instance is not None:
         return _provider_instance
@@ -163,7 +163,7 @@ def reset_provider_for_testing() -> None:
     **For use in tests only.**  Call this in test teardown to prevent provider
     state from leaking between test cases.
     """
-    global _provider_instance, _multi_tenant_enabled, _approved_orgs, _approved_repos
+    global provider_instance, _multi_tenant_enabled, _approved_orgs, _approved_repos
     _provider_instance = None
     _multi_tenant_enabled = False
     _approved_orgs = frozenset()

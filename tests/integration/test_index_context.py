@@ -1,8 +1,8 @@
-"""Integration tests — ``index_project_context`` tool.
+"""Integration tests — `index_project_context` tool.
 
 The "no .context/ directory" error path is exercised without any external
 services.  All remaining tests require a running ChromaDB instance and an
-embedding provider and are marked ``pytest.mark.external_services``.
+embedding provider and are marked `pytest.mark.external_services`.
 
 External-service tests are parametrized over every supported embedding
 provider.  A provider is skipped when its opt-out environment variable is set
@@ -25,7 +25,8 @@ import os
 
 import pytest
 
-from tests.integration.base import MCPIntegrationBase, ALL_PROVIDERS
+from tests.integration.base import MCPIntegrationBase
+from tests.shared import EMBEDDING_PROVIDER
 
 pytestmark = pytest.mark.asyncio
 
@@ -65,12 +66,12 @@ class TestIndexContextErrors(MCPIntegrationBase):
 
 
 @pytest.mark.external_services
-@pytest.mark.parametrize("embed_provider", [_provider_param(p) for p in ALL_PROVIDERS])
+@pytest.mark.parametrize("embed_provider", [_provider_param(p) for p in EMBEDDING_PROVIDER])
 class TestIndexContextWithExternalServices(MCPIntegrationBase):
     """Tests that require a running ChromaDB and an embedding provider.
 
     Parametrized over all supported providers.  Set
-    ``SKIP_EMBED_PROVIDER_<NAME>=1`` to skip a specific provider.
+    `SKIP_EMBED_PROVIDER_<NAME>=1` to skip a specific provider.
     Skip all with: pytest -m "not external_services"
     """
 

@@ -4,15 +4,16 @@ Configuration
 -------------
 Set these environment variables to control the provider:
 
-``OPENAI_API_KEY``
+`OPENAI_API_KEY`
     API key for the OpenAI service.  **Required.**
 
-``OPENAI_EMBED_MODEL``
-    Name of the embedding model to use.  Defaults to ``text-embedding-3-small``.
+`OPENAI_EMBED_MODEL`
+    Name of the embedding model to use.  Defaults to `text-embedding-3-small`.
 """
 
 import os
 
+from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
 from mcp_project_context_server.exceptions import EmbeddingError
 
 _DEFAULT_MODEL: str = "text-embedding-3-small"
@@ -20,18 +21,18 @@ _DEFAULT_MODEL: str = "text-embedding-3-small"
 _MAX_CHARS: int = 24_000
 
 
-class OpenAIEmbeddingProvider:
+class OpenAIEmbeddingProvider(EmbeddingProvider):
     """Embedding provider backed by the OpenAI Embeddings API.
 
-    The ``openai`` package is imported lazily inside ``embed()`` so that the
+    The `openai` package is imported lazily inside `embed_chunk()` so that the
     provider can be imported without requiring the package to be installed.
 
     Raises:
-        EnvironmentError: At construction time if ``OPENAI_API_KEY`` is not set.
+        EnvironmentError: At construction time if `OPENAI_API_KEY` is not set.
     """
 
     def __init__(self) -> None:
-        """Initialise the provider, reading configuration from environment variables."""
+        """Initialize the provider, reading configuration from environment variables."""
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise EnvironmentError("OPENAI_API_KEY environment variable is not set.")
@@ -61,11 +62,11 @@ class OpenAIEmbeddingProvider:
     # Core embedding method
     # ------------------------------------------------------------------
 
-    async def embed(self, text: str) -> list[float]:
+    async def embed_chunk(self, text: str) -> list[float]:
         """Embed *text* using the configured OpenAI embedding model.
 
         Args:
-            text: Text to embed.  Should be at most ``max_chars`` long.
+            text: Text to embed.  Should be at most `max_chars` long.
 
         Returns:
             Embedding vector as a list of floats.

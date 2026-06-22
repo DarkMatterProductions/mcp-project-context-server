@@ -53,7 +53,7 @@ class TestVoyageEmbeddingProvider:
         mock_result.embeddings = [[0.1, 0.2, 0.3]]
 
         mock_client_instance = mocker.AsyncMock()
-        mock_client_instance.embed.return_value = mock_result
+        mock_client_instance.embed_chunk.return_value = mock_result
 
         mock_async_client_cls = mocker.MagicMock(return_value=mock_client_instance)
 
@@ -63,11 +63,11 @@ class TestVoyageEmbeddingProvider:
         mocker.patch.dict("sys.modules", {"voyageai": mock_voyageai})
 
         provider = VoyageEmbeddingProvider()
-        result = await provider.embed("hello world")
+        result = await provider.embed_chunk("hello world")
 
         assert result == [0.1, 0.2, 0.3]
         mock_async_client_cls.assert_called_once_with(api_key="test-key")
-        mock_client_instance.embed.assert_called_once_with(
+        mock_client_instance.embed_chunk.assert_called_once_with(
             ["hello world"], model="voyage-code-3", input_type="document"
         )
 
@@ -77,7 +77,7 @@ class TestVoyageEmbeddingProvider:
         monkeypatch.setenv("VOYAGE_API_KEY", "test-key")
 
         mock_client_instance = mocker.AsyncMock()
-        mock_client_instance.embed.side_effect = ConnectionError("refused")
+        mock_client_instance.embed_chunk.side_effect = ConnectionError("refused")
 
         mock_voyageai = mocker.MagicMock()
         mock_voyageai.AsyncClient = mocker.MagicMock(return_value=mock_client_instance)
@@ -86,7 +86,7 @@ class TestVoyageEmbeddingProvider:
 
         provider = VoyageEmbeddingProvider()
         with pytest.raises(EmbeddingError, match="Voyage AI embedding failed"):
-            await provider.embed("test")
+            await provider.embed_chunk("test")
 
     @pytest.mark.asyncio
     async def test_embed_error_chains_original_exception(self, monkeypatch, mocker):
@@ -95,7 +95,7 @@ class TestVoyageEmbeddingProvider:
         original = RuntimeError("original error")
 
         mock_client_instance = mocker.AsyncMock()
-        mock_client_instance.embed.side_effect = original
+        mock_client_instance.embed_chunk.side_effect = original
 
         mock_voyageai = mocker.MagicMock()
         mock_voyageai.AsyncClient = mocker.MagicMock(return_value=mock_client_instance)
@@ -104,7 +104,7 @@ class TestVoyageEmbeddingProvider:
 
         provider = VoyageEmbeddingProvider()
         with pytest.raises(EmbeddingError) as exc_info:
-            await provider.embed("test")
+            await provider.embed_chunk("test")
         assert exc_info.value.__cause__ is original
 
     @pytest.mark.asyncio
@@ -117,7 +117,7 @@ class TestVoyageEmbeddingProvider:
         mock_result.embeddings = [[0.4, 0.5]]
 
         mock_client_instance = mocker.AsyncMock()
-        mock_client_instance.embed.return_value = mock_result
+        mock_client_instance.embed_chunk.return_value = mock_result
 
         mock_voyageai = mocker.MagicMock()
         mock_voyageai.AsyncClient = mocker.MagicMock(return_value=mock_client_instance)
@@ -125,6 +125,6 @@ class TestVoyageEmbeddingProvider:
         mocker.patch.dict("sys.modules", {"voyageai": mock_voyageai})
 
         provider = VoyageEmbeddingProvider()
-        await provider.embed("text")
+        await provider.embed_chunk("text")
 
-        mock_client_instance.embed.assert_called_once_with(["text"], model="voyage-large-2", input_type="document")
+        mock_client_instance.embed_chunk.assert_called_once_with(["text"], model="voyage-large-2", input_type="document")

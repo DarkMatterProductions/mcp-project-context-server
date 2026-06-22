@@ -4,19 +4,20 @@ Configuration
 -------------
 Set these environment variables to control the provider:
 
-``GOOGLE_VERTEX_PROJECT``
+`GOOGLE_VERTEX_PROJECT`
     Google Cloud project ID.  **Required.**
 
-``GOOGLE_VERTEX_LOCATION``
-    Google Cloud region, e.g. ``us-central1``.  **Required.**
+`GOOGLE_VERTEX_LOCATION`
+    Google Cloud region, e.g. `us-central1`.  **Required.**
 
-``GOOGLE_VERTEX_EMBED_MODEL``
-    Name of the embedding model to use.  Defaults to ``text-embedding-004``.
+`GOOGLE_VERTEX_EMBED_MODEL`
+    Name of the embedding model to use.  Defaults to `text-embedding-004`.
 """
 
 import asyncio
 import os
 
+from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
 from mcp_project_context_server.exceptions import EmbeddingError
 
 _DEFAULT_MODEL: str = "text-embedding-004"
@@ -24,21 +25,21 @@ _DEFAULT_MODEL: str = "text-embedding-004"
 _MAX_CHARS: int = 24_000
 
 
-class GoogleVertexEmbeddingProvider:
+class GoogleVertexEmbeddingProvider(EmbeddingProvider):
     """Embedding provider backed by the Google Vertex AI SDK.
 
-    The ``vertexai`` package is imported lazily inside ``embed()`` so that the
+    The `vertexai` package is imported lazily inside `embed_chunk()` so that the
     provider can be imported without requiring the package to be installed.
     Because the Vertex AI SDK is synchronous, calls are wrapped with
-    ``asyncio.to_thread`` to avoid blocking the event loop.
+    `asyncio.to_thread` to avoid blocking the event loop.
 
     Raises:
-        EnvironmentError: At construction time if ``GOOGLE_VERTEX_PROJECT`` or
-            ``GOOGLE_VERTEX_LOCATION`` are not set.
+        EnvironmentError: At construction time if `GOOGLE_VERTEX_PROJECT` or
+            `GOOGLE_VERTEX_LOCATION` are not set.
     """
 
     def __init__(self) -> None:
-        """Initialise the provider, reading configuration from environment variables."""
+        """Initialize the provider, reading configuration from environment variables."""
         project = os.getenv("GOOGLE_VERTEX_PROJECT")
         if not project:
             raise EnvironmentError("GOOGLE_VERTEX_PROJECT environment variable is not set.")
@@ -72,11 +73,11 @@ class GoogleVertexEmbeddingProvider:
     # Core embedding method
     # ------------------------------------------------------------------
 
-    async def embed(self, text: str) -> list[float]:
+    async def embed_chunk(self, text: str) -> list[float]:
         """Embed *text* using the configured Vertex AI embedding model.
 
         Args:
-            text: Text to embed.  Should be at most ``max_chars`` long.
+            text: Text to embed.  Should be at most `max_chars` long.
 
         Returns:
             Embedding vector as a list of floats.

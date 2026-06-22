@@ -25,7 +25,7 @@ class GitHubRepositoryProvider:
     """
 
     def __init__(self) -> None:
-        """Initialise the provider from environment variables."""
+        """Initialize the provider from environment variables."""
         self._token: str = os.getenv("REPO_AUTH_TOKEN", "")
         self._base_url: str = os.getenv("REPO_BASE_URL", "https://api.github.com").rstrip("/")
         self._default_branch_fallback: str = os.getenv("REPO_DEFAULT_BRANCH", "main")

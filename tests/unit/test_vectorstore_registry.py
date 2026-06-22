@@ -5,7 +5,6 @@ from pytest_mock import MockerFixture
 
 from mcp_project_context_server.integrations.vectorstore.registry import (
     get_vector_store,
-    reset_provider_for_testing,
 )
 
 _CHROMA_LOCAL_CLS = (
@@ -15,14 +14,6 @@ _CHROMA_HTTP_CLS = (
     "mcp_project_context_server.integrations.vectorstore.chroma_http.client.ChromaHttpVectorStoreProvider"
 )
 _PGVECTOR_CLS = "mcp_project_context_server.integrations.vectorstore.pgvector.client.PgVectorStoreProvider"
-
-
-@pytest.fixture(autouse=True)
-def reset_registry():  # type: ignore[return]
-    """Reset the singleton before AND after every test."""
-    reset_provider_for_testing()
-    yield
-    reset_provider_for_testing()
 
 
 class TestGetVectorStore:

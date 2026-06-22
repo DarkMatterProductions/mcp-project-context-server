@@ -25,7 +25,7 @@ from mcp_project_context_server.helpers.context import (
     find_context_dir,
     read_context_files,
 )
-from mcp_project_context_server.indexing.embedder import embed_chunk, get_max_chars
+
 from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
 from mcp_project_context_server.integrations.repository.registry import get_repository_provider
 from mcp_project_context_server.integrations.vectorstore.base import VectorStoreProvider
@@ -42,7 +42,7 @@ async def run_index_pipeline(project_path: str | Path, store: VectorStoreProvide
 
     Args:
         project_path: Path to the project root or any file within it.
-        store: Fully initialised vector store provider to write into.
+        store: Fully initialized vector store provider to write into.
 
     Returns:
         A human-readable summary string describing what was indexed.
@@ -52,8 +52,9 @@ async def run_index_pipeline(project_path: str | Path, store: VectorStoreProvide
         return f"No .context/ directory found at or above {project_path}"
 
     col_name = collection_name_for(context_dir)
-    chunk_size = get_max_chars()
     embed_provider = get_embedding_provider()
+    chunk_size = embed_provider.max_chars
+    embed_chunk = embed_provider.embed_chunk
     repo_provider = get_repository_provider()
 
     collection_metadata = {

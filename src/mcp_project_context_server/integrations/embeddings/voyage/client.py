@@ -4,15 +4,16 @@ Configuration
 -------------
 Set these environment variables to control the provider:
 
-``VOYAGE_API_KEY``
+`VOYAGE_API_KEY`
     API key for the Voyage AI service.  **Required.**
 
-``VOYAGE_EMBED_MODEL``
-    Name of the embedding model to use.  Defaults to ``voyage-code-3``.
+`VOYAGE_EMBED_MODEL`
+    Name of the embedding model to use.  Defaults to `voyage-code-3`.
 """
 
 import os
 
+from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
 from mcp_project_context_server.exceptions import EmbeddingError
 
 _DEFAULT_MODEL: str = "voyage-code-3"
@@ -20,18 +21,18 @@ _DEFAULT_MODEL: str = "voyage-code-3"
 _MAX_CHARS: int = 24_000
 
 
-class VoyageEmbeddingProvider:
+class VoyageEmbeddingProvider(EmbeddingProvider):
     """Embedding provider backed by the Voyage AI API.
 
-    The ``voyageai`` package is imported lazily inside ``embed()`` so that the
+    The `voyageai` package is imported lazily inside `embed_chunk()` so that the
     provider can be imported without requiring the package to be installed.
 
     Raises:
-        EnvironmentError: At construction time if ``VOYAGE_API_KEY`` is not set.
+        EnvironmentError: At construction time if `VOYAGE_API_KEY` is not set.
     """
 
     def __init__(self) -> None:
-        """Initialise the provider, reading configuration from environment variables."""
+        """Initialize the provider, reading configuration from environment variables."""
         api_key = os.getenv("VOYAGE_API_KEY")
         if not api_key:
             raise EnvironmentError("VOYAGE_API_KEY environment variable is not set.")
@@ -61,11 +62,11 @@ class VoyageEmbeddingProvider:
     # Core embedding method
     # ------------------------------------------------------------------
 
-    async def embed(self, text: str) -> list[float]:
+    async def embed_chunk(self, text: str) -> list[float]:
         """Embed *text* using the configured Voyage AI model.
 
         Args:
-            text: Text to embed.  Should be at most ``max_chars`` long.
+            text: Text to embed.  Should be at most `max_chars` long.
 
         Returns:
             Embedding vector as a list of floats.
@@ -77,7 +78,7 @@ class VoyageEmbeddingProvider:
             import voyageai  # lazy import
 
             client = voyageai.AsyncClient(api_key=self._api_key)
-            result = await client.embed([text], model=self._model, input_type="document")
+            result = await client.embed_chunk([text], model=self._model, input_type="document")
             return list(result.embeddings[0])
         except Exception as exc:
             raise EmbeddingError(f"Voyage AI embedding failed (model={self._model}): {exc}") from exc

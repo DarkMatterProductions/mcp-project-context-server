@@ -23,7 +23,7 @@ class _ConcreteProvider:
     def max_chars(self) -> int:
         return 1000
 
-    async def embed(self, text: str) -> list[float]:
+    async def embed_chunk(self, text: str) -> list[float]:
         return [0.1, 0.2, 0.3]
 
 
@@ -55,7 +55,7 @@ class TestEmbeddingProviderProtocol:
     @pytest.mark.asyncio
     async def test_protocol_embed_returns_vector(self):
         provider = _ConcreteProvider()
-        result = await provider.embed("hello")
+        result = await provider.embed_chunk("hello")
         assert result == [0.1, 0.2, 0.3]
 
 

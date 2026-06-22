@@ -28,7 +28,7 @@ class GiteaRepositoryProvider:
     """
 
     def __init__(self) -> None:
-        """Initialise the provider from environment variables."""
+        """Initialize the provider from environment variables."""
         self._token: str = os.getenv("REPO_AUTH_TOKEN", "")
         base = os.getenv("REPO_BASE_URL", "").rstrip("/")
         if not base:

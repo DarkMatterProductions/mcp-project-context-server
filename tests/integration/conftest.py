@@ -22,11 +22,11 @@ _SRC_DIR = str(Path(__file__).parent.parent.parent / "src")
 
 
 def _build_server_params(extra_env: dict[str, str] | None = None) -> StdioServerParameters:
-    """Return ``StdioServerParameters`` for the project-context-server module.
+    """Return `StdioServerParameters` for the project-context-server module.
 
     Strips variables that would silently override tool arguments unless the
     caller explicitly supplies them via *extra_env*.  Always injects the
-    project ``src/`` directory into ``PYTHONPATH`` so the subprocess uses the
+    project `src/` directory into `PYTHONPATH` so the subprocess uses the
     current source tree rather than any previously installed wheel.
     """
     env = {**os.environ}

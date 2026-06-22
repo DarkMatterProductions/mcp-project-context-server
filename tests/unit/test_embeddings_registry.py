@@ -6,16 +6,7 @@ import pytest
 
 from mcp_project_context_server.integrations.embeddings.registry import (
     get_embedding_provider,
-    reset_provider_for_testing,
 )
-
-
-@pytest.fixture(autouse=True)
-def reset_registry():
-    """Reset the provider singleton before and after each test."""
-    reset_provider_for_testing()
-    yield
-    reset_provider_for_testing()
 
 
 class TestRegistryFailFast:
@@ -94,7 +85,6 @@ class TestRegistryResetForTesting:
         monkeypatch.setenv("EMBED_PROVIDER", "ollama")
 
         get_embedding_provider()
-        reset_provider_for_testing()
 
         # After reset, another call should build a new instance
         get_embedding_provider()
