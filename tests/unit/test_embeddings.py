@@ -1,22 +1,23 @@
 """Tests for EmbeddingProvider."""
 import os
-from typing import Dict, Tuple
+import sys
+from typing import Dict, Tuple, List
 
 import pytest
 
 from mcp_project_context_server.exceptions import EmbeddingError
 from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
-from shared.constants import PROVIDERS
-from tests.shared import EMBEDDING_PROVIDER, PROVIDERS_DEFAULT_MODEL
+from shared.constants import NO_API_KEY_PROVIDER
+from shared.constructs import PROVIDERS
+from shared import EMBEDDING_PROVIDER
 
 
 def _provider_param(provider: str) -> pytest.param:
     """Return a pytest.param for *provider_name*, marked skip when opted out."""
     env_key = f"SKIP_EMBED_PROVIDER_{provider.upper().replace('-', '_')}"
     if os.getenv(env_key):
-        return pytest.param(provider, marks=pytest.mark.skip(reason=f"{env_key} is set, and disables {provider}"))
-    provider_details = EMBEDDING_PROVIDER(provider)
-    return pytest.param(*provider_details, id=provider)
+        return pytest.param(*EMBEDDING_PROVIDER(provider), marks=pytest.mark.skip(reason=f"{env_key} is set, and disables {provider}"), id=provider)
+    return pytest.param(*EMBEDDING_PROVIDER(provider), id=provider)
 
 
 @pytest.mark.parametrize(
@@ -36,8 +37,21 @@ class TestEmbeddingProviders:
     ):
         """Provider uses the default model when COHERE_EMBED_MODEL is not set."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
-        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_API_KEY", "test-key")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_PROJECT", "test-project-name")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_LOCATION", "test-location")
         monkeypatch.delenv(f"{embed_provider_name.upper().replace('-', '_')}_EMBED_MODEL", raising=False)
+        if embed_api_key is not None:
+            _api_key = {
+                "name": f"{embed_provider_name.upper().replace('-', '_')}_API_KEY",
+                "value": embed_api_key
+            }
+            monkeypatch.setenv(*_api_key)
+        else:
+            _api_key = {
+                "name": f"{embed_provider_name.upper().replace('-', '_')}_API_KEY",
+                "raising": False,
+            }
+            monkeypatch.delenv(f"{embed_provider_name.upper().replace('-', '_')}_API_KEY", raising=False)
 
         provider = get_embedding_provider()
         assert provider.provider_name == embed_provider_name
@@ -57,14 +71,18 @@ class TestEmbeddingProviders:
         """Provider reads model name from COHERE_EMBED_MODEL."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
         monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_API_KEY", "test-key")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_PROJECT", "test-project-name")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_LOCATION", "test-location")
         monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_EMBED_MODEL", "embed-multilingual-v3.0")
         provider = get_embedding_provider()
         assert provider.model_name == "embed-multilingual-v3.0"
-        assert provider._api_key == "test-key"
+        if embed_provider_name not in NO_API_KEY_PROVIDER:
+            assert provider._api_key == "test-key"
 
     def test_missing_api_key_raises_environment_error(
             self,
             monkeypatch,
+            skip_if_no_api_key,
             embed_provider_name,
             embed_default_model,
             embed_override_model,
@@ -73,13 +91,18 @@ class TestEmbeddingProviders:
             embed_host_url
     ):
         """EnvironmentError is raised when COHERE_API_KEY is not set."""
-        monkeypatch.delenv(f"{embed_provider_name.upper().replace('-', '_')}_API_KEY", raising=False)
+        monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
+        monkeypatch.delenv(f"{embed_provider_name.upper().replace('-', '_')}_API_KEY", False)
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_PROJECT", "test-project-name")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_LOCATION", "test-location")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_EMBED_MODEL", "embed-multilingual-v3.0")
         with pytest.raises(EnvironmentError, match=f"{embed_provider_name.upper().replace('-', '_')}_API_KEY"):
             get_embedding_provider()
 
     def test_empty_api_key_raises_environment_error(
             self,
             monkeypatch,
+            skip_if_no_api_key,
             embed_provider_name,
             embed_default_model,
             embed_override_model,
@@ -90,6 +113,9 @@ class TestEmbeddingProviders:
         """EnvironmentError is raised when COHERE_API_KEY is empty."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
         monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_API_KEY", "")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_PROJECT", "test-project-name")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_LOCATION", "test-location")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_EMBED_MODEL", "embed-multilingual-v3.0")
         with pytest.raises(EnvironmentError, match=f"{embed_provider_name.upper().replace('-', '_')}_API_KEY"):
             get_embedding_provider()
 
@@ -106,6 +132,9 @@ class TestEmbeddingProviders:
         """max_chars returns a positive integer."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
         monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_API_KEY", "test-key")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_PROJECT", "test-project-name")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_LOCATION", "test-location")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_EMBED_MODEL", "embed-multilingual-v3.0")
         provider = get_embedding_provider()
         assert provider.max_chars > 0
 
@@ -124,6 +153,9 @@ class TestEmbeddingProviders:
         """embed() returns the embedding vector from the API response."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
         monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_API_KEY", "test-key")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_PROJECT", "test-project-name")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_LOCATION", "test-location")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_EMBED_MODEL", "embed-multilingual-v3.0")
 
         mock_embeddings_obj = mocker.MagicMock()
         mock_embeddings_obj.float_ = [[0.1, 0.2, 0.3]]
@@ -131,22 +163,36 @@ class TestEmbeddingProviders:
         mock_response = mocker.MagicMock()
         mock_response.embeddings = mock_embeddings_obj
 
-        mock_client_instance = mocker.AsyncMock()
-        mock_client_instance.embed_chunk.return_value = mock_response
+        if embed_provider_name == "ollama":
+            mock_client_instance = mocker.MagicMock()
+            mock_client_instance.embed.return_value = mock_response
 
-        mock_async_client_cls = mocker.MagicMock(return_value=mock_client_instance)
+            mock_client_cls = mocker.MagicMock(return_value=mock_client_instance)
 
-        mock_provider = mocker.MagicMock()
-        mock_provider.AsyncClientV2 = mock_async_client_cls
+            mock_provider = mocker.MagicMock()
+            mock_provider.Client = mock_client_cls
 
-        mocker.patch.dict("sys.modules", {f"{embed_provider_name}": mock_provider})
+            mocker.patch(
+                "mcp_project_context_server.integrations.embeddings.ollama.client.ollama",
+                mock_provider,
+            )
+        else:
+            mock_client_instance = mocker.AsyncMock()
+            mock_client_instance.embed.return_value = mock_response
+
+            mock_async_client_cls = mocker.MagicMock(return_value=mock_client_instance)
+
+            mock_provider = mocker.MagicMock()
+            mock_provider.AsyncClientV2 = mock_async_client_cls
+
+            mocker.patch.dict("sys.modules", {f"{embed_provider_name}": mock_provider})
 
         provider = get_embedding_provider()
         result = await provider.embed_chunk("hello world")
 
         assert result == [0.1, 0.2, 0.3]
         mock_async_client_cls.assert_called_once_with(api_key="test-key")
-        mock_client_instance.embed_chunk.assert_called_once_with(
+        mock_client_instance.embed.assert_called_once_with(
             texts=["hello world"],
             model="embed-english-v3.0",
             input_type="search_document",
@@ -168,6 +214,9 @@ class TestEmbeddingProviders:
         """embed() wraps exceptions in EmbeddingError."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
         monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_API_KEY", "test-key")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_PROJECT", "test-project-name")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_LOCATION", "test-location")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_EMBED_MODEL", "embed-multilingual-v3.0")
 
         mock_client_instance = mocker.AsyncMock()
         mock_client_instance.embed_chunk.side_effect = ConnectionError("refused")
@@ -196,6 +245,9 @@ class TestEmbeddingProviders:
         """EmbeddingError.__cause__ is the original exception."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
         monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_API_KEY", "test-key")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_PROJECT", "test-project-name")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_LOCATION", "test-location")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_EMBED_MODEL", "embed-multilingual-v3.0")
         original = RuntimeError("original error")
 
         mock_client_instance = mocker.AsyncMock()
@@ -226,6 +278,8 @@ class TestEmbeddingProviders:
         """embed() uses the model name from COHERE_EMBED_MODEL."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
         monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_API_KEY", "test-key")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_PROJECT", "test-project-name")
+        monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_LOCATION", "test-location")
         monkeypatch.setenv(f"{embed_provider_name.upper().replace('-', '_')}_EMBED_MODEL", "embed-multilingual-v3.0")
 
         mock_embeddings_obj = mocker.MagicMock()

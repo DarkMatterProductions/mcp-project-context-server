@@ -30,7 +30,7 @@ import os
 import pytest
 
 from tests.integration.base import MCPIntegrationBase
-from tests.shared import EMBEDDING_PROVIDER
+from shared import EMBEDDING_PROVIDER
 
 pytestmark = pytest.mark.asyncio
 

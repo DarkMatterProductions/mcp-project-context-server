@@ -4,13 +4,13 @@ Configuration
 -------------
 Set these environment variables to control the provider:
 
-`GOOGLE_VERTEX_PROJECT`
+`VERTEXAI_PROJECT`
     Google Cloud project ID.  **Required.**
 
-`GOOGLE_VERTEX_LOCATION`
+`VERTEXAI_LOCATION`
     Google Cloud region, e.g. `us-central1`.  **Required.**
 
-`GOOGLE_VERTEX_EMBED_MODEL`
+`VERTEXAI_EMBED_MODEL`
     Name of the embedding model to use.  Defaults to `text-embedding-004`.
 """
 
@@ -34,21 +34,21 @@ class GoogleVertexEmbeddingProvider(EmbeddingProvider):
     `asyncio.to_thread` to avoid blocking the event loop.
 
     Raises:
-        EnvironmentError: At construction time if `GOOGLE_VERTEX_PROJECT` or
-            `GOOGLE_VERTEX_LOCATION` are not set.
+        EnvironmentError: At construction time if `VERTEXAI_PROJECT` or
+            `VERTEXAI_LOCATION` are not set.
     """
 
     def __init__(self) -> None:
         """Initialize the provider, reading configuration from environment variables."""
-        project = os.getenv("GOOGLE_VERTEX_PROJECT")
+        project = os.getenv("VERTEXAI_PROJECT")
         if not project:
-            raise EnvironmentError("GOOGLE_VERTEX_PROJECT environment variable is not set.")
-        location = os.getenv("GOOGLE_VERTEX_LOCATION")
+            raise EnvironmentError("VERTEXAI_PROJECT environment variable is not set.")
+        location = os.getenv("VERTEXAI_LOCATION")
         if not location:
-            raise EnvironmentError("GOOGLE_VERTEX_LOCATION environment variable is not set.")
+            raise EnvironmentError("VERTEXAI_LOCATION environment variable is not set.")
         self._project: str = project
         self._location: str = location
-        self._model: str = os.getenv("GOOGLE_VERTEX_EMBED_MODEL", _DEFAULT_MODEL)
+        self._model: str = os.getenv("VERTEXAI_EMBED_MODEL", _DEFAULT_MODEL)
 
     # ------------------------------------------------------------------
     # EmbeddingProvider Protocol properties

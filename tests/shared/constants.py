@@ -1,25 +1,14 @@
-from pathlib import Path
-from importlib import import_module
-
-KNOWN_INTERFERING_ENV_VARS = ("PROJECT_PATH",)
-SRC_DIR = str(Path(__file__).parent.parent / "src")
+NO_API_KEY_PROVIDER = [
+    "ollama",
+    "vertexai",
+]
 
 PROVIDERS_DEFAULT_MODEL = {
-    "ollama": ("nomic-embed-text", 32_000),
-    "voyage": ("voyage-code-3", 24_000),
-    "openai": ("text-embedding-3-small", 24_000),
-    "cohere": ("embed-english-v3.0", 20_000),
-    "google": ("text-embedding-004", 24_000),
-    "vertexai": ("text-embedding-004", 24_000),
+    "ollama": {"default_model": "nomic-embed-text", "max_chars": 32_000, "api_key": False},
+    "voyage": {"default_model": "voyage-code-3", "max_chars": 24_000, "api_key": f"voyage-api-key-test"},
+    "openai": {"default_model": "text-embedding-3-small", "max_chars": 24_000, "api_key": f"openai-api-key-test"},
+    "cohere": {"default_model": "embed-english-v3.0", "max_chars": 20_000, "api_key": f"cohere-api-key-test"},
+    "google": {"default_model": "text-embedding-004", "max_chars": 24_000, "api_key": f"google-api-key-test"},
+    "vertexai": {"default_model": "text-embedding-004", "max_chars": 24_000, "api_key": False},
 }
 
-PROVIDERS = PROVIDERS_DEFAULT_MODEL.keys()
-
-EMBEDDING_PROVIDER = lambda provider: (
-    provider,
-    PROVIDERS_DEFAULT_MODEL[provider][0],
-    f"{provider}-embedded-override",
-    PROVIDERS_DEFAULT_MODEL[provider][1],
-    f"{provider}-api-key-default",
-    f"https://{provider}-fqdn.com:121415"
-)
