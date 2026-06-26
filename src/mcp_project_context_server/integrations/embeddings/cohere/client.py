@@ -78,7 +78,7 @@ class CohereEmbeddingProvider(EmbeddingProvider):
             import cohere  # lazy import
 
             client = cohere.AsyncClientV2(api_key=self._api_key)
-            response = await client.embed_chunk(
+            response = await client.embed(
                 texts=[text],
                 model=self._model,
                 input_type="search_document",
