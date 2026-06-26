@@ -18,7 +18,6 @@ Set these environment variables to control the provider:
 import asyncio
 import os
 
-import ollama
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
 
 from mcp_project_context_server.exceptions import EmbeddingError
@@ -75,6 +74,7 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
                 unreachable.
         """
         try:
+            import ollama
             client = ollama.Client(host=self._host)
             response = await asyncio.to_thread(client.embed, model=self._model, input=text)
             return list(response.embeddings[0])
