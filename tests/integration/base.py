@@ -10,7 +10,7 @@ from pathlib import Path
 
 from mcp import StdioServerParameters
 
-from tests.shared import KNOWN_INTERFERING_ENV_VARS, SRC_DIR
+from shared import KNOWN_INTERFERING_ENV_VARS, SRC_DIR
 
 
 class MCPIntegrationBase:

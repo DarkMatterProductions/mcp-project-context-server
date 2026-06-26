@@ -1,10 +1,12 @@
 """Tests for the provider-agnostic indexing/embedder.py module."""
 
+import os
+
 import pytest
 
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
 from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
-from tests.shared import EMBEDDING_PROVIDER
+from shared import EMBEDDING_PROVIDER
 
 
 def _provider_param(provider_name: str) -> pytest.param:

@@ -76,7 +76,7 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
         """
         try:
             client = ollama.Client(host=self._host)
-            response = await asyncio.to_thread(client.embed_chunk, model=self._model, input=text)
+            response = await asyncio.to_thread(client.embed, model=self._model, input=text)
             return list(response.embeddings[0])
         except Exception as exc:
             raise EmbeddingError(f"Ollama embedding failed (host={self._host}, model={self._model}): {exc}") from exc
