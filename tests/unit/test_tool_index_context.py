@@ -9,14 +9,14 @@ class TestIndexContext:
 
     @pytest.mark.asyncio
     async def test_index_context_calls_index_and_returns_result(self, mocker):
-        mock_index = mocker.patch(
-            "mcp_project_context_server.tools.index_context.index_project_context",
-            new_callable=mocker.AsyncMock,
+        mock_indexer = mocker.AsyncMock(return_value="Indexed 5 files.")
+        mocker.patch(
+            "mcp_project_context_server.tools.index_context.get_indexer",
+            return_value=mock_indexer,
         )
-        mock_index.return_value = "Indexed 5 files."
 
         result = await handle(self.arguments)
 
         assert len(result) == 1
         assert result[0].text == "Indexed 5 files."
-        mock_index.assert_called_once_with("/some/path")
+        mock_indexer.assert_called_once_with("/some/path")

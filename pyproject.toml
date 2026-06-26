@@ -69,7 +69,9 @@ all = [
     "asyncpg",
     "pgvector",
     "google-auth",
-    "starlette", "uvicorn", "google-auth"
+    "starlette",
+    "uvicorn",
+    "google-auth",
 ]
 
 [dependency-groups]
@@ -111,20 +113,18 @@ where = ["src"]  # Look for packages in src/
 [tool.setuptools.package-dir]
 "" = "src"
 
-[tool.pytest]
+[tool.pytest.ini_options]
 pythonpath = [
     "src"
 ]
 testpaths = [
     "tests"
 ]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 markers = [
     "external_services: marks tests that require ChromaDB and an embedding provider (e.g. Ollama). Skip with: -m 'not external_services'",
 ]
-
-[tool.pytest_asyncio]
-asyncio_mode  = "auto"
-asyncio_default_fixture_loop_scope = "fixture"
 
 [tool.black]
 line-length = 120
