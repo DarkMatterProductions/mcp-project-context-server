@@ -78,7 +78,7 @@ class VoyageEmbeddingProvider(EmbeddingProvider):
             import voyageai  # lazy import
 
             client = voyageai.AsyncClient(api_key=self._api_key)
-            result = await client.embed_chunk([text], model=self._model, input_type="document")
+            result = await client.embed([text], model=self._model, input_type="document")
             return list(result.embeddings[0])
         except Exception as exc:
             raise EmbeddingError(f"Voyage AI embedding failed (model={self._model}): {exc}") from exc

@@ -1,15 +1,16 @@
 from pathlib import Path
 
-from shared import PROVIDERS_DEFAULT_MODEL
+from shared import PROVIDER_DEFAULTS
 
-PROVIDERS = PROVIDERS_DEFAULT_MODEL.keys()
-EMBEDDING_PROVIDER = lambda provider:  (
+PROVIDERS = PROVIDER_DEFAULTS.keys()
+EMBEDDING_PROVIDER = lambda provider: (
     provider,
-    PROVIDERS_DEFAULT_MODEL[provider]["default_model"],
+    PROVIDER_DEFAULTS[provider]["default_model"],
     f"{provider}-embedded-override",
-    PROVIDERS_DEFAULT_MODEL[provider]["max_chars"],
-    PROVIDERS_DEFAULT_MODEL[provider]["api_key"],
-    f"https://{provider}-fqdn.com:121415"
+    PROVIDER_DEFAULTS[provider]["max_chars"],
+    PROVIDER_DEFAULTS[provider]["api_key"],
+    f"https://{provider}-fqdn.com:121415",
+    PROVIDER_DEFAULTS[provider]["import_path"],
 )
 KNOWN_INTERFERING_ENV_VARS = ("PROJECT_PATH",)
 SRC_DIR = str(Path(__file__).parent.parent / "src")
