@@ -171,11 +171,6 @@ class TestEmbeddingProviders:
 
             mock_provider = mocker.MagicMock()
             mock_provider.Client = mock_client_cls
-
-            mocker.patch(
-                "mcp_project_context_server.integrations.embeddings.ollama.client.ollama",
-                mock_provider,
-            )
         else:
             mock_client_instance = mocker.AsyncMock()
             mock_client_instance.embed.return_value = mock_response
@@ -185,7 +180,7 @@ class TestEmbeddingProviders:
             mock_provider = mocker.MagicMock()
             mock_provider.AsyncClientV2 = mock_async_client_cls
 
-            mocker.patch.dict("sys.modules", {f"{embed_provider_name}": mock_provider})
+        mocker.patch.dict("sys.modules", {f"{embed_provider_name}": mock_provider})
 
         provider = get_embedding_provider()
         result = await provider.embed_chunk("hello world")
