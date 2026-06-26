@@ -113,8 +113,8 @@ class TestImportError:
     @pytest.mark.asyncio
     async def test_raises_import_error_when_asyncpg_not_installed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("PGVECTOR_CONNECTION_STRING", "postgresql://x:***@h/db")
-        # Remove asyncpg so the lazy import inside _get_pool() fails
-        monkeypatch.delitem(sys.modules, "asyncpg", raising=False)
+        # Block asyncpg re-import so the lazy import inside _get_pool() fails
+        monkeypatch.setitem(sys.modules, "asyncpg", None)
 
         from mcp_project_context_server.integrations.vectorstore.pgvector.client import PgVectorStoreProvider
 

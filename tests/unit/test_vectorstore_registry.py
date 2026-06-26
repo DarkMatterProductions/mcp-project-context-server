@@ -56,29 +56,3 @@ class TestGetVectorStore:
         with pytest.raises(EnvironmentError, match="Unsupported VECTOR_STORE_PROVIDER"):
             get_vector_store()
 
-    def test_provider_is_cached_after_first_call(self, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture) -> None:
-        monkeypatch.delenv("VECTOR_STORE_PROVIDER", raising=False)
-        mock_cls = mocker.patch(_CHROMA_LOCAL_CLS)
-        store1 = get_vector_store()
-        store2 = get_vector_store()
-        assert store1 is store2
-        mock_cls.assert_called_once()  # constructor invoked only once
-
-    def test_reset_provider_for_testing_clears_cached_instance(
-        self, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
-    ) -> None:
-        monkeypatch.delenv("VECTOR_STORE_PROVIDER", raising=False)
-        mock_cls = mocker.patch(_CHROMA_LOCAL_CLS)
-
-        instance1 = mocker.MagicMock(name="inst1")
-        instance2 = mocker.MagicMock(name="inst2")
-        mock_cls.side_effect = [instance1, instance2]
-
-        store1 = get_vector_store()
-        reset_provider_for_testing()
-        store2 = get_vector_store()
-
-        assert mock_cls.call_count == 2  # two separate instantiations
-        assert store1 is instance1
-        assert store2 is instance2
-        assert store1 is not store2

@@ -26,9 +26,6 @@ class EmbeddingProvider(Protocol):
     file I/O, or expensive initialization — those should be deferred to the
     first call to ``embed_chunk()``.
     """
-    _api_key: str
-    _model: str
-
     @property
     def provider_name(self) -> str:
         """Short identifier for the provider, e.g. ``"ollama"``, ``"voyage"``."""

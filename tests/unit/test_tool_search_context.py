@@ -26,6 +26,7 @@ def _make_embed_provider(mocker, provider_name="ollama", model_name="nomic-embed
     provider = mocker.MagicMock()
     provider.provider_name = provider_name
     provider.model_name = model_name
+    provider.embed_chunk = mocker.AsyncMock(return_value=[0.1, 0.2])
     return provider
 
 
@@ -64,11 +65,6 @@ class TestSearchContextSuccess:
         )
         mocker.patch("mcp_project_context_server.tools.search_context.get_vector_store", return_value=store)
         mocker.patch(
-            "mcp_project_context_server.tools.search_context.embed_chunk",
-            new_callable=mocker.AsyncMock,
-            return_value=[0.1, 0.2],
-        )
-        mocker.patch(
             "mcp_project_context_server.tools.search_context.get_embedding_provider",
             return_value=_make_embed_provider(mocker),
         )
@@ -90,11 +86,6 @@ class TestSearchContextSuccess:
         store = _make_store(mocker, docs=["Doc 1"], metas=[{"file": "f1.md"}])
         mocker.patch("mcp_project_context_server.tools.search_context.get_vector_store", return_value=store)
         mocker.patch(
-            "mcp_project_context_server.tools.search_context.embed_chunk",
-            new_callable=mocker.AsyncMock,
-            return_value=[0.1],
-        )
-        mocker.patch(
             "mcp_project_context_server.tools.search_context.get_embedding_provider",
             return_value=_make_embed_provider(mocker),
         )
@@ -114,11 +105,6 @@ class TestSearchContextSuccess:
         store = _make_store(mocker, docs=[], metas=[])
         mocker.patch("mcp_project_context_server.tools.search_context.get_vector_store", return_value=store)
         mocker.patch(
-            "mcp_project_context_server.tools.search_context.embed_chunk",
-            new_callable=mocker.AsyncMock,
-            return_value=[0.1],
-        )
-        mocker.patch(
             "mcp_project_context_server.tools.search_context.get_embedding_provider",
             return_value=_make_embed_provider(mocker),
         )
@@ -134,11 +120,6 @@ class TestSearchContextSuccess:
 
         store = _make_store(mocker, raise_query=True)
         mocker.patch("mcp_project_context_server.tools.search_context.get_vector_store", return_value=store)
-        mocker.patch(
-            "mcp_project_context_server.tools.search_context.embed_chunk",
-            new_callable=mocker.AsyncMock,
-            return_value=[0.1],
-        )
         mocker.patch(
             "mcp_project_context_server.tools.search_context.get_embedding_provider",
             return_value=_make_embed_provider(mocker),
@@ -163,11 +144,6 @@ class TestSearchContextMismatchWarning:
         )
         mocker.patch("mcp_project_context_server.tools.search_context.get_vector_store", return_value=store)
         mocker.patch(
-            "mcp_project_context_server.tools.search_context.embed_chunk",
-            new_callable=mocker.AsyncMock,
-            return_value=[0.1],
-        )
-        mocker.patch(
             "mcp_project_context_server.tools.search_context.get_embedding_provider",
             return_value=_make_embed_provider(mocker, "ollama", "nomic-embed-text"),
         )
@@ -188,11 +164,6 @@ class TestSearchContextMismatchWarning:
             metas=[{"file": "f1.md"}],
         )
         mocker.patch("mcp_project_context_server.tools.search_context.get_vector_store", return_value=store)
-        mocker.patch(
-            "mcp_project_context_server.tools.search_context.embed_chunk",
-            new_callable=mocker.AsyncMock,
-            return_value=[0.1],
-        )
         mocker.patch(
             "mcp_project_context_server.tools.search_context.get_embedding_provider",
             return_value=_make_embed_provider(mocker, "voyage", "voyage-code-3"),
@@ -218,11 +189,6 @@ class TestSearchContextMismatchWarning:
         )
         mocker.patch("mcp_project_context_server.tools.search_context.get_vector_store", return_value=store)
         mocker.patch(
-            "mcp_project_context_server.tools.search_context.embed_chunk",
-            new_callable=mocker.AsyncMock,
-            return_value=[0.1],
-        )
-        mocker.patch(
             "mcp_project_context_server.tools.search_context.get_embedding_provider",
             return_value=_make_embed_provider(mocker, "ollama", "mxbai-embed-large"),
         )
@@ -242,11 +208,6 @@ class TestSearchContextMismatchWarning:
 
         store = _make_store(mocker, meta={}, docs=["Doc 1"], metas=[{"file": "f1.md"}])
         mocker.patch("mcp_project_context_server.tools.search_context.get_vector_store", return_value=store)
-        mocker.patch(
-            "mcp_project_context_server.tools.search_context.embed_chunk",
-            new_callable=mocker.AsyncMock,
-            return_value=[0.1],
-        )
         mocker.patch(
             "mcp_project_context_server.tools.search_context.get_embedding_provider",
             return_value=_make_embed_provider(mocker),
