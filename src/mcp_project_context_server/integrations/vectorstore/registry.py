@@ -27,6 +27,7 @@ from collections.abc import Callable, Coroutine
 from pathlib import Path
 from typing import Any, Optional
 
+from mcp_project_context_server.indexing.indexer import run_index_pipeline
 from mcp_project_context_server.integrations.vectorstore.base import VectorStoreProvider
 from mcp_project_context_server.integrations.vectorstore.chroma_http.client import ChromaHttpVectorStoreProvider
 from mcp_project_context_server.integrations.vectorstore.chroma_local.client import ChromaLocalVectorStoreProvider

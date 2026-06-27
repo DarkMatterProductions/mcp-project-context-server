@@ -10,25 +10,43 @@
 
 - Cursor installed ([cursor.com](https://www.cursor.com/))
 - Python 3.10+ and `pip`
-- For STDIO: local installation of `mcp-project-context-server`
-- For SSE/remote: a running team server (see [Team Server topology](../deployment-topologies.md#topology-2-team-server))
+- For Ollama: [Ollama](https://ollama.com) installed and running
+- For cloud providers: the relevant API key
 
 ---
 
 ## Installation
 
+Install the package with the extra that matches your chosen embedding provider:
+
 ```bash
-# Local STDIO use — with Voyage AI (recommended for code quality)
+# Ollama (local, no API key required)
+pip install "mcp-project-context-server[ollama]"
+
+# Voyage AI
 pip install "mcp-project-context-server[voyage]"
 
-# Local STDIO use — with Ollama (free/local)
-pip install mcp-project-context-server
+# OpenAI
+pip install "mcp-project-context-server[openai]"
 
-# Both SSE client and pgvector (for team server setup)
-pip install "mcp-project-context-server[sse,pgvector]"
+# Cohere
+pip install "mcp-project-context-server[cohere]"
+
+# Google Gemini (AI Studio)
+pip install "mcp-project-context-server[google]"
+
+# Google Vertex AI
+pip install "mcp-project-context-server[google-vertex]"
+
+# PostgreSQL vector store (any embedding provider)
+pip install "mcp-project-context-server[pgvector]"
+
+# Everything
+pip install "mcp-project-context-server[all]"
 ```
 
 Verify:
+
 ```bash
 which project-context-server
 ```
@@ -40,15 +58,61 @@ which project-context-server
 Cursor reads MCP server config from `.cursor/mcp.json` (project-level, takes precedence) or `~/.cursor/mcp.json` (global).
 
 | Scope | Path | Committed? |
-|---|---|---|
-| Project | `.cursor/mcp.json` | Yes — share with your team |
-| Global | `~/.cursor/mcp.json` | No — personal only |
+|-------|------|------------|
+| **Project** | `.cursor/mcp.json` | Yes — share with your team |
+| **Global** | `~/.cursor/mcp.json` | No — personal only |
+
+> **Security note:** If committing `.cursor/mcp.json`, do not hardcode API keys. Omit the key variable from the JSON and set it in your shell profile (`export VOYAGE_API_KEY=...`). Cursor inherits environment variables from the shell that launched it.
+
+> **SSE/remote mode:** If your team runs a shared MCP server, see [HTTP/SSE Examples](#httpssse-examples). Embedding and vector store configuration is done on the server — clients need only the server URL and auth token.
 
 ---
 
-### STDIO Example — Voyage AI (local, single developer)
+## STDIO Embedding Provider Examples
 
-**.cursor/mcp.json:**
+Each example below is a complete `.cursor/mcp.json`. All use `chroma-local` as the vector store (the default). To use a different vector store, see [Vector Store Configuration](#vector-store-configuration).
+
+---
+
+### Ollama (local, free)
+
+No API key required. Requires [Ollama](https://ollama.com) running locally.
+
+```bash
+ollama pull nomic-embed-text
+```
+
+```json
+{
+  "mcpServers": {
+    "project-context": {
+      "command": "/usr/local/bin/project-context-server",
+      "env": {
+        "EMBED_PROVIDER": "ollama",
+        "OLLAMA_HOST": "http://localhost:11434",
+        "OLLAMA_EMBED_MODEL": "nomic-embed-text",
+        "VECTOR_STORE_PROVIDER": "chroma-local",
+        "REPO_PROVIDER": "local"
+      }
+    }
+  }
+}
+```
+
+**Popular Ollama embedding models:**
+
+| Model | Size | Notes |
+|-------|------|-------|
+| `nomic-embed-text` | ~274 MB | Fast, good general purpose (default) |
+| `mxbai-embed-large` | ~669 MB | Higher quality |
+| `all-minilm` | ~46 MB | Lightweight |
+
+---
+
+### Voyage AI
+
+Best retrieval quality for code and technical documentation. Get an API key at [dash.voyageai.com/api-keys](https://dash.voyageai.com/api-keys).
+
 ```json
 {
   "mcpServers": {
@@ -66,13 +130,19 @@ Cursor reads MCP server config from `.cursor/mcp.json` (project-level, takes pre
 }
 ```
 
-Get your Voyage API key at [dash.voyageai.com/api-keys](https://dash.voyageai.com/api-keys).
+**Available models:**
 
-> **Tip:** If committing `.cursor/mcp.json`, do not hardcode your API key. Instead, omit `VOYAGE_API_KEY` from the JSON and set it in your shell profile (`export VOYAGE_API_KEY=...`). Cursor inherits environment variables from the shell that launched it.
+| Model | Notes |
+|-------|-------|
+| `voyage-code-3` | Code-optimized, default |
+| `voyage-3` | General purpose |
+| `voyage-3-lite` | Faster, lower cost |
 
 ---
 
-### STDIO Example — Ollama (fully local, no API key)
+### OpenAI
+
+Get an API key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys).
 
 ```json
 {
@@ -80,9 +150,69 @@ Get your Voyage API key at [dash.voyageai.com/api-keys](https://dash.voyageai.co
     "project-context": {
       "command": "/usr/local/bin/project-context-server",
       "env": {
-        "EMBED_PROVIDER": "ollama",
-        "OLLAMA_BASE_URL": "http://localhost:11434",
-        "OLLAMA_EMBED_MODEL": "nomic-embed-text",
+        "EMBED_PROVIDER": "openai",
+        "OPENAI_API_KEY": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "OPENAI_EMBED_MODEL": "text-embedding-3-small",
+        "VECTOR_STORE_PROVIDER": "chroma-local",
+        "REPO_PROVIDER": "local"
+      }
+    }
+  }
+}
+```
+
+**Available models:**
+
+| Model | Dimensions | Notes |
+|-------|-----------|-------|
+| `text-embedding-3-small` | 1536 | Fast, cost-effective (default) |
+| `text-embedding-3-large` | 3072 | Highest quality |
+
+---
+
+### Cohere
+
+Good multilingual support. Get an API key at [dashboard.cohere.com](https://dashboard.cohere.com/).
+
+```json
+{
+  "mcpServers": {
+    "project-context": {
+      "command": "/usr/local/bin/project-context-server",
+      "env": {
+        "EMBED_PROVIDER": "cohere",
+        "COHERE_API_KEY": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "COHERE_EMBED_MODEL": "embed-english-v3.0",
+        "VECTOR_STORE_PROVIDER": "chroma-local",
+        "REPO_PROVIDER": "local"
+      }
+    }
+  }
+}
+```
+
+**Available models:**
+
+| Model | Notes |
+|-------|-------|
+| `embed-english-v3.0` | English, default |
+| `embed-multilingual-v3.0` | 100+ languages |
+
+---
+
+### Google Gemini (AI Studio)
+
+Get an API key at [aistudio.google.com](https://aistudio.google.com/).
+
+```json
+{
+  "mcpServers": {
+    "project-context": {
+      "command": "/usr/local/bin/project-context-server",
+      "env": {
+        "EMBED_PROVIDER": "google",
+        "GOOGLE_API_KEY": "AIzaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "GOOGLE_EMBED_MODEL": "text-embedding-004",
         "VECTOR_STORE_PROVIDER": "chroma-local",
         "REPO_PROVIDER": "local"
       }
@@ -93,11 +223,167 @@ Get your Voyage API key at [dash.voyageai.com/api-keys](https://dash.voyageai.co
 
 ---
 
-### HTTP/SSE Example — Remote Team Server with Bearer Auth
+### Google Vertex AI
 
-When your team runs a shared `mcp-project-context-server` instance (see [Team Server topology](../deployment-topologies.md#topology-2-team-server)), configure Cursor to connect to it over SSE:
+Uses Application Default Credentials — no API key in the config.
 
-**.cursor/mcp.json:**
+```bash
+gcloud auth application-default login
+```
+
+```json
+{
+  "mcpServers": {
+    "project-context": {
+      "command": "/usr/local/bin/project-context-server",
+      "env": {
+        "EMBED_PROVIDER": "vertexai",
+        "VERTEXAI_PROJECT": "my-gcp-project-id",
+        "VERTEXAI_LOCATION": "us-central1",
+        "VERTEXAI_EMBED_MODEL": "text-embedding-004",
+        "VECTOR_STORE_PROVIDER": "chroma-local",
+        "REPO_PROVIDER": "local"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Vector Store Configuration
+
+Replace the `VECTOR_STORE_PROVIDER` and related variables in any of the examples above.
+
+---
+
+### ChromaDB Local (default)
+
+No extra infrastructure required. Data persists to `~/.mcp-data/chroma` by default.
+
+```json
+"env": {
+  "VECTOR_STORE_PROVIDER": "chroma-local",
+  "CHROMA_DIR": "/home/yourname/.mcp-data/chroma"
+}
+```
+
+`CHROMA_DIR` is optional — omit it to use the default path.
+
+---
+
+### ChromaDB HTTP
+
+Connects to a remote or containerized ChromaDB instance.
+
+```json
+{
+  "mcpServers": {
+    "project-context": {
+      "command": "/usr/local/bin/project-context-server",
+      "env": {
+        "EMBED_PROVIDER": "ollama",
+        "OLLAMA_HOST": "http://localhost:11434",
+        "OLLAMA_EMBED_MODEL": "nomic-embed-text",
+        "VECTOR_STORE_PROVIDER": "chroma-http",
+        "CHROMA_HOST": "chroma.example.com",
+        "CHROMA_PORT": "8000",
+        "CHROMA_API_KEY": "your-chroma-api-key",
+        "REPO_PROVIDER": "local"
+      }
+    }
+  }
+}
+```
+
+`CHROMA_API_KEY` is optional — omit it for unauthenticated instances.
+
+---
+
+### pgvector (PostgreSQL)
+
+Useful for a shared team index. Requires `pip install "mcp-project-context-server[pgvector]"` and `CREATE EXTENSION IF NOT EXISTS vector;` on the database.
+
+```json
+{
+  "mcpServers": {
+    "project-context": {
+      "command": "/usr/local/bin/project-context-server",
+      "env": {
+        "EMBED_PROVIDER": "voyage",
+        "VOYAGE_API_KEY": "pa-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "VOYAGE_EMBED_MODEL": "voyage-code-3",
+        "VECTOR_STORE_PROVIDER": "pgvector",
+        "PGVECTOR_CONNECTION_STRING": "postgresql://mcpuser:password@db.example.com:5432/mcp_context",
+        "REPO_PROVIDER": "local"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Repository Provider Configuration
+
+---
+
+### Local (default)
+
+No configuration required. The workspace root is used as `project_path`.
+
+---
+
+### GitHub
+
+```json
+"env": {
+  "REPO_PROVIDER": "github",
+  "REPO_AUTH_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
+```
+
+Get a token at [github.com/settings/tokens](https://github.com/settings/tokens) with `repo` scope. Pass `project_path` as `owner/repo`.
+
+For GitHub Enterprise Server, also set `"REPO_BASE_URL": "https://github.example.com/api/v3"`.
+
+---
+
+### GitLab
+
+```json
+"env": {
+  "REPO_PROVIDER": "gitlab",
+  "REPO_AUTH_TOKEN": "glpat-xxxxxxxxxxxxxxxxxxxx"
+}
+```
+
+Get a token at **User Settings → Access Tokens** with `read_api` scope.
+
+For self-hosted GitLab, also set `"REPO_BASE_URL": "https://gitlab.example.com"`.
+
+---
+
+### Gitea
+
+`REPO_BASE_URL` is required — there is no default.
+
+```json
+"env": {
+  "REPO_PROVIDER": "gitea",
+  "REPO_BASE_URL": "https://gitea.example.com",
+  "REPO_AUTH_TOKEN": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
+```
+
+---
+
+## HTTP/SSE Examples
+
+When your team runs a shared `mcp-project-context-server` instance over HTTP/SSE, configure Cursor to connect to it. Embedding and vector store configuration is done on the server — clients need only the URL and auth token.
+
+### Bearer Auth
+
 ```json
 {
   "mcpServers": {
@@ -111,14 +397,11 @@ When your team runs a shared `mcp-project-context-server` instance (see [Team Se
 }
 ```
 
-- **`url`**: The SSE endpoint of your running team server. If using the default port: `http://your-server:8080/sse`
-- **`Authorization`**: The `MCP_AUTH_TOKEN` value set on the server. Obtain this from your team's infrastructure/ops team.
+`YOUR_TEAM_MCP_TOKEN` is the `MCP_AUTH_TOKEN` value set on the server.
 
-> **Security note:** The bearer token gives full access to the MCP server. Use a per-developer token if your server supports it, or restrict access by IP. Do not commit this file with the token to a public repository.
+> **Security:** Do not commit `.cursor/mcp.json` with a hardcoded bearer token to a public repository.
 
----
-
-### HTTP/SSE Example — No Auth (internal network, trusted environment)
+### No Auth (trusted internal network)
 
 ```json
 {
@@ -132,54 +415,46 @@ When your team runs a shared `mcp-project-context-server` instance (see [Team Se
 
 ---
 
-## Embedding Provider Options
+## Environment Variable Reference
 
-| Provider | `EMBED_PROVIDER` | Key variable | Notes |
-|---|---|---|---|
-| Voyage AI | `voyage` | `VOYAGE_API_KEY` | Recommended — best code retrieval |
-| Ollama | `ollama` | `OLLAMA_EMBED_MODEL` | Free, local |
-| OpenAI | `openai` | `OPENAI_API_KEY` | Good general quality |
-| Cohere | `cohere` | `COHERE_API_KEY` | Multilingual |
-| Google Gemini | `google` | `GOOGLE_API_KEY` | AI Studio key |
-| Vertex AI | `google-vertex` | `GOOGLE_CLOUD_PROJECT` | GCP ADC |
+### Embedding Providers
 
-For STDIO mode, set these in the `env` block of `.cursor/mcp.json`. For SSE mode, they are set on the server — clients don't configure embedding providers.
+| Variable | Provider | Default | Required |
+|----------|----------|---------|----------|
+| `EMBED_PROVIDER` | All | — | **Yes** |
+| `OLLAMA_HOST` | `ollama` | `http://localhost:11434` | No |
+| `OLLAMA_EMBED_MODEL` | `ollama` | `nomic-embed-text` | No |
+| `VOYAGE_API_KEY` | `voyage` | — | **Yes** |
+| `VOYAGE_EMBED_MODEL` | `voyage` | `voyage-code-3` | No |
+| `OPENAI_API_KEY` | `openai` | — | **Yes** |
+| `OPENAI_EMBED_MODEL` | `openai` | `text-embedding-3-small` | No |
+| `COHERE_API_KEY` | `cohere` | — | **Yes** |
+| `COHERE_EMBED_MODEL` | `cohere` | `embed-english-v3.0` | No |
+| `GOOGLE_API_KEY` | `google` | — | **Yes** |
+| `GOOGLE_EMBED_MODEL` | `google` | `text-embedding-004` | No |
+| `VERTEXAI_PROJECT` | `vertexai` | — | **Yes** |
+| `VERTEXAI_LOCATION` | `vertexai` | — | **Yes** |
+| `VERTEXAI_EMBED_MODEL` | `vertexai` | `text-embedding-004` | No |
 
----
+### Vector Stores
 
-## Vector Store Options
+| Variable | Store | Default | Required |
+|----------|-------|---------|----------|
+| `VECTOR_STORE_PROVIDER` | All | `chroma-local` | No |
+| `CHROMA_DIR` | `chroma-local` | `~/.mcp-data/chroma` | No |
+| `CHROMA_HOST` | `chroma-http` | `localhost` | No |
+| `CHROMA_PORT` | `chroma-http` | `8000` | No |
+| `CHROMA_API_KEY` | `chroma-http` | _(none)_ | No |
+| `PGVECTOR_CONNECTION_STRING` | `pgvector` | — | **Yes** |
 
-### STDIO mode
+### Repository Providers
 
-| Provider | Config | Notes |
-|---|---|---|
-| `chroma-local` | `"VECTOR_STORE_PROVIDER": "chroma-local"` | Default; persists locally |
-| `pgvector` | `"VECTOR_STORE_PROVIDER": "pgvector"` + connection string | Shared with team |
-
-### SSE/remote mode
-
-The vector store is configured entirely on the server side. Team members connecting to a remote server share the same index — no vector store configuration is needed in `.cursor/mcp.json`.
-
----
-
-## Repository Provider Options
-
-### Local filesystem (STDIO)
-
-The default `local` provider reads from your filesystem. When using Cursor, `project_path` is typically the workspace root:
-
-```
-project_path: /home/yourname/projects/my-app
-```
-
-### GitHub (for remote repos or team server)
-
-```json
-"REPO_PROVIDER": "github",
-"GITHUB_TOKEN": "ghp_xx...xxxx"
-```
-
-Create a token at [github.com/settings/tokens](https://github.com/settings/tokens) with `repo` scope.
+| Variable | Provider | Default | Required |
+|----------|----------|---------|----------|
+| `REPO_PROVIDER` | All | `local` | No |
+| `REPO_AUTH_TOKEN` | `github`, `gitlab`, `gitea` | _(empty)_ | No (required for private repos) |
+| `REPO_BASE_URL` | `github`, `gitlab`, `gitea` | _(provider default)_ | **Yes** for `gitea` |
+| `REPO_DEFAULT_BRANCH` | `github`, `gitlab`, `gitea` | `main` | No |
 
 ---
 
@@ -187,7 +462,7 @@ Create a token at [github.com/settings/tokens](https://github.com/settings/token
 
 1. Open or restart Cursor in your project directory
 2. Open the Cursor Chat panel (`Ctrl+L` / `Cmd+L`)
-3. Check that `project-context` appears in the MCP tools list (click the 🔌 icon)
+3. Check that `project-context` appears in the MCP tools list (click the tools icon)
 4. Ask:
 
    > "Index this project and tell me what the main entry point does."
