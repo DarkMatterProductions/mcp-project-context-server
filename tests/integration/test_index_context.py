@@ -13,7 +13,7 @@ to a non-empty value:
     SKIP_EMBED_PROVIDER_OPENAI=1
     SKIP_EMBED_PROVIDER_COHERE=1
     SKIP_EMBED_PROVIDER_GOOGLE=1
-    SKIP_EMBED_PROVIDER_GOOGLE_VERTEX=1
+    SKIP_EMBED_PROVIDER_VERTEXAI=1
 
 If the variable is *not* set the test runs — and fails if the provider is
 unreachable or not configured.
@@ -26,7 +26,7 @@ import os
 import pytest
 
 from tests.integration.base import MCPIntegrationBase
-from shared import EMBEDDING_PROVIDER
+from shared.constructs import PROVIDERS
 
 pytestmark = pytest.mark.asyncio
 
@@ -66,7 +66,7 @@ class TestIndexContextErrors(MCPIntegrationBase):
 
 
 @pytest.mark.external_services
-@pytest.mark.parametrize("embed_provider", [_provider_param(p) for p in EMBEDDING_PROVIDER])
+@pytest.mark.parametrize("embed_provider", [_provider_param(p) for p in PROVIDERS])
 class TestIndexContextWithExternalServices(MCPIntegrationBase):
     """Tests that require a running ChromaDB and an embedding provider.
 
