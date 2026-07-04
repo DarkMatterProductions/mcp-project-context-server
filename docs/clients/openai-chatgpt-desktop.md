@@ -4,6 +4,8 @@
 
 [ChatGPT Desktop](https://openai.com/chatgpt/download/) (macOS and Windows) added native MCP support in 2025. It connects to MCP servers via **STDIO transport** — the server is launched as a subprocess and communication happens over stdin/stdout. No network port or authentication setup is required.
 
+> **What this server does:** `mcp-project-context-server` indexes and searches the `.context/` directory of a project — `project.md`, ADRs under `.context/decisions/`, and session notes under `.context/sessions/`. It does not index or search your general source code.
+
 ---
 
 ## Prerequisites
@@ -243,7 +245,7 @@ Get an API key at [aistudio.google.com](https://aistudio.google.com/).
       "env": {
         "EMBED_PROVIDER": "google",
         "GOOGLE_API_KEY": "AIzaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-        "GOOGLE_EMBED_MODEL": "text-embedding-004",
+        "GOOGLE_EMBED_MODEL": "gemini-embedding-2",
         "VECTOR_STORE_PROVIDER": "chroma-local",
         "REPO_PROVIDER": "local"
       }
@@ -257,6 +259,8 @@ Get an API key at [aistudio.google.com](https://aistudio.google.com/).
 ### Google Vertex AI
 
 Uses Application Default Credentials — no API key in the config.
+
+> **Important:** `EMBED_PROVIDER=vertexai` cannot be combined with `chroma-local` or `chroma-http` — the Vertex AI and ChromaDB native dependencies deadlock when loaded into the same process on Windows. Use `VECTOR_STORE_PROVIDER=pgvector` with Vertex AI, as shown below. Requires `pip install "mcp-project-context-server[google-vertex,pgvector]"`.
 
 ```bash
 gcloud auth application-default login
@@ -272,7 +276,8 @@ gcloud auth application-default login
         "VERTEXAI_PROJECT": "my-gcp-project-id",
         "VERTEXAI_LOCATION": "us-central1",
         "VERTEXAI_EMBED_MODEL": "text-embedding-004",
-        "VECTOR_STORE_PROVIDER": "chroma-local",
+        "VECTOR_STORE_PROVIDER": "pgvector",
+        "PGVECTOR_CONNECTION_STRING": "postgresql://mcpuser:password@localhost:5432/mcp_context",
         "REPO_PROVIDER": "local"
       }
     }
@@ -361,15 +366,19 @@ For shared team indexes. Requires `pip install "mcp-project-context-server[pgvec
 
 ### Local (default)
 
-No configuration required. Pass the absolute path to your project as `project_path` when calling tools.
+No configuration required. Pass the absolute path to your project as `project_path` when calling tools:
 
 ```
 project_path: /Users/yourname/projects/my-app
 ```
 
+Alternatively, set `PROJECT_PATH` in the server's `env` block to pin it — it overrides whatever `project_path` value is passed.
+
 ---
 
-### GitHub
+### GitHub / GitLab / Gitea
+
+> **Current scope:** setting `REPO_PROVIDER` to `github`, `gitlab`, or `gitea` enables the `list_repositories` tool to discover repositories over the provider's REST API. `load_project_context`, `index_project_context`, `search_project_context`, and `save_session_summary` still read and write `.context/` on the local filesystem, so the repository must be checked out locally and `project_path` must point at that checkout — these tools do not yet fetch `.context/` content remotely.
 
 ```json
 "env": {
@@ -380,32 +389,7 @@ project_path: /Users/yourname/projects/my-app
 
 Get a token at [github.com/settings/tokens](https://github.com/settings/tokens) with `repo` scope. For GitHub Enterprise, also add `"REPO_BASE_URL": "https://github.example.com/api/v3"`.
 
----
-
-### GitLab
-
-```json
-"env": {
-  "REPO_PROVIDER": "gitlab",
-  "REPO_AUTH_TOKEN": "glpat-xxxxxxxxxxxxxxxxxxxx"
-}
-```
-
-Get a token at **User Settings → Access Tokens** with `read_api` scope. For self-hosted GitLab, also add `"REPO_BASE_URL": "https://gitlab.example.com"`.
-
----
-
-### Gitea
-
-`REPO_BASE_URL` is required — there is no default.
-
-```json
-"env": {
-  "REPO_PROVIDER": "gitea",
-  "REPO_BASE_URL": "https://gitea.example.com",
-  "REPO_AUTH_TOKEN": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-}
-```
+For GitLab, set `REPO_PROVIDER` to `gitlab` and get a token at **User Settings → Access Tokens** with `read_api` scope (add `"REPO_BASE_URL"` for self-hosted GitLab). For Gitea, set `REPO_PROVIDER` to `gitea`; `REPO_BASE_URL` is required (no default) and a token is available at **Settings → Applications → Manage Access Tokens**.
 
 ---
 
@@ -425,7 +409,7 @@ Get a token at **User Settings → Access Tokens** with `read_api` scope. For se
 | `COHERE_API_KEY` | `cohere` | — | **Yes** |
 | `COHERE_EMBED_MODEL` | `cohere` | `embed-english-v3.0` | No |
 | `GOOGLE_API_KEY` | `google` | — | **Yes** |
-| `GOOGLE_EMBED_MODEL` | `google` | `text-embedding-004` | No |
+| `GOOGLE_EMBED_MODEL` | `google` | `gemini-embedding-2` | No |
 | `VERTEXAI_PROJECT` | `vertexai` | — | **Yes** |
 | `VERTEXAI_LOCATION` | `vertexai` | — | **Yes** |
 | `VERTEXAI_EMBED_MODEL` | `vertexai` | `text-embedding-004` | No |
@@ -446,6 +430,7 @@ Get a token at **User Settings → Access Tokens** with `read_api` scope. For se
 | Variable | Provider | Default | Required |
 |----------|----------|---------|----------|
 | `REPO_PROVIDER` | All | `local` | No |
+| `PROJECT_PATH` | All | _(from tool call)_ | No — pins the project root, overriding `project_path` |
 | `REPO_AUTH_TOKEN` | `github`, `gitlab`, `gitea` | _(empty)_ | No (required for private repos) |
 | `REPO_BASE_URL` | `github`, `gitlab`, `gitea` | _(provider default)_ | **Yes** for `gitea` |
 | `REPO_DEFAULT_BRANCH` | `github`, `gitlab`, `gitea` | `main` | No |
@@ -456,11 +441,12 @@ Get a token at **User Settings → Access Tokens** with `read_api` scope. For se
 
 1. Save the config file and **restart ChatGPT Desktop**
 2. Open a new chat and look for the tools/MCP indicator
-3. Ask:
+3. Make sure `/Users/yourname/projects/my-app/.context/project.md` exists (create a minimal one if it doesn't yet exist)
+4. Ask:
 
-   > "Use the project-context server to index `/Users/yourname/projects/my-app` and describe its overall structure."
+   > "Use the project-context server to index `/Users/yourname/projects/my-app`, then load the project context and summarize project.md."
 
-4. ChatGPT will call `index_project_context`, then provide an answer grounded in the actual code
+5. ChatGPT will call `index_project_context`, then `load_project_context` or `search_project_context`, and provide an answer grounded in the indexed `.context/` content
 
 **Troubleshooting:**
 - If the server does not appear, check ChatGPT Desktop's **Settings → MCP Servers** panel for error messages

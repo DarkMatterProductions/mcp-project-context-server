@@ -6,6 +6,8 @@
 
 **Minimum IDE version required: 2024.2** (earlier versions do not support MCP servers).
 
+> **What this server does:** `mcp-project-context-server` indexes and searches the `.context/` directory of a project — `project.md`, ADRs under `.context/decisions/`, and session notes under `.context/sessions/`. It does not index or search your general source code.
+
 ---
 
 ## Prerequisites
@@ -260,7 +262,7 @@ Get an API key at [aistudio.google.com](https://aistudio.google.com/).
 |----------|-------|
 | `EMBED_PROVIDER` | `google` |
 | `GOOGLE_API_KEY` | `AIzaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` |
-| `GOOGLE_EMBED_MODEL` | `text-embedding-004` |
+| `GOOGLE_EMBED_MODEL` | `gemini-embedding-2` |
 | `VECTOR_STORE_PROVIDER` | `chroma-local` |
 | `REPO_PROVIDER` | `local` |
 
@@ -274,7 +276,7 @@ Get an API key at [aistudio.google.com](https://aistudio.google.com/).
       "env": {
         "EMBED_PROVIDER": "google",
         "GOOGLE_API_KEY": "AIzaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-        "GOOGLE_EMBED_MODEL": "text-embedding-004",
+        "GOOGLE_EMBED_MODEL": "gemini-embedding-2",
         "VECTOR_STORE_PROVIDER": "chroma-local",
         "REPO_PROVIDER": "local"
       }
@@ -293,13 +295,16 @@ Uses Application Default Credentials — no API key in the config. Authenticate 
 gcloud auth application-default login
 ```
 
+> **Important:** `EMBED_PROVIDER=vertexai` cannot be combined with `chroma-local` or `chroma-http` — the Vertex AI and ChromaDB native dependencies deadlock when loaded into the same process on Windows. Use `VECTOR_STORE_PROVIDER=pgvector` with Vertex AI, as shown below. Requires `pip install "mcp-project-context-server[google-vertex,pgvector]"`.
+
 | Variable | Value |
 |----------|-------|
 | `EMBED_PROVIDER` | `vertexai` |
 | `VERTEXAI_PROJECT` | `my-gcp-project-id` |
 | `VERTEXAI_LOCATION` | `us-central1` |
 | `VERTEXAI_EMBED_MODEL` | `text-embedding-004` |
-| `VECTOR_STORE_PROVIDER` | `chroma-local` |
+| `VECTOR_STORE_PROVIDER` | `pgvector` |
+| `PGVECTOR_CONNECTION_STRING` | `postgresql://mcpuser:password@localhost:5432/mcp_context` |
 | `REPO_PROVIDER` | `local` |
 
 **JSON equivalent:**
@@ -314,7 +319,8 @@ gcloud auth application-default login
         "VERTEXAI_PROJECT": "my-gcp-project-id",
         "VERTEXAI_LOCATION": "us-central1",
         "VERTEXAI_EMBED_MODEL": "text-embedding-004",
-        "VECTOR_STORE_PROVIDER": "chroma-local",
+        "VECTOR_STORE_PROVIDER": "pgvector",
+        "PGVECTOR_CONNECTION_STRING": "postgresql://mcpuser:password@localhost:5432/mcp_context",
         "REPO_PROVIDER": "local"
       }
     }
@@ -371,11 +377,13 @@ JetBrains IDEs are almost always used with local checkouts, so the default `loca
 
 ### Local (default)
 
-No configuration required. Pass the project root as `project_path` when invoking tools.
+No configuration required. Pass the project root as `project_path` when invoking tools, or set `PROJECT_PATH` in the environment variables table to pin it — it overrides whatever `project_path` value is passed.
 
 ---
 
-### GitHub
+### GitHub / GitLab / Gitea
+
+> **Current scope:** setting `REPO_PROVIDER` to `github`, `gitlab`, or `gitea` enables the `list_repositories` tool to discover repositories over the provider's REST API. `load_project_context`, `index_project_context`, `search_project_context`, and `save_session_summary` still read and write `.context/` on the local filesystem, so the repository must be checked out locally and `project_path` must point at that checkout — these tools do not yet fetch `.context/` content remotely.
 
 | Variable | Value |
 |----------|-------|
@@ -384,28 +392,7 @@ No configuration required. Pass the project root as `project_path` when invoking
 
 Get a token at [github.com/settings/tokens](https://github.com/settings/tokens) with `repo` scope. For GitHub Enterprise, also add `REPO_BASE_URL` = `https://github.example.com/api/v3`.
 
----
-
-### GitLab
-
-| Variable | Value |
-|----------|-------|
-| `REPO_PROVIDER` | `gitlab` |
-| `REPO_AUTH_TOKEN` | `glpat-xxxxxxxxxxxxxxxxxxxx` |
-
-Get a token at **User Settings → Access Tokens** with `read_api` scope. For self-hosted GitLab, also add `REPO_BASE_URL` = `https://gitlab.example.com`.
-
----
-
-### Gitea
-
-`REPO_BASE_URL` is required — there is no default.
-
-| Variable | Value |
-|----------|-------|
-| `REPO_PROVIDER` | `gitea` |
-| `REPO_BASE_URL` | `https://gitea.example.com` |
-| `REPO_AUTH_TOKEN` | `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` |
+For GitLab, set `REPO_PROVIDER` to `gitlab` and get a token at **User Settings → Access Tokens** with `read_api` scope (add `REPO_BASE_URL` for self-hosted GitLab). For Gitea, set `REPO_PROVIDER` to `gitea`; `REPO_BASE_URL` is required (no default) and a token is available at **Settings → Applications → Manage Access Tokens**.
 
 ---
 
@@ -413,8 +400,8 @@ Get a token at **User Settings → Access Tokens** with `read_api` scope. For se
 
 Both AI Assistant and Junie share the same MCP server list from **Settings → Tools → AI Assistant → MCP Servers**:
 
-- **AI Assistant**: Inline chat, code completions, and explanations. Can call MCP tools when you explicitly ask ("Search the project context for...").
-- **Junie**: Autonomous agent mode. Proactively uses MCP tools as part of multi-step coding tasks. Especially effective with `index_project_context` called at the start of a session.
+- **AI Assistant**: Inline chat, code completions, and explanations. Can call MCP tools when you explicitly ask ("Search the indexed project context for...").
+- **Junie**: Autonomous agent mode. Proactively uses MCP tools as part of multi-step coding tasks. Especially effective with `index_project_context` and `load_project_context` called at the start of a session to pull in `project.md`, ADRs, and prior session notes.
 
 ---
 
@@ -434,7 +421,7 @@ Both AI Assistant and Junie share the same MCP server list from **Settings → T
 | `COHERE_API_KEY` | `cohere` | — | **Yes** |
 | `COHERE_EMBED_MODEL` | `cohere` | `embed-english-v3.0` | No |
 | `GOOGLE_API_KEY` | `google` | — | **Yes** |
-| `GOOGLE_EMBED_MODEL` | `google` | `text-embedding-004` | No |
+| `GOOGLE_EMBED_MODEL` | `google` | `gemini-embedding-2` | No |
 | `VERTEXAI_PROJECT` | `vertexai` | — | **Yes** |
 | `VERTEXAI_LOCATION` | `vertexai` | — | **Yes** |
 | `VERTEXAI_EMBED_MODEL` | `vertexai` | `text-embedding-004` | No |
@@ -455,6 +442,7 @@ Both AI Assistant and Junie share the same MCP server list from **Settings → T
 | Variable | Provider | Default | Required |
 |----------|----------|---------|----------|
 | `REPO_PROVIDER` | All | `local` | No |
+| `PROJECT_PATH` | All | _(from tool call)_ | No — pins the project root, overriding `project_path` |
 | `REPO_AUTH_TOKEN` | `github`, `gitlab`, `gitea` | _(empty)_ | No (required for private repos) |
 | `REPO_BASE_URL` | `github`, `gitlab`, `gitea` | _(provider default)_ | **Yes** for `gitea` |
 | `REPO_DEFAULT_BRANCH` | `github`, `gitlab`, `gitea` | `main` | No |
@@ -463,19 +451,19 @@ Both AI Assistant and Junie share the same MCP server list from **Settings → T
 
 ## Verification / Quick Test
 
-1. Open your project in the JetBrains IDE
+1. Open your project in the JetBrains IDE, and make sure it has a `.context/project.md` (create a minimal one if it doesn't yet exist)
 2. Open the AI Assistant panel (usually `Alt+\` or **View → Tool Windows → AI Assistant**)
 3. Ask:
 
-   > "Use the project-context MCP server to index this project and summarize its architecture."
+   > "Use the project-context MCP server to index this project, then load the project context and summarize project.md."
 
-4. AI Assistant will invoke `index_project_context` with the current project root, then answer
+4. AI Assistant will invoke `index_project_context` with the current project root, then `load_project_context` or `search_project_context`, and answer
 
 For Junie:
 1. Open the Junie panel (**View → Tool Windows → Junie**)
 2. Give it a task:
 
-   > "Index this project and then find all places where database connections are created."
+   > "Index this project's context, then search it for any ADRs about our authentication approach."
 
 **Troubleshooting:**
 - If the server doesn't appear, check **Settings → Tools → AI Assistant → MCP Servers** for a red error indicator

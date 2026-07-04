@@ -4,6 +4,10 @@
 
 [Google Vertex AI Agent Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/overview) (formerly Reasoning Engine) is a managed runtime for deploying AI agents on Google Cloud. In this topology, `mcp-project-context-server` runs as a **long-lived HTTP/SSE service** (typically on Cloud Run) and Agent Engine calls it over the network using **Google IAM OIDC authentication**. A single server deployment can serve your entire organization in **multi-tenant mode**, serving multiple GitHub organizations and repositories from one endpoint.
 
+> **What this server does:** `mcp-project-context-server` indexes and searches the `.context/` directory of a project — `project.md`, ADRs under `.context/decisions/`, and session notes under `.context/sessions/`. It does not index or search your general source code.
+>
+> **Repository provider caveat for this topology:** with `REPO_PROVIDER=github` and `REPO_MULTI_TENANT=true`, the `list_repositories` tool discovers repositories over the GitHub REST API — no local checkout needed for discovery. However, `load_project_context`, `index_project_context`, `search_project_context`, and `save_session_summary` still read and write `.context/` on the filesystem of the Cloud Run container itself, not via the GitHub API. For those four tools to work in this deployment, the target repository's `.context/` directory must already be present on disk inside the container (e.g. baked into the image, or synced by an init step) at the path passed as `project_path`.
+
 ---
 
 ## Architecture
@@ -191,20 +195,19 @@ agent = LangchainAgent(
 
 ## Multi-Tenant Mode
 
-With `REPO_MULTI_TENANT=true`, the server exposes a `list_repositories` tool in addition to the standard indexing and search tools.
+`REPO_MULTI_TENANT=true` requires at least one of `APPROVED_ORGS` or `APPROVED_REPOS` to be set (the server fails at startup otherwise) and makes that allowlist available to `list_repositories`, which is registered on every deployment regardless of this setting.
 
 ### `list_repositories`
 
-Agents can call this tool to discover which repositories are available before deciding which ones to index or query.
+Agents can call this tool to discover which GitHub repositories are available (via the GitHub REST API) before deciding which ones to work with. Results are filtered to the `APPROVED_ORGS` / `APPROVED_REPOS` allowlist.
 
 **Agent prompt example:**
 
 ```
-Use list_repositories to find all available repositories in the acme org,
-then index and search the backend service for how authentication is implemented.
+Use list_repositories to find all available repositories in the acme org.
 ```
 
-The tool returns repositories filtered by `APPROVED_ORGS` and `APPROVED_REPOS`. This prevents agents from accessing repositories outside the approved set, even if the auth token has broader access.
+> **Note on the other tools:** `list_repositories` is the only tool that currently reads through the GitHub REST API. `load_project_context`, `index_project_context`, `search_project_context`, and `save_session_summary` read/write `.context/` on the server's local filesystem and do not check the discovered repository against the `APPROVED_ORGS` / `APPROVED_REPOS` allowlist — plan your deployment (e.g. which `.context/` directories are mounted into the container) accordingly rather than relying on the allowlist to restrict what these four tools can access.
 
 ---
 
@@ -254,9 +257,8 @@ The server creates the embeddings table automatically on first run.
 | `MCP_PORT` | `8080` | Listen port |
 | `MCP_AUTH_TYPE` | `none` | Authentication: `none`, `bearer`, `google-iam` |
 | `MCP_AUTH_TOKEN` | — | Required when `MCP_AUTH_TYPE=bearer` |
-| `GOOGLE_IAM_AUDIENCE` | _(none)_ | Expected `aud` claim in Google identity tokens |
-| `GOOGLE_SERVICE_ACCOUNT_KEY_PATH` | _(none)_ | Path to service account JSON key (uses ADC if unset) |
-| `GOOGLE_APPROVED_SERVICE_ACCOUNTS` | _(none)_ | Comma-separated allowed caller service account emails |
+| `GOOGLE_IAM_AUDIENCE` | _(none)_ | Expected `aud` claim in Google identity tokens. If unset, audience validation is skipped |
+| `GOOGLE_APPROVED_SERVICE_ACCOUNTS` | _(none)_ | Comma-separated allowed caller service account emails. If unset, any authenticated Google identity is accepted |
 
 ---
 
@@ -273,14 +275,11 @@ curl -H "Authorization: Bearer $TOKEN" \
 # Expected: {"status": "ok"}
 ```
 
-Test a full MCP call:
+Confirm the SSE endpoint accepts the token (the connection stays open for a live MCP session, so this just checks that it's reachable and doesn't immediately reject the token):
 
 ```bash
-curl -X POST \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
-  https://mcp-context-HASH-uc.a.run.app/mcp
+curl -N -H "Authorization: Bearer $TOKEN" \
+  https://mcp-context-HASH-uc.a.run.app/sse
 ```
 
-This should return a list of available tools including `index_project_context`, `search_project_context`, and (in multi-tenant mode) `list_repositories`.
+MCP JSON-RPC calls (`tools/list`, `tools/call`, etc.) are exchanged over this SSE session and a paired `/messages/` POST endpoint — there is no single-shot HTTP endpoint for `tools/list`. To exercise the full protocol, connect with a real MCP client (e.g. an `mcp` Python/TypeScript SDK client, or Agent Engine itself) configured with the `server_url` and bearer token shown above, and confirm it lists `index_project_context`, `search_project_context`, `load_project_context`, `save_session_summary`, and `list_repositories`.

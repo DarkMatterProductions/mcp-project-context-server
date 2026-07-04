@@ -6,6 +6,8 @@
 
 > **Note:** The `experimental.modelContextProtocolServers` key may move to a stable top-level key in future Continue versions. Check the [Continue MCP documentation](https://docs.continue.dev/customize/context-providers/mcp) for the current schema.
 
+> **What this server does:** `mcp-project-context-server` indexes and searches the `.context/` directory of a project — `project.md`, ADRs under `.context/decisions/`, and session notes under `.context/sessions/`. It does not index or search your general source code.
+
 ---
 
 ## Prerequisites
@@ -257,7 +259,7 @@ Get an API key at [aistudio.google.com](https://aistudio.google.com/).
           "env": {
             "EMBED_PROVIDER": "google",
             "GOOGLE_API_KEY": "AIzaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-            "GOOGLE_EMBED_MODEL": "text-embedding-004",
+            "GOOGLE_EMBED_MODEL": "gemini-embedding-2",
             "VECTOR_STORE_PROVIDER": "chroma-local",
             "REPO_PROVIDER": "local"
           }
@@ -273,6 +275,8 @@ Get an API key at [aistudio.google.com](https://aistudio.google.com/).
 ### Google Vertex AI
 
 Uses Application Default Credentials — no API key in the config.
+
+> **Important:** `EMBED_PROVIDER=vertexai` cannot be combined with `chroma-local` or `chroma-http` — the Vertex AI and ChromaDB native dependencies deadlock when loaded into the same process on Windows. Use `VECTOR_STORE_PROVIDER=pgvector` with Vertex AI, as shown below. Requires `pip install "mcp-project-context-server[google-vertex,pgvector]"`.
 
 ```bash
 gcloud auth application-default login
@@ -292,7 +296,8 @@ gcloud auth application-default login
             "VERTEXAI_PROJECT": "my-gcp-project-id",
             "VERTEXAI_LOCATION": "us-central1",
             "VERTEXAI_EMBED_MODEL": "text-embedding-004",
-            "VECTOR_STORE_PROVIDER": "chroma-local",
+            "VECTOR_STORE_PROVIDER": "pgvector",
+            "PGVECTOR_CONNECTION_STRING": "postgresql://mcpuser:password@localhost:5432/mcp_context",
             "REPO_PROVIDER": "local"
           }
         }
@@ -395,11 +400,13 @@ For shared team indexes. Requires `pip install "mcp-project-context-server[pgvec
 
 ### Local (default)
 
-No configuration required. Pass the workspace path as `project_path` when invoking tools.
+No configuration required. Pass the workspace path as `project_path` when invoking tools, or set `PROJECT_PATH` in the server's `env` block to pin it — it overrides whatever `project_path` value is passed.
 
 ---
 
-### GitHub
+### GitHub / GitLab / Gitea
+
+> **Current scope:** setting `REPO_PROVIDER` to `github`, `gitlab`, or `gitea` enables the `list_repositories` tool to discover repositories over the provider's REST API. `load_project_context`, `index_project_context`, `search_project_context`, and `save_session_summary` still read and write `.context/` on the local filesystem, so the repository must be checked out locally and `project_path` must point at that checkout — these tools do not yet fetch `.context/` content remotely.
 
 Add to the `env` block:
 
@@ -410,28 +417,7 @@ Add to the `env` block:
 
 Get a token at [github.com/settings/tokens](https://github.com/settings/tokens) with `repo` scope. For GitHub Enterprise, also add `"REPO_BASE_URL": "https://github.example.com/api/v3"`.
 
----
-
-### GitLab
-
-```json
-"REPO_PROVIDER": "gitlab",
-"REPO_AUTH_TOKEN": "glpat-xxxxxxxxxxxxxxxxxxxx"
-```
-
-Get a token at **User Settings → Access Tokens** with `read_api` scope. For self-hosted GitLab, also add `"REPO_BASE_URL": "https://gitlab.example.com"`.
-
----
-
-### Gitea
-
-`REPO_BASE_URL` is required — there is no default.
-
-```json
-"REPO_PROVIDER": "gitea",
-"REPO_BASE_URL": "https://gitea.example.com",
-"REPO_AUTH_TOKEN": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-```
+For GitLab, set `REPO_PROVIDER` to `gitlab` and get a token at **User Settings → Access Tokens** with `read_api` scope (add `"REPO_BASE_URL"` for self-hosted GitLab). For Gitea, set `REPO_PROVIDER` to `gitea`; `REPO_BASE_URL` is required (no default) and a token is available at **Settings → Applications → Manage Access Tokens**.
 
 ---
 
@@ -511,7 +497,7 @@ experimental:
 | `COHERE_API_KEY` | `cohere` | — | **Yes** |
 | `COHERE_EMBED_MODEL` | `cohere` | `embed-english-v3.0` | No |
 | `GOOGLE_API_KEY` | `google` | — | **Yes** |
-| `GOOGLE_EMBED_MODEL` | `google` | `text-embedding-004` | No |
+| `GOOGLE_EMBED_MODEL` | `google` | `gemini-embedding-2` | No |
 | `VERTEXAI_PROJECT` | `vertexai` | — | **Yes** |
 | `VERTEXAI_LOCATION` | `vertexai` | — | **Yes** |
 | `VERTEXAI_EMBED_MODEL` | `vertexai` | `text-embedding-004` | No |
@@ -532,6 +518,7 @@ experimental:
 | Variable | Provider | Default | Required |
 |----------|----------|---------|----------|
 | `REPO_PROVIDER` | All | `local` | No |
+| `PROJECT_PATH` | All | _(from tool call)_ | No — pins the project root, overriding `project_path` |
 | `REPO_AUTH_TOKEN` | `github`, `gitlab`, `gitea` | _(empty)_ | No (required for private repos) |
 | `REPO_BASE_URL` | `github`, `gitlab`, `gitea` | _(provider default)_ | **Yes** for `gitea` |
 | `REPO_DEFAULT_BRANCH` | `github`, `gitlab`, `gitea` | `main` | No |
@@ -540,14 +527,14 @@ experimental:
 
 ## Verification / Quick Test
 
-After saving `config.json` (or `config.yaml`):
+After saving `config.json` (or `config.yaml`), make sure `/path/to/my-project/.context/project.md` exists (create a minimal one if it doesn't yet):
 
 1. In VS Code: reload the window (`Ctrl+Shift+P` → "Developer: Reload Window")
 2. In JetBrains: the extension reloads automatically
 3. Open the Continue chat panel
 4. Ask:
 
-   > "@project-context Index /path/to/my-project and explain the database layer."
+   > "@project-context Index /path/to/my-project, then load the project context and summarize project.md."
 
 **Troubleshooting:**
 - Open Continue's output log in VS Code: **View → Output → Continue**
