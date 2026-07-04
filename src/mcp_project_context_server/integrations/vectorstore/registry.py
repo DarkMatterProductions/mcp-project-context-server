@@ -20,6 +20,12 @@ Supported ``VECTOR_STORE_PROVIDER`` values
 ``pgvector``
     PostgreSQL with the pgvector extension.  Requires
     ``PGVECTOR_CONNECTION_STRING``.
+
+Incompatible combinations
+-------------------------
+``EMBED_PROVIDER=vertexai`` cannot be combined with ``chroma-local`` or
+``chroma-http``: the two SDKs deadlock when loaded into the same process on
+Windows.  Use ``VECTOR_STORE_PROVIDER=pgvector`` with Vertex AI instead.
 """
 
 import os
@@ -36,7 +42,31 @@ from mcp_project_context_server.integrations.vectorstore.pgvector.client import 
 _SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"chroma-local", "chroma-http", "pgvector"})
 _DEFAULT_PROVIDER: str = "chroma-local"
 
+# EMBED_PROVIDER values that cannot share a process with the given
+# VECTOR_STORE_PROVIDER.  The vertexai SDK and the chromadb client (both of
+# which pull in native/C-extension dependencies) deadlock when imported into
+# the same Windows process -- this is an in-process native-library conflict,
+# not a credentials or network issue, so it cannot be worked around by
+# retrying or adding timeouts.
+INCOMPATIBLE_EMBED_PROVIDERS_BY_VECTOR_STORE: dict[str, frozenset[str]] = {
+    "chroma-local": frozenset({"vertexai"}),
+    "chroma-http": frozenset({"vertexai"}),
+}
+
 IndexFn = Callable[[str | Path], Coroutine[Any, Any, str]]
+
+
+def _assert_compatible_providers(vector_store_provider_name: str) -> None:
+    """Raise if the configured EMBED_PROVIDER cannot be used with *vector_store_provider_name*."""
+    embed_provider_name = os.getenv("EMBED_PROVIDER", "").strip().lower()
+    incompatible = INCOMPATIBLE_EMBED_PROVIDERS_BY_VECTOR_STORE.get(vector_store_provider_name, frozenset())
+    if embed_provider_name in incompatible:
+        raise EnvironmentError(
+            f"EMBED_PROVIDER='{embed_provider_name}' cannot be used with "
+            f"VECTOR_STORE_PROVIDER='{vector_store_provider_name}': these two SDKs "
+            "deadlock when loaded into the same process on Windows.  Use "
+            "VECTOR_STORE_PROVIDER=pgvector with EMBED_PROVIDER=vertexai instead."
+        )
 
 
 def get_vector_store() -> VectorStoreProvider:
@@ -44,7 +74,8 @@ def get_vector_store() -> VectorStoreProvider:
 
     Raises:
         EnvironmentError: If ``VECTOR_STORE_PROVIDER`` is set to an unrecognised value,
-            or if the selected provider is missing a required env var.
+            if the selected provider is missing a required env var, or if the
+            configured ``EMBED_PROVIDER`` is incompatible with it.
         ImportError: If the required package for the selected provider is not installed.
     """
     provider_name = os.getenv("VECTOR_STORE_PROVIDER", _DEFAULT_PROVIDER).strip().lower()
@@ -54,6 +85,8 @@ def get_vector_store() -> VectorStoreProvider:
             f"Unsupported VECTOR_STORE_PROVIDER value '{provider_name}'.  "
             f"Supported values are: {', '.join(sorted(_SUPPORTED_PROVIDERS))}"
         )
+
+    _assert_compatible_providers(provider_name)
 
     return _build_provider(provider_name)
 
@@ -93,7 +126,8 @@ def get_indexer() -> IndexFn:
     logic of :func:`get_vector_store`.
 
     Raises:
-        EnvironmentError: If ``VECTOR_STORE_PROVIDER`` is set to an unrecognised value.
+        EnvironmentError: If ``VECTOR_STORE_PROVIDER`` is set to an unrecognised value,
+            or if the configured ``EMBED_PROVIDER`` is incompatible with it.
     """
     provider_name = os.getenv("VECTOR_STORE_PROVIDER", _DEFAULT_PROVIDER).strip().lower()
 
@@ -102,6 +136,8 @@ def get_indexer() -> IndexFn:
             f"Unsupported VECTOR_STORE_PROVIDER value '{provider_name}'.  "
             f"Supported values are: {', '.join(sorted(_SUPPORTED_PROVIDERS))}"
         )
+
+    _assert_compatible_providers(provider_name)
 
     if provider_name == "chroma-local":
         store = ChromaLocalVectorStoreProvider()

@@ -23,15 +23,25 @@ from mcp_project_context_server.exceptions import EmbeddingError
 _DEFAULT_MODEL: str = "text-embedding-004"
 # Conservative character limit matching the model's context window
 _MAX_CHARS: int = 24_000
+_EMBED_TIMEOUT_SECONDS: float = 60.0
 
 
 class GoogleVertexEmbeddingProvider(EmbeddingProvider):
     """Embedding provider backed by the Google Vertex AI SDK.
 
-    The `vertexai` package is imported lazily inside `embed_chunk()` so that the
-    provider can be imported without requiring the package to be installed.
-    Because the Vertex AI SDK is synchronous, calls are wrapped with
-    `asyncio.to_thread` to avoid blocking the event loop.
+    The `vertexai` package is imported lazily inside `_get_embedding_model()`
+    so that the provider can be constructed without requiring the package to
+    be installed unless it is actually used. The `TextEmbeddingModel` is
+    resolved on first use and cached for subsequent calls.
+
+    The SDK is configured with `api_transport="rest"` to force plain HTTP
+    instead of gRPC. gRPC's C-core polling engine (used by both its
+    synchronous and `grpc.aio` async clients) can deadlock when it shares a
+    process with asyncio's `ProactorEventLoop` — the loop this server
+    requires on Windows for stdio subprocess support. REST has no such
+    conflict, so the embedding call is made with the synchronous
+    `get_embeddings()` wrapped in `asyncio.to_thread`, same as every other
+    HTTP-based provider in this package.
 
     Raises:
         EnvironmentError: At construction time if `VERTEXAI_PROJECT` or
@@ -49,6 +59,7 @@ class GoogleVertexEmbeddingProvider(EmbeddingProvider):
         self._project: str = project
         self._location: str = location
         self._model: str = os.getenv("VERTEXAI_EMBED_MODEL", _DEFAULT_MODEL)
+        self._embedding_model = None
 
     # ------------------------------------------------------------------
     # EmbeddingProvider Protocol properties
@@ -73,6 +84,20 @@ class GoogleVertexEmbeddingProvider(EmbeddingProvider):
     # Core embedding method
     # ------------------------------------------------------------------
 
+    def _get_embedding_model(self):
+        """Resolve and cache the `TextEmbeddingModel`, initializing the SDK on first use.
+
+        Configures the SDK to use REST rather than gRPC — see the class
+        docstring for why gRPC is unsafe in this server's event loop.
+        """
+        if self._embedding_model is None:
+            import vertexai  # lazy import
+            from vertexai.language_models import TextEmbeddingModel  # lazy import
+
+            vertexai.init(project=self._project, location=self._location, api_transport="rest")
+            self._embedding_model = TextEmbeddingModel.from_pretrained(self._model)
+        return self._embedding_model
+
     async def embed_chunk(self, text: str) -> list[float]:
         """Embed *text* using the configured Vertex AI embedding model.
 
@@ -83,15 +108,15 @@ class GoogleVertexEmbeddingProvider(EmbeddingProvider):
             Embedding vector as a list of floats.
 
         Raises:
-            EmbeddingError: If the Vertex AI SDK returns an error or is unreachable.
+            EmbeddingError: If the Vertex AI SDK returns an error, is
+                unreachable, or does not respond within the timeout.
         """
         try:
-            import vertexai  # lazy import
-            from vertexai.language_models import TextEmbeddingModel  # lazy import
-
-            vertexai.init(project=self._project, location=self._location)
-            model = TextEmbeddingModel.from_pretrained(self._model)
-            embeddings = await asyncio.to_thread(model.get_embeddings, [text])
+            model = self._get_embedding_model()
+            embeddings = await asyncio.wait_for(
+                asyncio.to_thread(model.get_embeddings, [text]),
+                timeout=_EMBED_TIMEOUT_SECONDS,
+            )
             return list(embeddings[0].values)
         except Exception as exc:
             raise EmbeddingError(
