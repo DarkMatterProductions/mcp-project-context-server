@@ -5,16 +5,22 @@ here unconditionally.  Tests that require a running ChromaDB / embedding model
 are marked with `pytest.mark.external_services` and are skipped by default
 when running with `-m "not external_services"`.
 
-External-service tests are parametrized over every supported embedding
-provider.  A provider is skipped when its opt-out environment variable is set
-to a non-empty value:
+External-service tests are parametrized over every embedding provider
+compatible with the default (chroma-local) vector store.  `vertexai` is
+excluded — it deadlocks in-process with chromadb on Windows (see
+`INCOMPATIBLE_EMBED_PROVIDERS_BY_VECTOR_STORE` in
+`integrations/vectorstore/registry.py`) — and is covered separately by
+`TestIncompatibleProviders` below, which asserts the clear error instead of a
+hang.
+
+A provider is skipped when its opt-out environment variable is set to a
+non-empty value:
 
     SKIP_EMBED_PROVIDER_OLLAMA=1
     SKIP_EMBED_PROVIDER_VOYAGE=1
     SKIP_EMBED_PROVIDER_OPENAI=1
     SKIP_EMBED_PROVIDER_COHERE=1
     SKIP_EMBED_PROVIDER_GOOGLE=1
-    SKIP_EMBED_PROVIDER_GOOGLE_VERTEX=1
 
 If the variable is *not* set the test runs — and fails if the provider is
 unreachable or not configured.
@@ -30,7 +36,7 @@ import os
 import pytest
 
 from tests.integration.base import MCPIntegrationBase
-from shared.constructs import PROVIDERS
+from shared.constructs import CHROMA_COMPATIBLE_PROVIDERS
 
 pytestmark = pytest.mark.asyncio
 
@@ -75,8 +81,34 @@ class TestSearchContextErrors(MCPIntegrationBase):
         assert result.content[0].type == "text"
 
 
+class TestIncompatibleProviders(MCPIntegrationBase):
+    """Providers known to be incompatible with the default vector store.
+
+    No external services or credentials are needed: the compatibility check
+    runs before any provider is constructed, so this returns quickly instead
+    of hanging.
+    """
+
+    async def test_vertexai_with_chroma_local_returns_clear_error(self, make_mcp_session, tmp_path):
+        # Needs a .context/ dir so the compatibility guard (not the
+        # "no .context/ directory" early return) is what's exercised.
+        project_dir = self.make_project(tmp_path, project_md="# A project")
+
+        async with make_mcp_session({"EMBED_PROVIDER": "vertexai"}) as session:
+            result = await session.call_tool(
+                _TOOL,
+                {"project_path": str(project_dir), "query": "anything"},
+            )
+
+        assert result.isError
+        text = self.get_tool_text(result)
+        assert "cannot be used with" in text
+        assert "vertexai" in text
+        assert "chroma-local" in text
+
+
 @pytest.mark.external_services
-@pytest.mark.parametrize("embed_provider", [_provider_param(p) for p in PROVIDERS])
+@pytest.mark.parametrize("embed_provider", [_provider_param(p) for p in CHROMA_COMPATIBLE_PROVIDERS])
 class TestSearchContextWithVectorStore(MCPIntegrationBase):
     """Tests that require a running ChromaDB and an embedding provider.
 

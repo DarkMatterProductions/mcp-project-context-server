@@ -8,7 +8,7 @@ Set these environment variables to control the provider:
     API key for the Google Generative AI service.  **Required.**
 
 `GOOGLE_EMBED_MODEL`
-    Name of the embedding model to use.  Defaults to `text-embedding-004`.
+    Name of the embedding model to use.  Defaults to `gemini-embedding-2`.
 """
 
 import asyncio
@@ -17,8 +17,8 @@ import os
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
 from mcp_project_context_server.exceptions import EmbeddingError
 
-_DEFAULT_MODEL: str = "text-embedding-004"
-# text-embedding-004: 2048 token context; conservative character limit
+_DEFAULT_MODEL: str = "gemini-embedding-2"
+# gemini-embedding-2: 2048 token context; conservative character limit
 _MAX_CHARS: int = 24_000
 
 

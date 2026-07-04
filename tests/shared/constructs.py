@@ -1,8 +1,17 @@
 from pathlib import Path
 
+from mcp_project_context_server.integrations.vectorstore.registry import (
+    INCOMPATIBLE_EMBED_PROVIDERS_BY_VECTOR_STORE,
+)
+
 from shared import PROVIDER_DEFAULTS
 
 PROVIDERS = PROVIDER_DEFAULTS.keys()
+# Embed providers usable with the default (chroma-local) vector store.  Excludes
+# providers that deadlock in-process with chromadb (see registry docstring).
+CHROMA_COMPATIBLE_PROVIDERS = [
+    p for p in PROVIDERS if p not in INCOMPATIBLE_EMBED_PROVIDERS_BY_VECTOR_STORE.get("chroma-local", frozenset())
+]
 EMBEDDING_PROVIDER = lambda provider: (
     provider,
     PROVIDER_DEFAULTS[provider]["default_model"],

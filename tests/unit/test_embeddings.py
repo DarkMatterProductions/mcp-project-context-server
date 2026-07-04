@@ -20,6 +20,7 @@ def _provider_param(provider: str) -> pytest.param:
     return pytest.param(*EMBEDDING_PROVIDER(provider), id=provider)
 
 
+
 @pytest.mark.parametrize(
     "embed_provider_name, embed_default_model, embed_override_model, embed_max_chars, embed_api_key, embed_host_url, embed_import_path",
     [_provider_param(p) for p in PROVIDERS]
@@ -244,7 +245,9 @@ class TestEmbeddingProviders:
             mock_sdk.configure.assert_called_once_with(api_key="test-key")
             mock_sdk.embed_content.assert_called_once_with(model="embed-multilingual-v3.0", content="hello world")
         elif embed_provider_name == "vertexai":
-            mock_sdk.init.assert_called_once_with(project="test-project-name", location="test-location")
+            mock_sdk.init.assert_called_once_with(
+                project="test-project-name", location="test-location", api_transport="rest"
+            )
             mock_text_cls.from_pretrained.assert_called_once_with("embed-multilingual-v3.0")
             mock_model.get_embeddings.assert_called_once_with(["hello world"])
 
@@ -431,7 +434,10 @@ class TestEmbeddingProviders:
             sys_modules = {embed_import_path: mock_sdk}
 
         elif embed_provider_name == "vertexai":
+            mock_embedding = mocker.MagicMock()
+            mock_embedding.values = [0.1, 0.2, 0.3]
             mock_model = mocker.MagicMock()
+            mock_model.get_embeddings.return_value = [mock_embedding]
             mock_text_cls = mocker.MagicMock()
             mock_text_cls.from_pretrained.return_value = mock_model
             mock_lang_models = mocker.MagicMock()
