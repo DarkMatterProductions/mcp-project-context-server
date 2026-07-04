@@ -4,6 +4,8 @@
 
 Claude Desktop is Anthropic's native desktop application for macOS and Windows. It supports MCP servers natively via **STDIO transport** — the server runs as a child process of Claude Desktop, and all communication happens over stdin/stdout. No network port or authentication is required.
 
+> **What this server does:** `mcp-project-context-server` indexes and searches the `.context/` directory of a project — `project.md`, ADRs under `.context/decisions/`, and session notes under `.context/sessions/`. It does not index or search your general source code.
+
 ---
 
 ## Prerequisites
@@ -240,7 +242,7 @@ Uses the Google AI Studio API. Suitable for development and personal use. Get an
       "env": {
         "EMBED_PROVIDER": "google",
         "GOOGLE_API_KEY": "AIzaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-        "GOOGLE_EMBED_MODEL": "text-embedding-004",
+        "GOOGLE_EMBED_MODEL": "gemini-embedding-2",
         "VECTOR_STORE_PROVIDER": "chroma-local",
         "REPO_PROVIDER": "local"
       }
@@ -257,6 +259,8 @@ Uses the Google AI Studio API. Suitable for development and personal use. Get an
 
 Uses Application Default Credentials (ADC) — no API key file in the config. Authentication is handled via the Google Cloud SDK.
 
+> **Important:** `EMBED_PROVIDER=vertexai` cannot be combined with `chroma-local` or `chroma-http` — the Vertex AI and ChromaDB native dependencies deadlock when loaded into the same process on Windows. Use `VECTOR_STORE_PROVIDER=pgvector` with Vertex AI, as shown below.
+
 **Prerequisites:**
 
 1. Enable the Vertex AI API in your [Google Cloud project](https://console.cloud.google.com/apis/library)
@@ -265,6 +269,7 @@ Uses Application Default Credentials (ADC) — no API key file in the config. Au
    ```bash
    gcloud auth application-default login
    ```
+3. A PostgreSQL instance with the `pgvector` extension (see [pgvector](#pgvector-postgresql) below), and `pip install "mcp-project-context-server[google-vertex,pgvector]"`
 
 ```json
 {
@@ -276,7 +281,8 @@ Uses Application Default Credentials (ADC) — no API key file in the config. Au
         "VERTEXAI_PROJECT": "my-gcp-project-id",
         "VERTEXAI_LOCATION": "us-central1",
         "VERTEXAI_EMBED_MODEL": "text-embedding-004",
-        "VECTOR_STORE_PROVIDER": "chroma-local",
+        "VECTOR_STORE_PROVIDER": "pgvector",
+        "PGVECTOR_CONNECTION_STRING": "postgresql://mcpuser:password@localhost:5432/mcp_context",
         "REPO_PROVIDER": "local"
       }
     }
@@ -379,9 +385,13 @@ No configuration required. Pass the absolute path to your project when calling t
 project_path: /Users/yourname/projects/my-app
 ```
 
+Alternatively, set `PROJECT_PATH` in the server's `env` block to pin it to one project — the tools will use that value regardless of what is passed as `project_path`, which is convenient for a Claude Desktop config dedicated to a single project.
+
 ---
 
-### GitHub
+### GitHub / GitLab / Gitea
+
+> **Current scope:** setting `REPO_PROVIDER` to `github`, `gitlab`, or `gitea` enables the `list_repositories` tool to discover repositories over the provider's REST API. `load_project_context`, `index_project_context`, `search_project_context`, and `save_session_summary` still read and write `.context/` on the local filesystem, so the repository must be checked out locally and `project_path` must point at that checkout — these tools do not yet fetch `.context/` content remotely.
 
 ```json
 "env": {
@@ -390,46 +400,9 @@ project_path: /Users/yourname/projects/my-app
 }
 ```
 
-Get a token at [github.com/settings/tokens](https://github.com/settings/tokens) with `repo` scope (or `public_repo` for public repositories only). Pass `project_path` as `owner/repo` (e.g., `acme/backend`).
+Get a token at [github.com/settings/tokens](https://github.com/settings/tokens) with `repo` scope (or `public_repo` for public repositories only). For GitHub Enterprise Server, also set `"REPO_BASE_URL": "https://github.example.com/api/v3"`.
 
-For GitHub Enterprise Server, also set:
-```json
-"REPO_BASE_URL": "https://github.example.com/api/v3"
-```
-
----
-
-### GitLab
-
-```json
-"env": {
-  "REPO_PROVIDER": "gitlab",
-  "REPO_AUTH_TOKEN": "glpat-xxxxxxxxxxxxxxxxxxxx"
-}
-```
-
-Get a token at **User Settings → Access Tokens** with `read_api` scope. Pass `project_path` as `namespace/project`.
-
-For self-hosted GitLab, also set:
-```json
-"REPO_BASE_URL": "https://gitlab.example.com"
-```
-
----
-
-### Gitea
-
-`REPO_BASE_URL` is required — there is no default.
-
-```json
-"env": {
-  "REPO_PROVIDER": "gitea",
-  "REPO_BASE_URL": "https://gitea.example.com",
-  "REPO_AUTH_TOKEN": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-}
-```
-
-Get a token at **Settings → Applications → Manage Access Tokens**.
+For GitLab, set `REPO_PROVIDER` to `gitlab` and get a token at **User Settings → Access Tokens** with `read_api` scope (add `"REPO_BASE_URL"` for self-hosted GitLab). For Gitea, set `REPO_PROVIDER` to `gitea`; `REPO_BASE_URL` is required (no default) and a token is available at **Settings → Applications → Manage Access Tokens**.
 
 ---
 
@@ -449,7 +422,7 @@ Get a token at **Settings → Applications → Manage Access Tokens**.
 | `COHERE_API_KEY` | `cohere` | — | **Yes** |
 | `COHERE_EMBED_MODEL` | `cohere` | `embed-english-v3.0` | No |
 | `GOOGLE_API_KEY` | `google` | — | **Yes** |
-| `GOOGLE_EMBED_MODEL` | `google` | `text-embedding-004` | No |
+| `GOOGLE_EMBED_MODEL` | `google` | `gemini-embedding-2` | No |
 | `VERTEXAI_PROJECT` | `vertexai` | — | **Yes** |
 | `VERTEXAI_LOCATION` | `vertexai` | — | **Yes** |
 | `VERTEXAI_EMBED_MODEL` | `vertexai` | `text-embedding-004` | No |
@@ -480,12 +453,13 @@ Get a token at **Settings → Applications → Manage Access Tokens**.
 
 1. **Restart Claude Desktop** after editing `claude_desktop_config.json`
 2. Open a new conversation and look for the MCP icon in the toolbar — `project-context` should be listed
-3. In the chat, ask:
+3. Make sure `/Users/yourname/projects/my-app/.context/project.md` exists (create a one-line `project.md` if the project has no `.context/` directory yet)
+4. In the chat, ask:
 
-   > "Use the project-context MCP server to index `/Users/yourname/projects/my-app` and tell me what it does."
+   > "Use the project-context MCP server to index `/Users/yourname/projects/my-app`, then load the project context and summarize project.md."
 
-4. Claude will call `index_project_context` and then answer based on the indexed content
-5. To confirm the index persisted, start a new conversation and ask a question about the same project — it should answer without re-indexing
+5. Claude will call `index_project_context`, then `load_project_context` or `search_project_context`, and answer based on the indexed `.context/` content
+6. To confirm the index persisted, start a new conversation and ask a question about the same project — it should answer without re-indexing
 
 **Troubleshooting:**
 

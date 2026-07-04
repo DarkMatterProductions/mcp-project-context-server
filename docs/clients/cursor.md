@@ -4,6 +4,8 @@
 
 [Cursor](https://www.cursor.com/) is an AI-powered code editor built on VS Code. It supports MCP servers in two modes: **STDIO** for local single-developer use (the server runs as a subprocess) and **HTTP/SSE** for a shared remote team server. Configuration lives in `.cursor/mcp.json` in the project root or globally at `~/.cursor/mcp.json`.
 
+> **What this server does:** `mcp-project-context-server` indexes and searches the `.context/` directory of a project — `project.md`, ADRs under `.context/decisions/`, and session notes under `.context/sessions/`. It does not index or search your general source code.
+
 ---
 
 ## Prerequisites
@@ -212,7 +214,7 @@ Get an API key at [aistudio.google.com](https://aistudio.google.com/).
       "env": {
         "EMBED_PROVIDER": "google",
         "GOOGLE_API_KEY": "AIzaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-        "GOOGLE_EMBED_MODEL": "text-embedding-004",
+        "GOOGLE_EMBED_MODEL": "gemini-embedding-2",
         "VECTOR_STORE_PROVIDER": "chroma-local",
         "REPO_PROVIDER": "local"
       }
@@ -226,6 +228,8 @@ Get an API key at [aistudio.google.com](https://aistudio.google.com/).
 ### Google Vertex AI
 
 Uses Application Default Credentials — no API key in the config.
+
+> **Important:** `EMBED_PROVIDER=vertexai` cannot be combined with `chroma-local` or `chroma-http` — the Vertex AI and ChromaDB native dependencies deadlock when loaded into the same process on Windows. Use `VECTOR_STORE_PROVIDER=pgvector` with Vertex AI, as shown below. Requires `pip install "mcp-project-context-server[google-vertex,pgvector]"`.
 
 ```bash
 gcloud auth application-default login
@@ -241,7 +245,8 @@ gcloud auth application-default login
         "VERTEXAI_PROJECT": "my-gcp-project-id",
         "VERTEXAI_LOCATION": "us-central1",
         "VERTEXAI_EMBED_MODEL": "text-embedding-004",
-        "VECTOR_STORE_PROVIDER": "chroma-local",
+        "VECTOR_STORE_PROVIDER": "pgvector",
+        "PGVECTOR_CONNECTION_STRING": "postgresql://mcpuser:password@localhost:5432/mcp_context",
         "REPO_PROVIDER": "local"
       }
     }
@@ -330,11 +335,13 @@ Useful for a shared team index. Requires `pip install "mcp-project-context-serve
 
 ### Local (default)
 
-No configuration required. The workspace root is used as `project_path`.
+No configuration required — Cursor passes the workspace root as `project_path`. To pin a different path (or make it explicit for a single-project `mcp.json`), set `PROJECT_PATH` in the server's `env` block; it overrides whatever `project_path` value is passed.
 
 ---
 
-### GitHub
+### GitHub / GitLab / Gitea
+
+> **Current scope:** setting `REPO_PROVIDER` to `github`, `gitlab`, or `gitea` enables the `list_repositories` tool to discover repositories over the provider's REST API. `load_project_context`, `index_project_context`, `search_project_context`, and `save_session_summary` still read and write `.context/` on the local filesystem, so the repository must be checked out locally and `project_path` must point at that checkout — these tools do not yet fetch `.context/` content remotely.
 
 ```json
 "env": {
@@ -343,38 +350,9 @@ No configuration required. The workspace root is used as `project_path`.
 }
 ```
 
-Get a token at [github.com/settings/tokens](https://github.com/settings/tokens) with `repo` scope. Pass `project_path` as `owner/repo`.
+Get a token at [github.com/settings/tokens](https://github.com/settings/tokens) with `repo` scope. For GitHub Enterprise Server, also set `"REPO_BASE_URL": "https://github.example.com/api/v3"`.
 
-For GitHub Enterprise Server, also set `"REPO_BASE_URL": "https://github.example.com/api/v3"`.
-
----
-
-### GitLab
-
-```json
-"env": {
-  "REPO_PROVIDER": "gitlab",
-  "REPO_AUTH_TOKEN": "glpat-xxxxxxxxxxxxxxxxxxxx"
-}
-```
-
-Get a token at **User Settings → Access Tokens** with `read_api` scope.
-
-For self-hosted GitLab, also set `"REPO_BASE_URL": "https://gitlab.example.com"`.
-
----
-
-### Gitea
-
-`REPO_BASE_URL` is required — there is no default.
-
-```json
-"env": {
-  "REPO_PROVIDER": "gitea",
-  "REPO_BASE_URL": "https://gitea.example.com",
-  "REPO_AUTH_TOKEN": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-}
-```
+For GitLab, set `REPO_PROVIDER` to `gitlab` and get a token at **User Settings → Access Tokens** with `read_api` scope (add `"REPO_BASE_URL"` for self-hosted GitLab). For Gitea, set `REPO_PROVIDER` to `gitea`; `REPO_BASE_URL` is required (no default) and a token is available at **Settings → Applications → Manage Access Tokens**.
 
 ---
 
@@ -431,7 +409,7 @@ When your team runs a shared `mcp-project-context-server` instance over HTTP/SSE
 | `COHERE_API_KEY` | `cohere` | — | **Yes** |
 | `COHERE_EMBED_MODEL` | `cohere` | `embed-english-v3.0` | No |
 | `GOOGLE_API_KEY` | `google` | — | **Yes** |
-| `GOOGLE_EMBED_MODEL` | `google` | `text-embedding-004` | No |
+| `GOOGLE_EMBED_MODEL` | `google` | `gemini-embedding-2` | No |
 | `VERTEXAI_PROJECT` | `vertexai` | — | **Yes** |
 | `VERTEXAI_LOCATION` | `vertexai` | — | **Yes** |
 | `VERTEXAI_EMBED_MODEL` | `vertexai` | `text-embedding-004` | No |
@@ -452,6 +430,7 @@ When your team runs a shared `mcp-project-context-server` instance over HTTP/SSE
 | Variable | Provider | Default | Required |
 |----------|----------|---------|----------|
 | `REPO_PROVIDER` | All | `local` | No |
+| `PROJECT_PATH` | All | _(from tool call)_ | No — pins the project root, overriding `project_path` |
 | `REPO_AUTH_TOKEN` | `github`, `gitlab`, `gitea` | _(empty)_ | No (required for private repos) |
 | `REPO_BASE_URL` | `github`, `gitlab`, `gitea` | _(provider default)_ | **Yes** for `gitea` |
 | `REPO_DEFAULT_BRANCH` | `github`, `gitlab`, `gitea` | `main` | No |
@@ -460,14 +439,14 @@ When your team runs a shared `mcp-project-context-server` instance over HTTP/SSE
 
 ## Verification / Quick Test
 
-1. Open or restart Cursor in your project directory
+1. Open or restart Cursor in your project directory, and make sure it has a `.context/project.md` (create a minimal one if it doesn't yet exist)
 2. Open the Cursor Chat panel (`Ctrl+L` / `Cmd+L`)
 3. Check that `project-context` appears in the MCP tools list (click the tools icon)
 4. Ask:
 
-   > "Index this project and tell me what the main entry point does."
+   > "Index the project context here, then load it and summarize project.md."
 
-5. Cursor Agent will call `index_project_context`, then answer grounded in the actual code
+5. Cursor Agent will call `index_project_context`, then `load_project_context` or `search_project_context`, and answer grounded in the indexed `.context/` content
 
 **Troubleshooting:**
 - Open Cursor's output panel (View → Output → MCP) for server stderr logs
