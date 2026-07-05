@@ -37,6 +37,7 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
     """
 
     def __init__(self) -> None:
+        """Initialize the provider, reading configuration from environment variables."""
         self._host: str = os.getenv("OLLAMA_HOST", _DEFAULT_HOST)
         self._model: str = os.getenv("OLLAMA_EMBED_MODEL", os.getenv("EMBED_MODEL", _DEFAULT_MODEL))
 
@@ -63,15 +64,10 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
     async def embed_chunk(self, text: str) -> list[float]:
         """Embed *text* using the configured Ollama model.
 
-        Args:
-            text: Text to embed.  Should be at most `max_chars` long.
-
-        Returns:
-            Embedding vector as a list of floats.
-
-        Raises:
-            EmbeddingError: If the Ollama server returns an error, is
-                unreachable, or does not respond within the timeout.
+        :param text: (str) Text to embed. Should be at most `max_chars` long.
+        :return: (list) Embedding vector as a list of floats.
+        :raises EmbeddingError: If the Ollama server returns an error, is
+            unreachable, or does not respond within the timeout.
         """
         try:
             import ollama

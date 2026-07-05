@@ -32,6 +32,14 @@ _MISMATCH_WARNING = (
 
 
 async def handle(arguments: dict) -> list[types.TextContent]:
+    """Handle the ``search_project_context`` tool call.
+
+    :param arguments: (dict) Tool input dict. Requires keys ``"project_path"``
+        and ``"query"``; optional key ``"n_results"`` (defaults to 5).
+    :return: (list) A list containing a single :class:`~mcp.types.TextContent` item
+        with the matching context snippets (optionally prefixed with a
+        provider/model mismatch warning), or an error/"not found" message.
+    """
     query: str = arguments["query"]
     n_results: int = arguments.get("n_results", 5)
 

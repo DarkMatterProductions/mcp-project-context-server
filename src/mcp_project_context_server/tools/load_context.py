@@ -10,6 +10,13 @@ from mcp_project_context_server.integrations.repository.registry import get_repo
 
 
 async def handle(arguments: dict) -> list[types.TextContent]:
+    """Handle the ``load_project_context`` tool call.
+
+    :param arguments: (dict) Tool input dict. Requires key ``"project_path"``.
+    :return: (list) A list containing a single :class:`~mcp.types.TextContent` item
+        with the assembled project.md, ADRs, and latest session summary, or an
+        error/"not found" message.
+    """
     _project_path = os.getenv("PROJECT_PATH", arguments["project_path"])
     try:
         validate_repo_access(_project_path)

@@ -72,11 +72,12 @@ def _assert_compatible_providers(vector_store_provider_name: str) -> None:
 def get_vector_store() -> VectorStoreProvider:
     """Return the configured vector store provider singleton.
 
-    Raises:
-        EnvironmentError: If ``VECTOR_STORE_PROVIDER`` is set to an unrecognised value,
-            if the selected provider is missing a required env var, or if the
-            configured ``EMBED_PROVIDER`` is incompatible with it.
-        ImportError: If the required package for the selected provider is not installed.
+    :return: (VectorStoreProvider) The vector store provider instance selected by
+        ``VECTOR_STORE_PROVIDER`` (defaults to ``"chroma-local"``).
+    :raises EnvironmentError: If ``VECTOR_STORE_PROVIDER`` is set to an unrecognised value,
+        if the selected provider is missing a required env var, or if the
+        configured ``EMBED_PROVIDER`` is incompatible with it.
+    :raises ImportError: If the required package for the selected provider is not installed.
     """
     provider_name = os.getenv("VECTOR_STORE_PROVIDER", _DEFAULT_PROVIDER).strip().lower()
 
@@ -125,9 +126,10 @@ def get_indexer() -> IndexFn:
     the correct one based on ``VECTOR_STORE_PROVIDER``, mirroring the dispatch
     logic of :func:`get_vector_store`.
 
-    Raises:
-        EnvironmentError: If ``VECTOR_STORE_PROVIDER`` is set to an unrecognised value,
-            or if the configured ``EMBED_PROVIDER`` is incompatible with it.
+    :return: (Callable) An async callable that indexes a project path and
+        returns a human-readable summary string.
+    :raises EnvironmentError: If ``VECTOR_STORE_PROVIDER`` is set to an unrecognised value,
+        or if the configured ``EMBED_PROVIDER`` is incompatible with it.
     """
     provider_name = os.getenv("VECTOR_STORE_PROVIDER", _DEFAULT_PROVIDER).strip().lower()
 
@@ -151,11 +153,8 @@ def get_indexer() -> IndexFn:
     async def index_project_context(project_path: str | Path) -> str:
         """Run the indexing pipeline against a local ChromaDB PersistentClient.
 
-        Args:
-            project_path: Path to the project root or any file within it.
-
-        Returns:
-            A human-readable summary string describing what was indexed.
+        :param project_path: (str) Path to the project root or any file within it.
+        :return: (str) A human-readable summary string describing what was indexed.
         """
 
         return await run_index_pipeline(project_path, store)

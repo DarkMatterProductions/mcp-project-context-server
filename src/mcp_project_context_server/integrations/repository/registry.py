@@ -58,10 +58,11 @@ _approved_repos: frozenset[str] = frozenset()
 def get_repository_provider() -> RepositoryProvider:
     """Return the configured repository provider singleton.
 
-    Raises:
-        EnvironmentError: If ``REPO_PROVIDER`` is set to an unrecognised value,
-            or if multi-tenant mode is active but no approved orgs/repos are
-            configured.
+    :return: (RepositoryProvider) The repository provider instance selected by
+        the ``REPO_PROVIDER`` environment variable (defaults to ``"local"``).
+    :raises EnvironmentError: If ``REPO_PROVIDER`` is set to an unrecognised value,
+        or if multi-tenant mode is active but no approved orgs/repos are
+        configured.
     """
     global _provider_instance, _multi_tenant_enabled, _approved_orgs, _approved_repos
 
@@ -132,12 +133,10 @@ def validate_repo_access(repo_id: str) -> None:
     In single-tenant mode (``REPO_MULTI_TENANT`` unset or ``false``) this is
     always a no-op.
 
-    Args:
-        repo_id: The ``owner/repo`` (or equivalent) identifier to validate.
-
-    Raises:
-        RepositoryError: If multi-tenant mode is active, and *repo_id* is not in
-            the approved orgs or repos allowlists.
+    :param repo_id: (str) The ``owner/repo`` (or equivalent) identifier to validate.
+    :return: (None) This function does not return a value.
+    :raises RepositoryError: If multi-tenant mode is active, and *repo_id* is not in
+        the approved orgs or repos allowlists.
     """
     # Ensure the multi-tenant flags have been populated even if this is the
     # first call into the registry for this process (lazy singleton init).
@@ -166,6 +165,8 @@ def reset_provider_for_testing() -> None:
 
     **For use in tests only.**  Call this in test teardown to prevent provider
     state from leaking between test cases.
+
+    :return: (None) This function does not return a value.
     """
     global _provider_instance, _multi_tenant_enabled, _approved_orgs, _approved_repos
     _provider_instance = None
