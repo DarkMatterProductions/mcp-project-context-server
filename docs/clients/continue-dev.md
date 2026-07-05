@@ -413,8 +413,10 @@ No configuration required. Pass the workspace path as `project_path` when invoki
 Add to the `env` block:
 
 ```json
-"REPO_PROVIDER": "github",
-"REPO_AUTH_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+{
+  "REPO_PROVIDER": "github",
+  "REPO_AUTH_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
 ```
 
 Get a token at [github.com/settings/tokens](https://github.com/settings/tokens) with `repo` scope. For GitHub Enterprise, also add `"REPO_BASE_URL": "https://github.example.com/api/v3"`.
