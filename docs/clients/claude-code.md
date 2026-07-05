@@ -358,8 +358,10 @@ Claude Code is almost always used with the `local` provider — you are already 
 No configuration required, but Claude Code does not automatically know your repository root — you (or Claude, once told) must still pass it as `project_path` on each tool call, or pin it as described below.
 
 ```json
-"env": {
-  "REPO_PROVIDER": "local"
+{
+   "env": {
+      "REPO_PROVIDER": "local"
+   }
 }
 ```
 
