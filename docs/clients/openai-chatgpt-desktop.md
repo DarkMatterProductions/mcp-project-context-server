@@ -298,9 +298,11 @@ Replace the `VECTOR_STORE_PROVIDER` and related variables in any of the examples
 No extra infrastructure required. Data persists to `~/.mcp-data/chroma` by default.
 
 ```json
-"env": {
-  "VECTOR_STORE_PROVIDER": "chroma-local",
-  "CHROMA_DIR": "/Users/yourname/.mcp-data/chroma"
+{
+   "env": {
+      "VECTOR_STORE_PROVIDER": "chroma-local",
+      "CHROMA_DIR": "/Users/yourname/.mcp-data/chroma"
+   }
 }
 ```
 
