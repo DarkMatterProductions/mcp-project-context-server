@@ -139,6 +139,10 @@ def validate_repo_access(repo_id: str) -> None:
         RepositoryError: If multi-tenant mode is active and *repo_id* is not in
             the approved orgs or repos allowlists.
     """
+    # Ensure the multi-tenant flags have been populated even if this is the
+    # first call into the registry for this process (lazy singleton init).
+    get_repository_provider()
+
     if not _multi_tenant_enabled:
         return
 

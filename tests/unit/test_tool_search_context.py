@@ -2,8 +2,18 @@
 
 import pytest
 
+from mcp_project_context_server.integrations.repository.registry import (
+    reset_provider_for_testing as reset_repo,
+)
 from mcp_project_context_server.integrations.vectorstore.base import QueryResult, VectorStoreError
 from mcp_project_context_server.tools.search_context import handle
+
+
+@pytest.fixture(autouse=True)
+def reset_registries():
+    reset_repo()
+    yield
+    reset_repo()
 
 
 def _make_store(mocker, *, exists=True, meta=None, docs=None, metas=None, raise_query=False):
@@ -35,6 +45,18 @@ class TestSearchContextNoDir:
     async def test_no_context_dir(self):
         result = await handle({"project_path": "/nonexistent", "query": "test"})
         assert "No .context/ directory found" in result[0].text
+
+    @pytest.mark.asyncio
+    async def test_blocked_by_allowlist(self, monkeypatch, mocker):
+        mock_store = mocker.patch("mcp_project_context_server.tools.search_context.get_vector_store")
+        monkeypatch.setenv("REPO_MULTI_TENANT", "true")
+        monkeypatch.setenv("APPROVED_ORGS", "approved-org")
+        monkeypatch.delenv("APPROVED_REPOS", raising=False)
+
+        result = await handle({"project_path": "unapproved-org/some-repo", "query": "test"})
+
+        assert "not permitted" in result[0].text
+        mock_store.assert_not_called()
 
 
 class TestSearchContextNotIndexed:
