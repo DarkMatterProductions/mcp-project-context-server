@@ -5,10 +5,17 @@ import os
 from mcp import types
 
 from mcp_project_context_server.helpers.context import find_context_dir
+from mcp_project_context_server.integrations.repository.base import RepositoryError
+from mcp_project_context_server.integrations.repository.registry import validate_repo_access
 
 
 async def handle(arguments: dict) -> list[types.TextContent]:
     _project_path = os.getenv("PROJECT_PATH", arguments["project_path"])
+    try:
+        validate_repo_access(_project_path)
+    except RepositoryError as exc:
+        return [types.TextContent(type="text", text=str(exc))]
+
     context_dir = find_context_dir(_project_path)
     if not context_dir:
         return [

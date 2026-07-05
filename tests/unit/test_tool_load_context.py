@@ -1,11 +1,15 @@
 import pytest
 
+from mcp_project_context_server.integrations.repository.registry import reset_provider_for_testing
 from mcp_project_context_server.tools.load_context import handle
 
 
 class TestLoadContext:
     def setup_method(self):
         pass
+
+    def teardown_method(self):
+        reset_provider_for_testing()
 
     @pytest.mark.asyncio
     async def test_load_context_no_dir(self):
@@ -45,3 +49,21 @@ class TestLoadContext:
         assert "## Last Session (2026-01-02)" in text
         assert "New Session" in text
         assert "Old Session" not in text  # Only the latest session
+
+    @pytest.mark.asyncio
+    async def test_load_context_blocked_by_allowlist(self, tmp_path, monkeypatch):
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        context_dir = project_dir / ".context"
+        context_dir.mkdir()
+        (context_dir / "project.md").write_text("Secret project", encoding="utf-8")
+
+        monkeypatch.setenv("REPO_MULTI_TENANT", "true")
+        monkeypatch.setenv("APPROVED_ORGS", "approved-org")
+        monkeypatch.delenv("APPROVED_REPOS", raising=False)
+
+        arguments = {"project_path": "unapproved-org/some-repo"}
+        result = await handle(arguments)
+
+        assert "not permitted" in result[0].text
+        assert "Secret project" not in result[0].text

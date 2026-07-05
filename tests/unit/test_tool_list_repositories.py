@@ -5,11 +5,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from mcp_project_context_server.integrations.repository.base import RepositoryInfo
+from mcp_project_context_server.integrations.repository.registry import reset_provider_for_testing
 from mcp_project_context_server.tools.list_repositories import handle
 
 
 class TestListRepositoriesTool:
     """Tests for the list_repositories tool handle() function."""
+
+    def teardown_method(self):
+        reset_provider_for_testing()
 
     @pytest.mark.asyncio
     async def test_returns_formatted_list(self):
@@ -74,3 +78,26 @@ class TestListRepositoriesTool:
             await handle({"org": "myorg"})
 
         mock_provider.list_repositories.assert_called_once_with(org="myorg")
+
+    @pytest.mark.asyncio
+    async def test_filters_out_repos_not_in_allowlist(self, monkeypatch):
+        monkeypatch.setenv("REPO_MULTI_TENANT", "true")
+        monkeypatch.setenv("APPROVED_ORGS", "approved-org")
+        monkeypatch.delenv("APPROVED_REPOS", raising=False)
+
+        repos = [
+            RepositoryInfo(identifier="approved-org/repo1", name="repo1", description="", indexed=True),
+            RepositoryInfo(identifier="unapproved-org/repo2", name="repo2", description="", indexed=False),
+        ]
+        mock_provider = AsyncMock()
+        mock_provider.list_repositories = AsyncMock(return_value=repos)
+
+        with patch(
+            "mcp_project_context_server.tools.list_repositories.get_repository_provider",
+            return_value=mock_provider,
+        ):
+            result = await handle({})
+
+        text = result[0].text
+        assert "approved-org/repo1" in text
+        assert "unapproved-org/repo2" not in text

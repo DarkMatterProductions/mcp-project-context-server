@@ -13,6 +13,8 @@ from mcp import types
 from mcp_project_context_server.exceptions import EmbeddingError
 from mcp_project_context_server.helpers.context import collection_name_for, find_context_dir
 from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
+from mcp_project_context_server.integrations.repository.base import RepositoryError
+from mcp_project_context_server.integrations.repository.registry import validate_repo_access
 from mcp_project_context_server.integrations.vectorstore.base import VectorStoreError
 from mcp_project_context_server.integrations.vectorstore.registry import get_vector_store
 
@@ -29,6 +31,11 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     n_results: int = arguments.get("n_results", 5)
 
     _project_path = os.getenv("PROJECT_PATH", arguments["project_path"])
+    try:
+        validate_repo_access(_project_path)
+    except RepositoryError as exc:
+        return [types.TextContent(type="text", text=str(exc))]
+
     context_dir = find_context_dir(_project_path)
     if not context_dir:
         return [

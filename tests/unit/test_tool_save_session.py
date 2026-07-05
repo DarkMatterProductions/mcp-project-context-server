@@ -2,12 +2,16 @@ from datetime import datetime
 
 import pytest
 
+from mcp_project_context_server.integrations.repository.registry import reset_provider_for_testing
 from mcp_project_context_server.tools.save_session import handle
 
 
 class TestSaveSession:
     def setup_method(self):
         self.today = datetime.now().strftime("%Y-%m-%d")
+
+    def teardown_method(self):
+        reset_provider_for_testing()
 
     @pytest.mark.asyncio
     async def test_save_session_new(self, tmp_path):
@@ -46,3 +50,20 @@ class TestSaveSession:
         assert "Existing part." in content
         assert "Appended part." in content
         assert "### Session at" in content
+
+    @pytest.mark.asyncio
+    async def test_save_session_blocked_by_allowlist(self, tmp_path, monkeypatch):
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        context_dir = project_dir / ".context"
+        context_dir.mkdir()
+
+        monkeypatch.setenv("REPO_MULTI_TENANT", "true")
+        monkeypatch.setenv("APPROVED_ORGS", "approved-org")
+        monkeypatch.delenv("APPROVED_REPOS", raising=False)
+
+        arguments = {"project_path": "unapproved-org/some-repo", "summary": "Sneaky write."}
+        result = await handle(arguments)
+
+        assert "not permitted" in result[0].text
+        assert not (context_dir / "sessions").exists()
