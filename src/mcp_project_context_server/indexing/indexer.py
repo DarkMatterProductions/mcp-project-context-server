@@ -43,12 +43,9 @@ async def run_index_pipeline(project_path: str | Path, store: VectorStoreProvide
     vector store provider, repo provider, server version, indexed_at timestamp)
     so that search can detect and warn on provider/model mismatches.
 
-    Args:
-        project_path: Path to the project root or any file within it.
-        store: Fully initialized vector store provider to write into.
-
-    Returns:
-        A human-readable summary string describing what was indexed.
+    :param project_path: (str) Path to the project root or any file within it.
+    :param store: (VectorStoreProvider) Fully initialized vector store provider to write into.
+    :return: (str) A human-readable summary string describing what was indexed.
     """
     repo_provider = get_repository_provider()
     resolved_path, is_remote = resolve_project_path(str(project_path))

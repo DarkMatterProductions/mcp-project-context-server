@@ -144,11 +144,22 @@ _TOOL_HANDLERS = {
 
 @server.list_tools()
 async def list_tools() -> list[types.Tool]:
+    """List the MCP tools exposed by this server.
+
+    :return: (list) The registered ``types.Tool`` definitions advertised to MCP clients.
+    """
     return _TOOL_DEFINITIONS
 
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextContent]:
+    """Dispatch an MCP tool call to its registered handler.
+
+    :param name: (str) The name of the tool to invoke.
+    :param arguments: (dict) The arguments supplied by the MCP client for this tool call.
+    :return: (list) The handler's ``types.TextContent`` results, or a single
+        error message if ``name`` does not match a registered tool.
+    """
     handler = _TOOL_HANDLERS.get(name)
     if not handler:
         return [types.TextContent(type="text", text=f"Unknown tool: {name}")]
@@ -173,6 +184,7 @@ async def _main() -> None:
 
 
 def run() -> None:
+    """Start the MCP server, selecting a transport via the ``MCP_TRANSPORT`` env var."""
     logger.info("project-context-server starting")
     try:
         asyncio.run(_main())

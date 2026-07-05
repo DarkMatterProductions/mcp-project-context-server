@@ -12,12 +12,9 @@ from mcp_project_context_server.integrations.repository.registry import (
 async def handle(arguments: dict) -> list[types.TextContent]:
     """Handle the ``list_repositories`` tool call.
 
-    Args:
-        arguments: Tool input dict.  Optional key ``"org"`` filters by
-            organisation/group name.
-
-    Returns:
-        A list containing a single :class:`~mcp.types.TextContent` item.
+    :param arguments: (dict) Tool input dict. Optional key ``"org"`` filters by
+        organisation/group name.
+    :return: (list) A list containing a single :class:`~mcp.types.TextContent` item.
     """
     org = arguments.get("org")
     try:

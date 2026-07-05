@@ -33,6 +33,9 @@ class LocalRepositoryProvider:
 
         Returns a dict keyed by POSIX relative paths.  Returns an empty dict if
         the ``.context/`` directory does not exist.
+
+        :param repo_id: (str) Filesystem path to the project root.
+        :return: (dict) A mapping of POSIX-style relative markdown file paths to their contents.
         """
         context_dir = Path(repo_id) / ".context"
         if not context_dir.is_dir():
@@ -44,7 +47,11 @@ class LocalRepositoryProvider:
         return result
 
     async def fetch_source_bundle(self, repo_id: str) -> Optional[str]:
-        """Return the content of ``<repo_id>/.context/BUNDLE.md``, or None."""
+        """Return the content of ``<repo_id>/.context/BUNDLE.md``, or None.
+
+        :param repo_id: (str) Filesystem path to the project root.
+        :return: (str) The contents of ``BUNDLE.md``, or ``None`` if it does not exist.
+        """
         bundle = Path(repo_id) / ".context" / "BUNDLE.md"
         if bundle.is_file():
             return bundle.read_text(encoding="utf-8")
@@ -55,6 +62,9 @@ class LocalRepositoryProvider:
 
         Capped at ``_MAX_SOURCE_FILES`` (500) entries.  Keys are POSIX paths
         relative to ``repo_id``.
+
+        :param repo_id: (str) Filesystem path to the project root.
+        :return: (dict) A mapping of POSIX-style relative source file paths to their contents.
         """
         root = Path(repo_id)
         result: dict[str, str] = {}
@@ -76,17 +86,34 @@ class LocalRepositoryProvider:
 
         ``message`` and ``branch`` are ignored for the local provider (no
         commit is made; writes always land on whatever is checked out).
+
+        :param repo_id: (str) Filesystem path to the project root.
+        :param path: (str) The file path to write, relative to ``repo_id``.
+        :param content: (str) The new full contents of the file.
+        :param message: (str) Ignored by the local provider.
+        :param branch: (str) Ignored by the local provider.
+        :return: (None) This method does not return a value.
         """
         target = Path(repo_id) / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
 
     async def create_branch(self, repo_id: str, new_branch: str, from_branch: Optional[str] = None) -> None:
-        """No-op: the local provider writes directly to disk regardless of branch."""
+        """No-op: the local provider writes directly to disk regardless of branch.
+
+        :param repo_id: (str) Filesystem path to the project root.
+        :param new_branch: (str) Ignored by the local provider.
+        :param from_branch: (str) Ignored by the local provider.
+        :return: (None) This method does not return a value.
+        """
         return None
 
     async def get_default_branch(self, repo_id: str) -> str:
-        """Return the current git branch for the repository, falling back to ``"main"``."""
+        """Return the current git branch for the repository, falling back to ``"main"``.
+
+        :param repo_id: (str) Filesystem path to the project root.
+        :return: (str) The current git branch name, or ``"main"`` if it cannot be determined.
+        """
 
         def _run_git() -> str:
             result = subprocess.run(
@@ -105,6 +132,10 @@ class LocalRepositoryProvider:
 
         Returns an empty list if ``PROJECT_PATH`` is not set.  ``org`` is ignored
         for the local provider.
+
+        :param org: (str) Ignored by the local provider.
+        :return: (list) A single-element list describing the ``PROJECT_PATH`` project,
+            or an empty list if ``PROJECT_PATH`` is not set.
         """
         if not self._project_path:
             return []

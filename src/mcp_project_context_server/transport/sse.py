@@ -175,15 +175,10 @@ def _build_auth_middleware(auth_type: str) -> list[Middleware]:
 def build_sse_app(server: Server) -> Starlette:
     """Build and return the Starlette ASGI application for HTTP/SSE transport.
 
-    Args:
-        server: The configured MCP :class:`Server` instance.
-
-    Returns:
-        A :class:`~starlette.applications.Starlette` app ready to be served
-        by uvicorn.
-
-    Raises:
-        EnvironmentError: If auth configuration is invalid or incomplete.
+    :param server: (Server) The configured MCP :class:`Server` instance.
+    :return: (Starlette) A :class:`~starlette.applications.Starlette` app ready
+        to be served by uvicorn.
+    :raises EnvironmentError: If auth configuration is invalid or incomplete.
     """
     auth_type = os.getenv("MCP_AUTH_TYPE", "none").strip().lower()
     middleware = _build_auth_middleware(auth_type)
@@ -212,8 +207,8 @@ async def run_sse(server: Server) -> None:
 
     Reads ``MCP_HOST`` and ``MCP_PORT`` from the environment.
 
-    Args:
-        server: The configured MCP :class:`Server` instance.
+    :param server: (Server) The configured MCP :class:`Server` instance.
+    :return: (None) This function does not return a value.
     """
     import uvicorn  # type: ignore[import]
 

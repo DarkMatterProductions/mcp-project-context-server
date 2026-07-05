@@ -11,6 +11,14 @@ from mcp_project_context_server.integrations.repository.registry import get_repo
 
 
 async def handle(arguments: dict) -> list[types.TextContent]:
+    """Handle the ``save_session_summary`` tool call.
+
+    :param arguments: (dict) Tool input dict. Requires keys ``"project_path"``
+        and ``"summary"``.
+    :return: (list) A list containing a single :class:`~mcp.types.TextContent` item
+        confirming where the session summary was saved, or an error/"not found"
+        message.
+    """
     summary: str = arguments["summary"]
 
     _project_path = os.getenv("PROJECT_PATH", arguments["project_path"])

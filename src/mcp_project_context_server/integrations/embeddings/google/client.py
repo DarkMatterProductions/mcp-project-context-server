@@ -30,13 +30,13 @@ class GoogleEmbeddingProvider(EmbeddingProvider):
     that the provider can be imported without requiring the package to be installed.
     Because the `genai.embed_content` function is synchronous, it is wrapped with
     `asyncio.to_thread` to avoid blocking the event loop.
-
-    Raises:
-        EnvironmentError: At construction time if `GOOGLE_API_KEY` is not set.
     """
 
     def __init__(self) -> None:
-        """Initialize the provider, reading configuration from environment variables."""
+        """Initialize the provider, reading configuration from environment variables.
+
+        :raises EnvironmentError: If `GOOGLE_API_KEY` is not set.
+        """
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
             raise EnvironmentError("GOOGLE_API_KEY environment variable is not set.")
@@ -69,15 +69,10 @@ class GoogleEmbeddingProvider(EmbeddingProvider):
     async def embed_chunk(self, text: str) -> list[float]:
         """Embed *text* using the configured Google Generative AI embedding model.
 
-        Args:
-            text: Text to embed.  Should be at most `max_chars` long.
-
-        Returns:
-            Embedding vector as a list of floats.
-
-        Raises:
-            EmbeddingError: If the Google API returns an error, is
-                unreachable, or does not respond within the timeout.
+        :param text: (str) Text to embed. Should be at most `max_chars` long.
+        :return: (list) Embedding vector as a list of floats.
+        :raises EmbeddingError: If the Google API returns an error, is
+            unreachable, or does not respond within the timeout.
         """
         try:
             import google.generativeai as genai  # lazy import

@@ -48,13 +48,8 @@ class EmbeddingProvider(Protocol):
     async def embed_chunk(self, text: str) -> list[float]:
         """Embed a single text string and return the embedding vector.
 
-        Args:
-            text: The text to embed.  May be up to ``max_chars`` in length.
-
-        Returns:
-            A list of floats representing the embedding vector.
-
-        Raises:
-            EmbeddingError: If the provider returns an error or is unreachable.
+        :param text: (str) The text to embed. May be up to ``max_chars`` in length.
+        :return: (list) A list of floats representing the embedding vector.
+        :raises EmbeddingError: If the provider returns an error or is unreachable.
         """
         ...

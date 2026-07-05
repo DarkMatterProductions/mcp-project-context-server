@@ -42,14 +42,13 @@ class GoogleVertexEmbeddingProvider(EmbeddingProvider):
     conflict, so the embedding call is made with the synchronous
     `get_embeddings()` wrapped in `asyncio.to_thread`, same as every other
     HTTP-based provider in this package.
-
-    Raises:
-        EnvironmentError: At construction time if `VERTEXAI_PROJECT` or
-            `VERTEXAI_LOCATION` are not set.
     """
 
     def __init__(self) -> None:
-        """Initialize the provider, reading configuration from environment variables."""
+        """Initialize the provider, reading configuration from environment variables.
+
+        :raises EnvironmentError: If `VERTEXAI_PROJECT` or `VERTEXAI_LOCATION` are not set.
+        """
         project = os.getenv("VERTEXAI_PROJECT")
         if not project:
             raise EnvironmentError("VERTEXAI_PROJECT environment variable is not set.")
@@ -101,15 +100,10 @@ class GoogleVertexEmbeddingProvider(EmbeddingProvider):
     async def embed_chunk(self, text: str) -> list[float]:
         """Embed *text* using the configured Vertex AI embedding model.
 
-        Args:
-            text: Text to embed.  Should be at most `max_chars` long.
-
-        Returns:
-            Embedding vector as a list of floats.
-
-        Raises:
-            EmbeddingError: If the Vertex AI SDK returns an error, is
-                unreachable, or does not respond within the timeout.
+        :param text: (str) Text to embed. Should be at most `max_chars` long.
+        :return: (list) Embedding vector as a list of floats.
+        :raises EmbeddingError: If the Vertex AI SDK returns an error, is
+            unreachable, or does not respond within the timeout.
         """
         try:
             model = self._get_embedding_model()

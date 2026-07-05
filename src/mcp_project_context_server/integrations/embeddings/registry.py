@@ -57,11 +57,12 @@ _SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"ollama", "voyage", "openai", 
 def get_embedding_provider() -> EmbeddingProvider:
     """Return the configured embedding provider singleton.
 
-    Raises:
-        EnvironmentError: If `EMBED_PROVIDER` is not set or is not one of
-            the supported provider names.
-        ImportError: If the required package for the selected provider is not
-            installed.
+    :return: (EmbeddingProvider) The embedding provider instance selected by
+        the ``EMBED_PROVIDER`` environment variable.
+    :raises EnvironmentError: If ``EMBED_PROVIDER`` is not set or is not one of
+        the supported provider names.
+    :raises ImportError: If the required package for the selected provider is
+        not installed.
     """
     provider_name = os.getenv("EMBED_PROVIDER", "").strip().lower()
 

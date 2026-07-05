@@ -25,13 +25,13 @@ class GiteaRepositoryProvider:
     * ``REPO_BASE_URL`` — **Required** Gitea instance URL (no default).
       The API base is derived as ``{REPO_BASE_URL}/api/v1``.
     * ``REPO_DEFAULT_BRANCH`` — Fallback branch name (default: ``"main"``).
-
-    Raises:
-        EnvironmentError: If ``REPO_BASE_URL`` is not set.
     """
 
     def __init__(self) -> None:
-        """Initialize the provider from environment variables."""
+        """Initialize the provider from environment variables.
+
+        :raises EnvironmentError: If ``REPO_BASE_URL`` is not set.
+        """
         self._token: str = os.getenv("REPO_AUTH_TOKEN", "")
         base = os.getenv("REPO_BASE_URL", "").rstrip("/")
         if not base:
@@ -75,6 +75,9 @@ class GiteaRepositoryProvider:
         """Fetch all .md files from the ``.context/`` subtree of the repository.
 
         Returns an empty dict on 404.
+
+        :param repo_id: (str) The ``owner/repo`` identifier or full URL of the repository.
+        :return: (dict) A mapping of relative markdown file paths to their contents.
         """
         owner, repo = self._split(repo_id)
         branch = await self.get_default_branch(repo_id)
@@ -101,7 +104,11 @@ class GiteaRepositoryProvider:
         return result
 
     async def fetch_source_bundle(self, repo_id: str) -> Optional[str]:
-        """Fetch the content of ``.context/BUNDLE.md``, or ``None``."""
+        """Fetch the content of ``.context/BUNDLE.md``, or ``None``.
+
+        :param repo_id: (str) The ``owner/repo`` identifier or full URL of the repository.
+        :return: (str) The contents of ``BUNDLE.md``, or ``None`` if it does not exist.
+        """
         owner, repo = self._split(repo_id)
         branch = await self.get_default_branch(repo_id)
         async with httpx.AsyncClient() as client:
@@ -117,6 +124,9 @@ class GiteaRepositoryProvider:
         """Fetch source code files from the repository tree.
 
         Capped at 200 files.
+
+        :param repo_id: (str) The ``owner/repo`` identifier or full URL of the repository.
+        :return: (dict) A mapping of relative source file paths to their contents.
         """
         owner, repo = self._split(repo_id)
         branch = await self.get_default_branch(repo_id)
@@ -145,8 +155,15 @@ class GiteaRepositoryProvider:
         """Create or update *path* in the repository.
 
         Writes to *branch* if given, otherwise the repository's default
-        branch. Raises :exc:`RepositoryError` if the API returns a
-        non-success status.
+        branch.
+
+        :param repo_id: (str) The ``owner/repo`` identifier or full URL of the repository.
+        :param path: (str) The file path to write, relative to the repository root.
+        :param content: (str) The new full contents of the file.
+        :param message: (str) The commit message describing the write.
+        :param branch: (str) Target branch. Falls back to the repository's default branch when ``None``.
+        :return: (None) This method does not return a value.
+        :raises RepositoryError: If the API returns a non-success status.
         """
         owner, repo = self._split(repo_id)
         target_branch = branch or await self.get_default_branch(repo_id)
@@ -180,7 +197,12 @@ class GiteaRepositoryProvider:
     async def create_branch(self, repo_id: str, new_branch: str, from_branch: Optional[str] = None) -> None:
         """Create *new_branch* from *from_branch* (or the default branch).
 
-        Raises :exc:`RepositoryError` if the API returns a non-success status.
+        :param repo_id: (str) The ``owner/repo`` identifier or full URL of the repository.
+        :param new_branch: (str) The name of the branch to create.
+        :param from_branch: (str) The branch to base the new branch on. Falls back to the
+            repository's default branch when ``None``.
+        :return: (None) This method does not return a value.
+        :raises RepositoryError: If the API returns a non-success status.
         """
         owner, repo = self._split(repo_id)
         base = from_branch or await self.get_default_branch(repo_id)
@@ -194,7 +216,11 @@ class GiteaRepositoryProvider:
                 raise RepositoryError(f"Gitea create_branch failed ({resp.status_code}): {resp.text}")
 
     async def get_default_branch(self, repo_id: str) -> str:
-        """Return the default branch for *repo_id*, falling back to env / ``"main"``."""
+        """Return the default branch for *repo_id*, falling back to env / ``"main"``.
+
+        :param repo_id: (str) The ``owner/repo`` identifier or full URL of the repository.
+        :return: (str) The repository's default branch name, or the configured/``"main"`` fallback.
+        """
         owner, repo = self._split(repo_id)
         try:
             async with httpx.AsyncClient() as client:
@@ -213,6 +239,9 @@ class GiteaRepositoryProvider:
 
         If *org* is set, lists repositories for that organisation.  Otherwise
         searches all accessible repositories.
+
+        :param org: (str) Optional organisation name to list repositories for.
+        :return: (list) The accessible ``RepositoryInfo`` entries.
         """
         async with httpx.AsyncClient() as client:
             if org:
