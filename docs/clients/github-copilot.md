@@ -69,7 +69,11 @@ which project-context-server
 
 > **Security note:** If committing `.vscode/mcp.json`, use VS Code's input variables feature for API keys so they are not hardcoded:
 > ```json
-> "env": { "VOYAGE_API_KEY": "${input:voyageApiKey}" }
+> {
+>    "env": {
+>       "VOYAGE_API_KEY": "${input:voyageApiKey}"
+>    }
+> }
 > ```
 > Copilot will prompt for the value on first use and store it securely.
 
