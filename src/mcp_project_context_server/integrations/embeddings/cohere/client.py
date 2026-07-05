@@ -11,6 +11,7 @@ Set these environment variables to control the provider:
     Name of the embedding model to use.  Defaults to `embed-english-v3.0`.
 """
 
+import asyncio
 import os
 
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
@@ -19,6 +20,7 @@ from mcp_project_context_server.exceptions import EmbeddingError
 _DEFAULT_MODEL: str = "embed-english-v3.0"
 # embed-english-v3.0: 512 token context; conservative character limit
 _MAX_CHARS: int = 20_000
+_EMBED_TIMEOUT_SECONDS: float = 60.0
 
 
 class CohereEmbeddingProvider(EmbeddingProvider):
@@ -72,17 +74,21 @@ class CohereEmbeddingProvider(EmbeddingProvider):
             Embedding vector as a list of floats.
 
         Raises:
-            EmbeddingError: If the Cohere API returns an error or is unreachable.
+            EmbeddingError: If the Cohere API returns an error, is
+                unreachable, or does not respond within the timeout.
         """
         try:
             import cohere  # lazy import
 
             client = cohere.AsyncClientV2(api_key=self._api_key)
-            response = await client.embed(
-                texts=[text],
-                model=self._model,
-                input_type="search_document",
-                embedding_types=["float"],
+            response = await asyncio.wait_for(
+                client.embed(
+                    texts=[text],
+                    model=self._model,
+                    input_type="search_document",
+                    embedding_types=["float"],
+                ),
+                timeout=_EMBED_TIMEOUT_SECONDS,
             )
             return list(response.embeddings.float_[0])
         except Exception as exc:

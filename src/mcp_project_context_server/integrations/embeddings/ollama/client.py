@@ -26,6 +26,7 @@ _DEFAULT_HOST: str = "http://localhost:11434"
 _DEFAULT_MODEL: str = "nomic-embed-text"
 # Conservative character limit for nomic-embed-text (8192 token context ≈ 32 000 chars)
 _MAX_CHARS: int = 32_000
+_EMBED_TIMEOUT_SECONDS: float = 60.0
 
 
 class OllamaEmbeddingProvider(EmbeddingProvider):
@@ -70,13 +71,16 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
             Embedding vector as a list of floats.
 
         Raises:
-            EmbeddingError: If the Ollama server returns an error or is
-                unreachable.
+            EmbeddingError: If the Ollama server returns an error, is
+                unreachable, or does not respond within the timeout.
         """
         try:
             import ollama
             client = ollama.Client(host=self._host)
-            response = await asyncio.to_thread(client.embed, model=self._model, input=text)
+            response = await asyncio.wait_for(
+                asyncio.to_thread(client.embed, model=self._model, input=text),
+                timeout=_EMBED_TIMEOUT_SECONDS,
+            )
             return list(response.embeddings[0])
         except Exception as exc:
             raise EmbeddingError(f"Ollama embedding failed (host={self._host}, model={self._model}): {exc}") from exc

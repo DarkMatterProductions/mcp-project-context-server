@@ -11,6 +11,7 @@ Set these environment variables to control the provider:
     Name of the embedding model to use.  Defaults to `text-embedding-3-small`.
 """
 
+import asyncio
 import os
 
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
@@ -19,6 +20,7 @@ from mcp_project_context_server.exceptions import EmbeddingError
 _DEFAULT_MODEL: str = "text-embedding-3-small"
 # text-embedding-3-small: 8191 token context; conservative character limit
 _MAX_CHARS: int = 24_000
+_EMBED_TIMEOUT_SECONDS: float = 60.0
 
 
 class OpenAIEmbeddingProvider(EmbeddingProvider):
@@ -72,13 +74,17 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
             Embedding vector as a list of floats.
 
         Raises:
-            EmbeddingError: If the OpenAI API returns an error or is unreachable.
+            EmbeddingError: If the OpenAI API returns an error, is
+                unreachable, or does not respond within the timeout.
         """
         try:
             from openai import AsyncOpenAI  # lazy import
 
             client = AsyncOpenAI(api_key=self._api_key)
-            response = await client.embeddings.create(model=self._model, input=text)
+            response = await asyncio.wait_for(
+                client.embeddings.create(model=self._model, input=text),
+                timeout=_EMBED_TIMEOUT_SECONDS,
+            )
             return list(response.data[0].embedding)
         except Exception as exc:
             raise EmbeddingError(f"OpenAI embedding failed (model={self._model}): {exc}") from exc
