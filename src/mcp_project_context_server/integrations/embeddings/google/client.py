@@ -20,6 +20,7 @@ from mcp_project_context_server.exceptions import EmbeddingError
 _DEFAULT_MODEL: str = "gemini-embedding-2"
 # gemini-embedding-2: 2048 token context; conservative character limit
 _MAX_CHARS: int = 24_000
+_EMBED_TIMEOUT_SECONDS: float = 60.0
 
 
 class GoogleEmbeddingProvider(EmbeddingProvider):
@@ -75,13 +76,17 @@ class GoogleEmbeddingProvider(EmbeddingProvider):
             Embedding vector as a list of floats.
 
         Raises:
-            EmbeddingError: If the Google API returns an error or is unreachable.
+            EmbeddingError: If the Google API returns an error, is
+                unreachable, or does not respond within the timeout.
         """
         try:
             import google.generativeai as genai  # lazy import
 
             genai.configure(api_key=self._api_key)
-            result = await asyncio.to_thread(genai.embed_content, model=self._model, content=text)
+            result = await asyncio.wait_for(
+                asyncio.to_thread(genai.embed_content, model=self._model, content=text),
+                timeout=_EMBED_TIMEOUT_SECONDS,
+            )
             return list(result["embedding"])
         except Exception as exc:
             raise EmbeddingError(f"Google embedding failed (model={self._model}): {exc}") from exc

@@ -11,6 +11,7 @@ Set these environment variables to control the provider:
     Name of the embedding model to use.  Defaults to `voyage-code-3`.
 """
 
+import asyncio
 import os
 
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
@@ -19,6 +20,7 @@ from mcp_project_context_server.exceptions import EmbeddingError
 _DEFAULT_MODEL: str = "voyage-code-3"
 # voyage-code-3 context ≈ 32k tokens; conservative character limit
 _MAX_CHARS: int = 24_000
+_EMBED_TIMEOUT_SECONDS: float = 60.0
 
 
 class VoyageEmbeddingProvider(EmbeddingProvider):
@@ -72,13 +74,17 @@ class VoyageEmbeddingProvider(EmbeddingProvider):
             Embedding vector as a list of floats.
 
         Raises:
-            EmbeddingError: If the Voyage AI API returns an error or is unreachable.
+            EmbeddingError: If the Voyage AI API returns an error, is
+                unreachable, or does not respond within the timeout.
         """
         try:
             import voyageai  # lazy import
 
             client = voyageai.AsyncClient(api_key=self._api_key)
-            result = await client.embed([text], model=self._model, input_type="document")
+            result = await asyncio.wait_for(
+                client.embed([text], model=self._model, input_type="document"),
+                timeout=_EMBED_TIMEOUT_SECONDS,
+            )
             return list(result.embeddings[0])
         except Exception as exc:
             raise EmbeddingError(f"Voyage AI embedding failed (model={self._model}): {exc}") from exc
