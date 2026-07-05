@@ -86,6 +86,20 @@ class TestWriteFile:
         await provider.write_file(str(tmp_path), "hello.py", "x = 1", "commit msg")
         assert (tmp_path / "hello.py").is_file()
 
+    @pytest.mark.asyncio
+    async def test_branch_is_ignored(self, tmp_path, provider):
+        await provider.write_file(str(tmp_path), "hello.py", "x = 1", "commit msg", branch="some-branch")
+        assert (tmp_path / "hello.py").read_text() == "x = 1"
+
+
+class TestCreateBranch:
+    """Tests for LocalRepositoryProvider.create_branch."""
+
+    @pytest.mark.asyncio
+    async def test_is_a_noop(self, tmp_path, provider):
+        result = await provider.create_branch(str(tmp_path), "new-branch")
+        assert result is None
+
 
 class TestListRepositories:
     """Tests for LocalRepositoryProvider.list_repositories."""

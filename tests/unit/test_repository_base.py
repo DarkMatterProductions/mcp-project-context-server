@@ -6,6 +6,7 @@ from mcp_project_context_server.integrations.repository.base import (
     RepositoryError,
     RepositoryInfo,
     RepositoryProvider,
+    normalize_repo_identifier,
 )
 
 
@@ -65,7 +66,10 @@ class TestRepositoryProviderProtocol:
             async def fetch_source_files(self, repo_id: str) -> dict[str, str]:
                 return {}
 
-            async def write_file(self, repo_id: str, path: str, content: str, message: str) -> None:
+            async def write_file(self, repo_id: str, path: str, content: str, message: str, branch=None) -> None:
+                pass
+
+            async def create_branch(self, repo_id: str, new_branch: str, from_branch=None) -> None:
                 pass
 
             async def get_default_branch(self, repo_id: str) -> str:
@@ -86,3 +90,22 @@ class TestRepositoryProviderProtocol:
 
         provider = IncompleteProvider()
         assert not isinstance(provider, RepositoryProvider)
+
+
+class TestNormalizeRepoIdentifier:
+    """Tests for the shared normalize_repo_identifier helper."""
+
+    def test_passthrough_owner_repo(self):
+        assert normalize_repo_identifier("owner/repo") == "owner/repo"
+
+    def test_normalises_https_url(self):
+        assert normalize_repo_identifier("https://github.com/owner/repo") == "owner/repo"
+
+    def test_normalises_http_url(self):
+        assert normalize_repo_identifier("http://gitea.example.com/owner/repo") == "owner/repo"
+
+    def test_normalises_url_with_trailing_slash(self):
+        assert normalize_repo_identifier("https://gitlab.com/owner/repo/") == "owner/repo"
+
+    def test_normalises_nested_gitlab_group_url(self):
+        assert normalize_repo_identifier("https://gitlab.com/acme/team/backend") == "team/backend"

@@ -3,11 +3,14 @@
 import base64
 import os
 from typing import Optional
-from urllib.parse import urlparse
 
 import httpx
 
-from mcp_project_context_server.integrations.repository.base import RepositoryError, RepositoryInfo
+from mcp_project_context_server.integrations.repository.base import (
+    RepositoryError,
+    RepositoryInfo,
+    normalize_repo_identifier,
+)
 
 _SOURCE_EXTENSIONS: frozenset[str] = frozenset({".py", ".ts", ".js", ".go", ".rs", ".cs", ".java", ".rb", ".php"})
 _MAX_SOURCE_FILES = 200
@@ -50,10 +53,7 @@ class GiteaRepositoryProvider:
 
     def _normalise_repo_id(self, repo_id: str) -> str:
         """Normalise *repo_id* to ``owner/repo`` form."""
-        if repo_id.startswith("http://") or repo_id.startswith("https://"):
-            parts = urlparse(repo_id).path.strip("/").split("/")
-            return "/".join(parts[-2:])
-        return repo_id
+        return normalize_repo_identifier(repo_id)
 
     def _headers(self) -> dict[str, str]:
         """Return HTTP headers for Gitea API requests."""
@@ -139,30 +139,36 @@ class GiteaRepositoryProvider:
                     result[path] = raw.text
         return result
 
-    async def write_file(self, repo_id: str, path: str, content: str, message: str) -> None:
+    async def write_file(
+        self, repo_id: str, path: str, content: str, message: str, branch: Optional[str] = None
+    ) -> None:
         """Create or update *path* in the repository.
 
-        Raises :exc:`RepositoryError` if the API returns a non-success status.
+        Writes to *branch* if given, otherwise the repository's default
+        branch. Raises :exc:`RepositoryError` if the API returns a
+        non-success status.
         """
         owner, repo = self._split(repo_id)
-        branch = await self.get_default_branch(repo_id)
+        target_branch = branch or await self.get_default_branch(repo_id)
         encoded = base64.b64encode(content.encode("utf-8")).decode("ascii")
         async with httpx.AsyncClient() as client:
-            # Check if file exists to get SHA
+            # Check if file exists to get SHA — must be scoped to the target
+            # branch, otherwise this always reads the default branch's SHA.
             check = await client.get(
                 f"{self._api_base}/repos/{owner}/{repo}/contents/{path}",
                 headers=self._headers(),
+                params={"ref": target_branch},
             )
             if check.status_code == 200:
                 sha = check.json().get("sha", "")
-                payload = {"message": message, "content": encoded, "sha": sha, "branch": branch}
+                payload = {"message": message, "content": encoded, "sha": sha, "branch": target_branch}
                 resp = await client.patch(
                     f"{self._api_base}/repos/{owner}/{repo}/contents/{path}",
                     headers=self._headers(),
                     json=payload,
                 )
             else:
-                payload = {"message": message, "content": encoded, "branch": branch}
+                payload = {"message": message, "content": encoded, "branch": target_branch}
                 resp = await client.post(
                     f"{self._api_base}/repos/{owner}/{repo}/contents/{path}",
                     headers=self._headers(),
@@ -170,6 +176,22 @@ class GiteaRepositoryProvider:
                 )
             if not resp.is_success:
                 raise RepositoryError(f"Gitea write_file failed ({resp.status_code}): {resp.text}")
+
+    async def create_branch(self, repo_id: str, new_branch: str, from_branch: Optional[str] = None) -> None:
+        """Create *new_branch* from *from_branch* (or the default branch).
+
+        Raises :exc:`RepositoryError` if the API returns a non-success status.
+        """
+        owner, repo = self._split(repo_id)
+        base = from_branch or await self.get_default_branch(repo_id)
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{self._api_base}/repos/{owner}/{repo}/branches",
+                headers=self._headers(),
+                json={"new_branch_name": new_branch, "old_branch_name": base},
+            )
+            if not resp.is_success:
+                raise RepositoryError(f"Gitea create_branch failed ({resp.status_code}): {resp.text}")
 
     async def get_default_branch(self, repo_id: str) -> str:
         """Return the default branch for *repo_id*, falling back to env / ``"main"``."""

@@ -2,7 +2,7 @@
 
 import pytest
 
-from mcp_project_context_server.helpers.context import resolve_project_path
+from mcp_project_context_server.helpers.context import collection_name_for_repo_id, resolve_project_path
 
 
 class TestResolveProjectPath:
@@ -47,3 +47,28 @@ class TestResolveProjectPath:
         path, is_remote = resolve_project_path("myproject")
         assert is_remote is False
         assert path == "myproject"
+
+
+class TestCollectionNameForRepoId:
+    """Tests for the collection_name_for_repo_id helper function."""
+
+    def test_short_identifier(self):
+        assert collection_name_for_repo_id("owner/repo") == "ctx_owner_repo"
+
+    def test_normalises_full_url(self):
+        assert collection_name_for_repo_id("https://github.com/owner/repo") == "ctx_owner_repo"
+
+    def test_same_name_different_owner_does_not_collide(self):
+        a = collection_name_for_repo_id("acme/backend")
+        b = collection_name_for_repo_id("other-org/backend")
+        assert a != b
+
+    def test_hyphens_and_spaces_are_sanitized(self):
+        result = collection_name_for_repo_id("my-org/my repo")
+        assert "-" not in result
+        assert " " not in result
+
+    def test_truncated_to_63_chars(self):
+        long_repo = "a" * 40 + "/" + "b" * 40
+        result = collection_name_for_repo_id(long_repo)
+        assert len(result) <= 63

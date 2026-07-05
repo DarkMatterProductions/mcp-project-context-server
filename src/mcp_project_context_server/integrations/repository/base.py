@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from typing import Optional, Protocol, runtime_checkable
+from urllib.parse import urlparse
 
 
 @dataclass
@@ -36,8 +37,22 @@ class RepositoryProvider(Protocol):
         """Fetch source code files from the repository."""
         ...
 
-    async def write_file(self, repo_id: str, path: str, content: str, message: str) -> None:
-        """Write (create or update) a file in the repository."""
+    async def write_file(
+        self, repo_id: str, path: str, content: str, message: str, branch: Optional[str] = None
+    ) -> None:
+        """Write (create or update) a file in the repository.
+
+        Args:
+            branch: Target branch. Falls back to the provider's default
+                branch when ``None``. Ignored by the local provider.
+        """
+        ...
+
+    async def create_branch(self, repo_id: str, new_branch: str, from_branch: Optional[str] = None) -> None:
+        """Create *new_branch* from *from_branch* (or the default branch).
+
+        A no-op for the local provider, which has no notion of a remote ref.
+        """
         ...
 
     async def get_default_branch(self, repo_id: str) -> str:
@@ -51,3 +66,16 @@ class RepositoryProvider(Protocol):
 
 class RepositoryError(Exception):
     """Raised when a repository provider operation fails."""
+
+
+def normalize_repo_identifier(raw: str) -> str:
+    """Normalise a repo identifier to ``owner/repo`` form.
+
+    Accepts a full ``http(s)://`` URL (the last two path segments are
+    extracted and joined) or an already-short ``owner/repo`` identifier
+    (returned unchanged).
+    """
+    if raw.startswith("http://") or raw.startswith("https://"):
+        parts = urlparse(raw).path.strip("/").split("/")
+        return "/".join(parts[-2:])
+    return raw

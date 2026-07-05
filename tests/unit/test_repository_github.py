@@ -150,6 +150,31 @@ class TestWriteFile:
             with pytest.raises(RepositoryError, match="write_file failed"):
                 await provider.write_file("owner/repo", "bad.md", "x", "msg")
 
+    @pytest.mark.asyncio
+    async def test_explicit_branch_skips_default_branch_lookup(self, provider):
+        check_response = MagicMock()
+        check_response.status_code = 404
+
+        put_response = MagicMock()
+        put_response.is_success = True
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(return_value=check_response)
+        mock_client.put = AsyncMock(return_value=put_response)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            await provider.write_file("owner/repo", "README.md", "# Hello", "msg", branch="feature-x")
+
+        # Only one GET (the SHA check, scoped to the given branch) — no
+        # default-branch lookup needed since branch was given explicitly.
+        assert mock_client.get.call_count == 1
+        check_kwargs = mock_client.get.call_args[1]
+        assert check_kwargs["params"] == {"ref": "feature-x"}
+        put_kwargs = mock_client.put.call_args[1]
+        assert put_kwargs["json"]["branch"] == "feature-x"
+
 
 class TestGetDefaultBranch:
     """Tests for GitHubRepositoryProvider.get_default_branch."""
@@ -184,6 +209,94 @@ class TestGetDefaultBranch:
             branch = await p.get_default_branch("owner/repo")
 
         assert branch == "fallback-branch"
+
+
+class TestCreateBranch:
+    """Tests for GitHubRepositoryProvider.create_branch."""
+
+    @pytest.mark.asyncio
+    async def test_creates_branch_from_default(self, provider):
+        default_branch_response = MagicMock()
+        default_branch_response.status_code = 200
+        default_branch_response.json.return_value = {"default_branch": "main"}
+
+        ref_response = MagicMock()
+        ref_response.is_success = True
+        ref_response.json.return_value = {"object": {"sha": "base-sha"}}
+
+        create_response = MagicMock()
+        create_response.is_success = True
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(side_effect=[default_branch_response, ref_response])
+        mock_client.post = AsyncMock(return_value=create_response)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            await provider.create_branch("owner/repo", "new-feature")
+
+        mock_client.post.assert_called_once()
+        post_kwargs = mock_client.post.call_args[1]
+        assert post_kwargs["json"] == {"ref": "refs/heads/new-feature", "sha": "base-sha"}
+
+    @pytest.mark.asyncio
+    async def test_creates_branch_from_explicit_base(self, provider):
+        ref_response = MagicMock()
+        ref_response.is_success = True
+        ref_response.json.return_value = {"object": {"sha": "base-sha"}}
+
+        create_response = MagicMock()
+        create_response.is_success = True
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(return_value=ref_response)
+        mock_client.post = AsyncMock(return_value=create_response)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            await provider.create_branch("owner/repo", "new-feature", from_branch="develop")
+
+        get_url = mock_client.get.call_args[0][0]
+        assert "/git/ref/heads/develop" in get_url
+
+    @pytest.mark.asyncio
+    async def test_raises_when_base_ref_lookup_fails(self, provider):
+        ref_response = MagicMock()
+        ref_response.is_success = False
+        ref_response.status_code = 404
+        ref_response.text = "Not Found"
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(return_value=ref_response)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            with pytest.raises(RepositoryError, match="resolve base branch"):
+                await provider.create_branch("owner/repo", "new-feature", from_branch="develop")
+
+    @pytest.mark.asyncio
+    async def test_raises_when_create_ref_fails(self, provider):
+        ref_response = MagicMock()
+        ref_response.is_success = True
+        ref_response.json.return_value = {"object": {"sha": "base-sha"}}
+
+        create_response = MagicMock()
+        create_response.is_success = False
+        create_response.status_code = 422
+        create_response.text = "Reference already exists"
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(return_value=ref_response)
+        mock_client.post = AsyncMock(return_value=create_response)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            with pytest.raises(RepositoryError, match="create_branch failed"):
+                await provider.create_branch("owner/repo", "new-feature", from_branch="develop")
 
 
 class TestListRepositories:

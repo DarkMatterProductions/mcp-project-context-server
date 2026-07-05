@@ -22,11 +22,14 @@ except ImportError:
 
 from mcp_project_context_server.helpers.context import (
     collection_name_for,
+    collection_name_for_repo_id,
     find_context_dir,
     read_context_files,
+    resolve_project_path,
 )
 
 from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
+from mcp_project_context_server.integrations.repository.base import RepositoryError
 from mcp_project_context_server.integrations.repository.registry import get_repository_provider
 from mcp_project_context_server.integrations.vectorstore.base import VectorStoreProvider
 
@@ -47,15 +50,30 @@ async def run_index_pipeline(project_path: str | Path, store: VectorStoreProvide
     Returns:
         A human-readable summary string describing what was indexed.
     """
-    context_dir = find_context_dir(project_path)
-    if not context_dir:
-        return f"No .context/ directory found at or above {project_path}"
+    repo_provider = get_repository_provider()
+    resolved_path, is_remote = resolve_project_path(str(project_path))
 
-    col_name = collection_name_for(context_dir)
+    if is_remote:
+        try:
+            files = await repo_provider.fetch_context_files(resolved_path)
+        except RepositoryError as exc:
+            return f"Error accessing repository {resolved_path}: {exc}"
+        if not files:
+            return f"No .context/ directory found in {resolved_path}"
+        col_name = collection_name_for_repo_id(resolved_path)
+    else:
+        context_dir = find_context_dir(project_path)
+        if not context_dir:
+            return f"No .context/ directory found at or above {project_path}"
+        col_name = collection_name_for(context_dir)
+        files = read_context_files(context_dir)
+
+    # Deferred until after the context-existence check above so that a
+    # missing .context/ directory is reported even when no embedding
+    # provider is configured (EMBED_PROVIDER unset).
     embed_provider = get_embedding_provider()
     chunk_size = embed_provider.max_chars
     embed_chunk = embed_provider.embed_chunk
-    repo_provider = get_repository_provider()
 
     collection_metadata = {
         "embed_provider": embed_provider.provider_name,
@@ -67,8 +85,6 @@ async def run_index_pipeline(project_path: str | Path, store: VectorStoreProvide
     }
 
     await store.create_collection(col_name, metadata=collection_metadata)
-
-    files = read_context_files(context_dir)
 
     all_chunks: list[tuple[str, str, str, int]] = []
     for filename, file_content in files.items():
