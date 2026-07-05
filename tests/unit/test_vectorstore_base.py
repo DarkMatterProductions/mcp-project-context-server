@@ -1,7 +1,5 @@
 """Tests for integrations/vectorstore/base.py — QueryResult, VectorStoreProvider, VectorStoreError."""
 
-from typing import Any
-
 import pytest
 
 from mcp_project_context_server.integrations.vectorstore.base import (
@@ -9,6 +7,7 @@ from mcp_project_context_server.integrations.vectorstore.base import (
     VectorStoreError,
     VectorStoreProvider,
 )
+
 
 # ---------------------------------------------------------------------------
 # QueryResult dataclass

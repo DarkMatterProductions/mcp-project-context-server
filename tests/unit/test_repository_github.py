@@ -7,7 +7,6 @@ import pytest
 from mcp_project_context_server.integrations.repository.base import RepositoryError
 from mcp_project_context_server.integrations.repository.github.client import (
     GitHubRepositoryProvider,
-    _has_source_extension,
 )
 
 

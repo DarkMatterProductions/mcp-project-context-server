@@ -1,9 +1,6 @@
 """Tests for the local filesystem repository provider."""
 
-import os
-
 import pytest
-import pytest_asyncio
 
 from mcp_project_context_server.integrations.repository.local.client import LocalRepositoryProvider
 

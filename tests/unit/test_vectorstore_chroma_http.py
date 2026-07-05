@@ -3,7 +3,7 @@
 All chromadb calls are mocked — no real network or ChromaDB required.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

@@ -3,7 +3,6 @@ from pathlib import Path
 from mcp_project_context_server.integrations.vectorstore.registry import (
     INCOMPATIBLE_EMBED_PROVIDERS_BY_VECTOR_STORE,
 )
-
 from shared import PROVIDER_DEFAULTS
 
 PROVIDERS = PROVIDER_DEFAULTS.keys()

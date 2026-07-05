@@ -1,7 +1,5 @@
 """Tests for the repository provider registry."""
 
-import os
-
 import pytest
 
 from mcp_project_context_server.integrations.repository.base import RepositoryError
