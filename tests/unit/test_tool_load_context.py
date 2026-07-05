@@ -1,5 +1,8 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
+from mcp_project_context_server.integrations.repository.base import RepositoryError
 from mcp_project_context_server.integrations.repository.registry import reset_provider_for_testing
 from mcp_project_context_server.tools.load_context import handle
 
@@ -67,3 +70,59 @@ class TestLoadContext:
 
         assert "not permitted" in result[0].text
         assert "Secret project" not in result[0].text
+
+
+class TestLoadContextRemote:
+    @pytest.mark.asyncio
+    async def test_no_context_files_returns_error(self):
+        mock_provider = AsyncMock()
+        mock_provider.fetch_context_files = AsyncMock(return_value={})
+
+        with patch(
+            "mcp_project_context_server.tools.load_context.get_repository_provider",
+            return_value=mock_provider,
+        ):
+            result = await handle({"project_path": "owner/repo"})
+
+        assert "No .context/ directory found" in result[0].text
+
+    @pytest.mark.asyncio
+    async def test_full_load_from_flat_dict(self):
+        files = {
+            "project.md": "Main project",
+            "decisions/001.md": "Decision 1",
+            "sessions/2026-01-01.md": "Old Session",
+            "sessions/2026-01-02.md": "New Session",
+        }
+        mock_provider = AsyncMock()
+        mock_provider.fetch_context_files = AsyncMock(return_value=files)
+
+        with patch(
+            "mcp_project_context_server.tools.load_context.get_repository_provider",
+            return_value=mock_provider,
+        ):
+            result = await handle({"project_path": "owner/repo"})
+
+        text = result[0].text
+        assert "## project.md" in text
+        assert "Main project" in text
+        assert "## Architecture Decisions" in text
+        assert "001.md" in text
+        assert "Decision 1" in text
+        assert "## Last Session (2026-01-02)" in text
+        assert "New Session" in text
+        assert "Old Session" not in text
+
+    @pytest.mark.asyncio
+    async def test_repository_error_is_reported(self):
+        mock_provider = AsyncMock()
+        mock_provider.fetch_context_files = AsyncMock(side_effect=RepositoryError("boom"))
+
+        with patch(
+            "mcp_project_context_server.tools.load_context.get_repository_provider",
+            return_value=mock_provider,
+        ):
+            result = await handle({"project_path": "owner/repo"})
+
+        assert "Error accessing repository" in result[0].text
+        assert "boom" in result[0].text

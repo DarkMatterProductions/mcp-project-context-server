@@ -4,9 +4,9 @@ import os
 
 from mcp import types
 
-from mcp_project_context_server.helpers.context import find_context_dir
+from mcp_project_context_server.helpers.context import find_context_dir, resolve_project_path
 from mcp_project_context_server.integrations.repository.base import RepositoryError
-from mcp_project_context_server.integrations.repository.registry import validate_repo_access
+from mcp_project_context_server.integrations.repository.registry import get_repository_provider, validate_repo_access
 
 
 async def handle(arguments: dict) -> list[types.TextContent]:
@@ -16,7 +16,39 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     except RepositoryError as exc:
         return [types.TextContent(type="text", text=str(exc))]
 
-    context_dir = find_context_dir(_project_path)
+    resolved_path, is_remote = resolve_project_path(_project_path)
+
+    if is_remote:
+        try:
+            provider = get_repository_provider()
+            files = await provider.fetch_context_files(resolved_path)
+        except RepositoryError as exc:
+            return [types.TextContent(type="text", text=f"Error accessing repository: {exc}")]
+        if not files:
+            return [types.TextContent(type="text", text=f"No .context/ directory found in {resolved_path}")]
+
+        parts: list[str] = []
+
+        project_md = files.get("project.md")
+        if project_md is not None:
+            parts.append(f"## project.md\n\n{project_md}")
+
+        decisions = sorted(k for k in files if k.startswith("decisions/"))
+        if decisions:
+            parts.append("## Architecture Decisions\n")
+            for key in decisions:
+                parts.append(f"### {key.rsplit('/', 1)[-1]}\n{files[key]}")
+
+        sessions = sorted(k for k in files if k.startswith("sessions/"))
+        if sessions:
+            latest_key = sessions[-1]
+            latest_stem = latest_key.rsplit("/", 1)[-1].removesuffix(".md")
+            parts.append(f"## Last Session ({latest_stem})\n\n{files[latest_key]}")
+
+        result = "\n\n---\n\n".join(parts)
+        return [types.TextContent(type="text", text=result or "No context files found.")]
+
+    context_dir = find_context_dir(resolved_path)
     if not context_dir:
         return [
             types.TextContent(
@@ -25,7 +57,7 @@ async def handle(arguments: dict) -> list[types.TextContent]:
             )
         ]
 
-    parts: list[str] = []
+    parts = []
 
     project_md = context_dir / "project.md"
     if project_md.exists():

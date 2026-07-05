@@ -11,7 +11,12 @@ import os
 from mcp import types
 
 from mcp_project_context_server.exceptions import EmbeddingError
-from mcp_project_context_server.helpers.context import collection_name_for, find_context_dir
+from mcp_project_context_server.helpers.context import (
+    collection_name_for,
+    collection_name_for_repo_id,
+    find_context_dir,
+    resolve_project_path,
+)
 from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
 from mcp_project_context_server.integrations.repository.base import RepositoryError
 from mcp_project_context_server.integrations.repository.registry import validate_repo_access
@@ -36,16 +41,21 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     except RepositoryError as exc:
         return [types.TextContent(type="text", text=str(exc))]
 
-    context_dir = find_context_dir(_project_path)
-    if not context_dir:
-        return [
-            types.TextContent(
-                type="text",
-                text=f"No .context/ directory found near {arguments['project_path']}",
-            )
-        ]
+    resolved_path, is_remote = resolve_project_path(_project_path)
 
-    col_name = collection_name_for(context_dir)
+    if is_remote:
+        col_name = collection_name_for_repo_id(resolved_path)
+    else:
+        context_dir = find_context_dir(resolved_path)
+        if not context_dir:
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"No .context/ directory found near {arguments['project_path']}",
+                )
+            ]
+        col_name = collection_name_for(context_dir)
+
     store = get_vector_store()
 
     if not await store.collection_exists(col_name):

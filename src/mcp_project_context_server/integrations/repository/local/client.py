@@ -69,14 +69,21 @@ class LocalRepositoryProvider:
             result[key] = content
         return result
 
-    async def write_file(self, repo_id: str, path: str, content: str, message: str) -> None:
+    async def write_file(
+        self, repo_id: str, path: str, content: str, message: str, branch: Optional[str] = None
+    ) -> None:
         """Write ``content`` to ``<repo_id>/<path>``, creating parent directories.
 
-        ``message`` is ignored for the local provider (no commit is made).
+        ``message`` and ``branch`` are ignored for the local provider (no
+        commit is made; writes always land on whatever is checked out).
         """
         target = Path(repo_id) / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
+
+    async def create_branch(self, repo_id: str, new_branch: str, from_branch: Optional[str] = None) -> None:
+        """No-op: the local provider writes directly to disk regardless of branch."""
+        return None
 
     async def get_default_branch(self, repo_id: str) -> str:
         """Return the current git branch for the repository, falling back to ``"main"``."""

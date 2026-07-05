@@ -207,7 +207,7 @@ Agents can call this tool to discover which GitHub repositories are available (v
 Use list_repositories to find all available repositories in the acme org.
 ```
 
-> **Note on the other tools:** `list_repositories` is the only tool that currently reads through the GitHub REST API. `load_project_context`, `index_project_context`, `search_project_context`, and `save_session_summary` read/write `.context/` on the server's local filesystem and do not check the discovered repository against the `APPROVED_ORGS` / `APPROVED_REPOS` allowlist — plan your deployment (e.g. which `.context/` directories are mounted into the container) accordingly rather than relying on the allowlist to restrict what these four tools can access.
+> **Note on the other tools:** `load_project_context`, `index_project_context`, `search_project_context`, and `save_session_summary` also read (and, for `save_session_summary`, write) `.context/` through the GitHub REST API whenever `project_path` is a remote `owner/repo` identifier or repository URL — a local filesystem `project_path` still reads/writes on the server's own disk. All five tools, including these four, validate `project_path` against the `APPROVED_ORGS` / `APPROVED_REPOS` allowlist before touching either the filesystem or the API.
 
 ---
 

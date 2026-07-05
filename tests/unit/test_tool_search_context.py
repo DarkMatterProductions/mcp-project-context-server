@@ -59,6 +59,27 @@ class TestSearchContextNoDir:
         mock_store.assert_not_called()
 
 
+class TestSearchContextRemote:
+    @pytest.mark.asyncio
+    async def test_uses_repo_id_derived_collection_name(self, mocker):
+        store = _make_store(mocker, exists=False)
+        mocker.patch("mcp_project_context_server.tools.search_context.get_vector_store", return_value=store)
+
+        result = await handle({"project_path": "owner/repo", "query": "test"})
+
+        assert "not found. Run index_project_context first." in result[0].text
+        store.collection_exists.assert_called_once_with("ctx_owner_repo")
+
+    @pytest.mark.asyncio
+    async def test_url_form_resolves_to_same_collection(self, mocker):
+        store = _make_store(mocker, exists=False)
+        mocker.patch("mcp_project_context_server.tools.search_context.get_vector_store", return_value=store)
+
+        await handle({"project_path": "https://github.com/owner/repo", "query": "test"})
+
+        store.collection_exists.assert_called_once_with("ctx_owner_repo")
+
+
 class TestSearchContextNotIndexed:
     @pytest.mark.asyncio
     async def test_collection_not_found(self, tmp_path, mocker):

@@ -217,6 +217,91 @@ class TestWriteFile:
             with pytest.raises(RepositoryError, match="write_file failed"):
                 await provider.write_file("owner/repo", "file.md", "x", "msg")
 
+    @pytest.mark.asyncio
+    async def test_explicit_branch_skips_default_branch_lookup(self, provider):
+        check_response = MagicMock()
+        check_response.status_code = 404
+
+        post_response = MagicMock()
+        post_response.is_success = True
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(return_value=check_response)
+        mock_client.post = AsyncMock(return_value=post_response)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            await provider.write_file("owner/repo", "file.md", "content", "msg", branch="feature-x")
+
+        # Only one GET (the SHA check, scoped to the given branch) — no
+        # default-branch lookup needed since branch was given explicitly.
+        assert mock_client.get.call_count == 1
+        check_kwargs = mock_client.get.call_args[1]
+        assert check_kwargs["params"] == {"ref": "feature-x"}
+        post_kwargs = mock_client.post.call_args[1]
+        assert post_kwargs["json"]["branch"] == "feature-x"
+
+
+class TestCreateBranch:
+    """Tests for GiteaRepositoryProvider.create_branch."""
+
+    @pytest.mark.asyncio
+    async def test_creates_branch_from_default(self, provider):
+        branch_response = MagicMock()
+        branch_response.status_code = 200
+        branch_response.json.return_value = {"default_branch": "main"}
+
+        create_response = MagicMock()
+        create_response.is_success = True
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(return_value=branch_response)
+        mock_client.post = AsyncMock(return_value=create_response)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            await provider.create_branch("owner/repo", "new-feature")
+
+        mock_client.post.assert_called_once()
+        post_kwargs = mock_client.post.call_args[1]
+        assert post_kwargs["json"] == {"new_branch_name": "new-feature", "old_branch_name": "main"}
+
+    @pytest.mark.asyncio
+    async def test_creates_branch_from_explicit_base(self, provider):
+        create_response = MagicMock()
+        create_response.is_success = True
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock()
+        mock_client.post = AsyncMock(return_value=create_response)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            await provider.create_branch("owner/repo", "new-feature", from_branch="develop")
+
+        mock_client.get.assert_not_called()
+        post_kwargs = mock_client.post.call_args[1]
+        assert post_kwargs["json"] == {"new_branch_name": "new-feature", "old_branch_name": "develop"}
+
+    @pytest.mark.asyncio
+    async def test_raises_repository_error_on_failure(self, provider):
+        create_response = MagicMock()
+        create_response.is_success = False
+        create_response.status_code = 409
+        create_response.text = "Branch already exists"
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.post = AsyncMock(return_value=create_response)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            with pytest.raises(RepositoryError, match="create_branch failed"):
+                await provider.create_branch("owner/repo", "new-feature", from_branch="develop")
+
 
 class TestGetDefaultBranch:
     """Tests for GiteaRepositoryProvider.get_default_branch."""

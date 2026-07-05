@@ -3,6 +3,8 @@
 import re
 from pathlib import Path
 
+from mcp_project_context_server.integrations.repository.base import normalize_repo_identifier
+
 
 def find_context_dir(project_path: str | Path) -> Path | None:
     """Walk up from project_path to find a .context/ directory."""
@@ -22,6 +24,17 @@ def collection_name_for(context_dir: Path) -> str:
     """
     project_name = context_dir.parent.name
     return f"ctx_{project_name}".replace("-", "_").replace(" ", "_")[:63]
+
+
+def collection_name_for_repo_id(repo_id: str) -> str:
+    """Derive a stable ChromaDB collection name from a remote repo identifier.
+
+    Mirrors :func:`collection_name_for`'s sanitization, driven by the
+    normalised ``owner/repo`` form so the same collection name is produced
+    whether the caller passes a short identifier or a full URL.
+    """
+    normalized = normalize_repo_identifier(repo_id)
+    return f"ctx_{normalized}".replace("-", "_").replace(" ", "_").replace("/", "_")[:63]
 
 
 def read_context_files(context_dir: Path) -> dict[str, str]:
