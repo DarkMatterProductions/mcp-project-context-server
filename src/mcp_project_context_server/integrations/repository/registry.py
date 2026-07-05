@@ -136,7 +136,7 @@ def validate_repo_access(repo_id: str) -> None:
         repo_id: The ``owner/repo`` (or equivalent) identifier to validate.
 
     Raises:
-        RepositoryError: If multi-tenant mode is active and *repo_id* is not in
+        RepositoryError: If multi-tenant mode is active, and *repo_id* is not in
             the approved orgs or repos allowlists.
     """
     # Ensure the multi-tenant flags have been populated even if this is the
