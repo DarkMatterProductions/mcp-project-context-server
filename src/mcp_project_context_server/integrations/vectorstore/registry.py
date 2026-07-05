@@ -31,7 +31,7 @@ Windows.  Use ``VECTOR_STORE_PROVIDER=pgvector`` with Vertex AI instead.
 import os
 from collections.abc import Callable, Coroutine
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from mcp_project_context_server.indexing.indexer import run_index_pipeline
 from mcp_project_context_server.integrations.vectorstore.base import VectorStoreProvider

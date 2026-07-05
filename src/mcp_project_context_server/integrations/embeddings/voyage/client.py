@@ -14,8 +14,8 @@ Set these environment variables to control the provider:
 import asyncio
 import os
 
-from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
 from mcp_project_context_server.exceptions import EmbeddingError
+from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
 
 _DEFAULT_MODEL: str = "voyage-code-3"
 # voyage-code-3 context ≈ 32k tokens; conservative character limit
