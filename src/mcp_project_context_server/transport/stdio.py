@@ -5,7 +5,6 @@ which is how Claude Desktop, Claude Code, Cursor, JetBrains AI Assistant,
 Continue Dev, and GitHub Copilot all launch MCP servers locally.
 """
 
-import asyncio
 import logging
 
 from mcp.server import Server

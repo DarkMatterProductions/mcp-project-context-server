@@ -16,7 +16,6 @@ Design
   ``create_collection`` — it drops the table and recreates it.
 """
 
-import asyncio
 import os
 import re
 from typing import Any, Optional

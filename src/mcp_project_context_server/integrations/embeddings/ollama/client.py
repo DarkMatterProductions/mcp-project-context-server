@@ -18,9 +18,8 @@ Set these environment variables to control the provider:
 import asyncio
 import os
 
-from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
-
 from mcp_project_context_server.exceptions import EmbeddingError
+from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
 
 _DEFAULT_HOST: str = "http://localhost:11434"
 _DEFAULT_MODEL: str = "nomic-embed-text"
