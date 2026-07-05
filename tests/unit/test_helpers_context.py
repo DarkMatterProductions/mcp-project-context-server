@@ -1,7 +1,5 @@
 """Tests for the resolve_project_path helper in helpers/context.py."""
 
-import pytest
-
 from mcp_project_context_server.helpers.context import collection_name_for_repo_id, resolve_project_path
 
 

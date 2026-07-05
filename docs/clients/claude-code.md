@@ -372,9 +372,11 @@ No configuration required, but Claude Code does not automatically know your repo
 > **Current scope:** setting `REPO_PROVIDER` to `github`, `gitlab`, or `gitea` lets every tool operate on a remote repository directly — `list_repositories` discovers repos, and `load_project_context`, `index_project_context`, `search_project_context` read `.context/` content (with `save_session_summary` writing to it) over the provider's REST API whenever `project_path` is an `owner/repo` identifier or a full repository URL. A plain filesystem `project_path` (which is normal in a Claude Code session, where the repo is already checked out) still reads/writes locally, regardless of `REPO_PROVIDER`.
 
 ```json
-"env": {
-  "REPO_PROVIDER": "github",
-  "REPO_AUTH_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+{
+   "env": {
+      "REPO_PROVIDER": "github",
+      "REPO_AUTH_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   }
 }
 ```
 

@@ -10,7 +10,6 @@ Tests cover:
 No external services (ChromaDB, Ollama) are required.
 """
 from datetime import date
-from pathlib import Path
 
 import pytest
 

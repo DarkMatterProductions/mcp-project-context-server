@@ -5,11 +5,10 @@ asyncpg is mocked completely — no real PostgreSQL required.
 
 import json
 import sys
-from contextlib import asynccontextmanager
-from typing import AsyncIterator
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
 
 # ---------------------------------------------------------------------------
 # Helpers

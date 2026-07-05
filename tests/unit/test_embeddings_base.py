@@ -2,10 +2,10 @@
 
 import pytest
 
+from mcp_project_context_server.exceptions import EmbeddingError
 from mcp_project_context_server.integrations.embeddings.base import (
     EmbeddingProvider,
 )
-from mcp_project_context_server.exceptions import EmbeddingError
 
 
 class _ConcreteProvider:
