@@ -14,6 +14,9 @@ _CHROMA_HTTP_CLS = (
     "mcp_project_context_server.integrations.vectorstore.chroma_http.client.ChromaHttpVectorStoreProvider"
 )
 _PGVECTOR_CLS = "mcp_project_context_server.integrations.vectorstore.pgvector.client.PgVectorStoreProvider"
+_GCP_VECTOR_SEARCH_CLS = (
+    "mcp_project_context_server.integrations.vectorstore.gcp_vector_search.client.GcpVectorSearchProvider"
+)
 
 
 class TestGetVectorStore:
@@ -47,6 +50,15 @@ class TestGetVectorStore:
     ) -> None:
         monkeypatch.setenv("VECTOR_STORE_PROVIDER", "pgvector")
         mock_cls = mocker.patch(_PGVECTOR_CLS)
+        store = get_vector_store()
+        mock_cls.assert_called_once()
+        assert store is mock_cls.return_value
+
+    def test_returns_gcp_vector_search_when_env_is_gcp_vector_search(
+        self, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
+    ) -> None:
+        monkeypatch.setenv("VECTOR_STORE_PROVIDER", "gcp-vector-search")
+        mock_cls = mocker.patch(_GCP_VECTOR_SEARCH_CLS)
         store = get_vector_store()
         mock_cls.assert_called_once()
         assert store is mock_cls.return_value
