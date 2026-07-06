@@ -50,6 +50,7 @@ google-vertex = ["google-cloud-aiplatform"]
 
 # --- Vector store providers ---
 pgvector = ["asyncpg", "pgvector"]
+gcp-vector-search = ["google-cloud-aiplatform", "google-cloud-firestore"]
 
 # --- HTTP/SSE transport ---
 sse = ["starlette", "uvicorn", "google-auth"]
@@ -66,6 +67,7 @@ all = [
     "cohere>=5.0",
     "google-generativeai",
     "google-cloud-aiplatform",
+    "google-cloud-firestore",
     "asyncpg",
     "pgvector",
     "google-auth",
@@ -192,6 +194,7 @@ known_third_party = [
     "cohere>=5.0",
     "google-generativeai",
     "google-cloud-aiplatform",
+    "google-cloud-firestore",
     "asyncpg",
     "pgvector",
     "google-auth",

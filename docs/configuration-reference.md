@@ -261,6 +261,52 @@ PGVECTOR_CONNECTION_STRING=postgresql://mcpuser:secret@db.internal:5432/mcp_cont
 
 ---
 
+### 2.4 `gcp-vector-search`
+
+Uses [Vertex AI Vector Search](https://cloud.google.com/vertex-ai/docs/vector-search/overview) against a
+**pre-provisioned** Index and IndexEndpoint. This provider does not create, deploy, or delete any Vertex AI
+infrastructure — see [ADR-00023](../.context/decisions/ADR-00023-gcp-vertex-ai-vector-search-provider.md).
+Document text and metadata (which Vector Search itself does not store) are kept in a Firestore sidecar in
+the same GCP project.
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `VECTOR_STORE_PROVIDER` | Yes | — | Set to `gcp-vector-search` |
+| `GCP_VECTOR_SEARCH_PROJECT` | Yes | — | Google Cloud project ID |
+| `GCP_VECTOR_SEARCH_LOCATION` | Yes | — | Google Cloud region, e.g. `us-central1` |
+| `GCP_VECTOR_SEARCH_INDEX_ID` | Yes | — | Resource ID of a pre-provisioned `MatchingEngineIndex` (must use `STREAM_UPDATE`) |
+| `GCP_VECTOR_SEARCH_INDEX_ENDPOINT_ID` | Yes | — | Resource ID of a pre-provisioned `MatchingEngineIndexEndpoint` |
+| `GCP_VECTOR_SEARCH_DEPLOYED_INDEX_ID` | Yes | — | `deployed_index_id` under which the index is deployed on the endpoint |
+| `GCP_VECTOR_SEARCH_FIRESTORE_COLLECTION` | No | `vector_store_documents` | Firestore collection used as the document/metadata sidecar |
+
+**When to use:** Teams already standardized on Google Cloud — especially alongside `EMBED_PROVIDER=vertexai`
+— who want a fully GCP-native embed + store pipeline without operating PostgreSQL or a ChromaDB server.
+
+**Prerequisites:**
+- A Vertex AI `MatchingEngineIndex` created with `index_update_method="STREAM_UPDATE"` (batch-update indexes
+  do not support the real-time upsert/remove calls this provider uses), deployed to a
+  `MatchingEngineIndexEndpoint`. **This provider does not create or deploy either resource** — provision them
+  yourself (Terraform, `gcloud`, or Console) before use, and ensure the index dimension matches your
+  configured `EMBED_PROVIDER`'s output dimension.
+- The Firestore API enabled in the same project, in Native mode.
+- [Application Default Credentials](https://cloud.google.com/docs/authentication/provide-credentials-adc)
+  (`gcloud auth application-default login` or `GOOGLE_APPLICATION_CREDENTIALS`) with permissions to read/write
+  the Index, IndexEndpoint, and Firestore.
+
+**Install extra:** `pip install "mcp-project-context-server[gcp-vector-search]"`
+
+**Example:**
+```bash
+VECTOR_STORE_PROVIDER=gcp-vector-search
+GCP_VECTOR_SEARCH_PROJECT=my-gcp-project
+GCP_VECTOR_SEARCH_LOCATION=us-central1
+GCP_VECTOR_SEARCH_INDEX_ID=1234567890123456789
+GCP_VECTOR_SEARCH_INDEX_ENDPOINT_ID=9876543210987654321
+GCP_VECTOR_SEARCH_DEPLOYED_INDEX_ID=mcp_context_deployed_v1
+```
+
+---
+
 ## 3. Repository Providers
 
 Set `REPO_PROVIDER` to tell the server how to fetch source code when a tool receives a `project_path` argument.
@@ -499,6 +545,12 @@ GOOGLE_APPROVED_SERVICE_ACCOUNTS=vertex-agent@my-gcp-project.iam.gserviceaccount
 | `CHROMA_HTTP_HEADERS` | Vector Store / chroma-http | — |
 | `PGVECTOR_CONNECTION_STRING` | Vector Store / pgvector | — |
 | `PGVECTOR_TABLE_NAME` | Vector Store / pgvector | `project_context_embeddings` |
+| `GCP_VECTOR_SEARCH_PROJECT` | Vector Store / gcp-vector-search | — |
+| `GCP_VECTOR_SEARCH_LOCATION` | Vector Store / gcp-vector-search | — |
+| `GCP_VECTOR_SEARCH_INDEX_ID` | Vector Store / gcp-vector-search | — |
+| `GCP_VECTOR_SEARCH_INDEX_ENDPOINT_ID` | Vector Store / gcp-vector-search | — |
+| `GCP_VECTOR_SEARCH_DEPLOYED_INDEX_ID` | Vector Store / gcp-vector-search | — |
+| `GCP_VECTOR_SEARCH_FIRESTORE_COLLECTION` | Vector Store / gcp-vector-search | `vector_store_documents` |
 | `REPO_PROVIDER` | Repository | `local` |
 | `GITHUB_TOKEN` | Repository / github | — |
 | `GITHUB_BASE_URL` | Repository / github | `https://api.github.com` |

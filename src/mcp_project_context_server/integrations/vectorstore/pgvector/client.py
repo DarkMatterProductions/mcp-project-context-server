@@ -4,7 +4,7 @@ Configuration
 -------------
 ``PGVECTOR_CONNECTION_STRING``
     A libpq-compatible connection string, e.g.:
-    ``postgresql://user:password@host:5432/dbname``
+    ``postgresql://{user}:{password}@{host}:5432/dbname``
 
 Design
 ------

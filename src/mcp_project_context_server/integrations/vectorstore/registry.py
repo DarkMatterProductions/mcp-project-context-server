@@ -21,6 +21,15 @@ Supported ``VECTOR_STORE_PROVIDER`` values
     PostgreSQL with the pgvector extension.  Requires
     ``PGVECTOR_CONNECTION_STRING``.
 
+``gcp-vector-search``
+    Google Cloud Vertex AI Vector Search against a pre-provisioned Index and
+    IndexEndpoint (ADR-00023; this provider does not create or deploy GCP
+    infrastructure).  Requires ``GCP_VECTOR_SEARCH_PROJECT``,
+    ``GCP_VECTOR_SEARCH_LOCATION``, ``GCP_VECTOR_SEARCH_INDEX_ID``,
+    ``GCP_VECTOR_SEARCH_INDEX_ENDPOINT_ID``, and
+    ``GCP_VECTOR_SEARCH_DEPLOYED_INDEX_ID``.  Optional:
+    ``GCP_VECTOR_SEARCH_FIRESTORE_COLLECTION``.
+
 Incompatible combinations
 -------------------------
 ``EMBED_PROVIDER=vertexai`` cannot be combined with ``chroma-local`` or
@@ -37,9 +46,10 @@ from mcp_project_context_server.indexing.indexer import run_index_pipeline
 from mcp_project_context_server.integrations.vectorstore.base import VectorStoreProvider
 from mcp_project_context_server.integrations.vectorstore.chroma_http.client import ChromaHttpVectorStoreProvider
 from mcp_project_context_server.integrations.vectorstore.chroma_local.client import ChromaLocalVectorStoreProvider
+from mcp_project_context_server.integrations.vectorstore.gcp_vector_search.client import GcpVectorSearchProvider
 from mcp_project_context_server.integrations.vectorstore.pgvector.client import PgVectorStoreProvider
 
-_SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"chroma-local", "chroma-http", "pgvector"})
+_SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"chroma-local", "chroma-http", "pgvector", "gcp-vector-search"})
 _DEFAULT_PROVIDER: str = "chroma-local"
 
 # EMBED_PROVIDER values that cannot share a process with the given
@@ -115,6 +125,13 @@ def _build_provider(provider_name: str) -> VectorStoreProvider:
 
         return PgVectorStoreProvider()
 
+    if provider_name == "gcp-vector-search":
+        from mcp_project_context_server.integrations.vectorstore.gcp_vector_search.client import (
+            GcpVectorSearchProvider,
+        )
+
+        return GcpVectorSearchProvider()
+
     raise EnvironmentError(f"Internal error: unhandled provider '{provider_name}'")  # pragma: no cover
 
 
@@ -147,6 +164,8 @@ def get_indexer() -> IndexFn:
         store = ChromaHttpVectorStoreProvider()
     elif provider_name == "pgvector":
         store = PgVectorStoreProvider()
+    elif provider_name == "gcp-vector-search":
+        store = GcpVectorSearchProvider()
     else:
         raise EnvironmentError(f"Internal error: unhandled provider '{provider_name}'")  # pragma: no cover
 
