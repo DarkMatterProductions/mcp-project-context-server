@@ -36,7 +36,7 @@ Incompatible combinations
 ``chroma-http``: the two SDKs deadlock when loaded into the same process on
 Windows.  Use ``VECTOR_STORE_PROVIDER=pgvector`` with Vertex AI instead.
 """
-
+import logging
 import os
 from collections.abc import Callable, Coroutine
 from pathlib import Path
@@ -48,6 +48,8 @@ from mcp_project_context_server.integrations.vectorstore.chroma_http.client impo
 from mcp_project_context_server.integrations.vectorstore.chroma_local.client import ChromaLocalVectorStoreProvider
 from mcp_project_context_server.integrations.vectorstore.gcp_vector_search.client import GcpVectorSearchProvider
 from mcp_project_context_server.integrations.vectorstore.pgvector.client import PgVectorStoreProvider
+
+logger = logging.getLogger(__name__)
 
 _SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"chroma-local", "chroma-http", "pgvector", "gcp-vector-search"})
 _DEFAULT_PROVIDER: str = "chroma-local"

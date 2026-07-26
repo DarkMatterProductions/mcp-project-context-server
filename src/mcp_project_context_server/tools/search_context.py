@@ -5,7 +5,7 @@ the collection at index time and compares it against the current provider
 configuration.  If the embedding provider or model has changed, a warning is
 prepended to the results so the user knows the index may need rebuilding.
 """
-
+import logging
 import os
 
 from mcp import types
@@ -22,6 +22,8 @@ from mcp_project_context_server.integrations.repository.base import RepositoryEr
 from mcp_project_context_server.integrations.repository.registry import validate_repo_access
 from mcp_project_context_server.integrations.vectorstore.base import VectorStoreError
 from mcp_project_context_server.integrations.vectorstore.registry import get_vector_store
+
+logger = logging.getLogger(__name__)
 
 _MISMATCH_WARNING = (
     "⚠️  **Provider mismatch detected** — the index was built with "

@@ -8,6 +8,7 @@ Configuration
 """
 
 import asyncio
+import logging
 import os
 from pathlib import Path
 from typing import Any, Optional
@@ -16,6 +17,8 @@ from mcp_project_context_server.integrations.vectorstore.base import (
     QueryResult,
     VectorStoreError,
 )
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_DIR: Path = Path.home() / ".mcp-data" / "chroma"
 

@@ -12,10 +12,13 @@ Set these environment variables to control the provider:
 """
 
 import asyncio
+import logging
 import os
 
 from mcp_project_context_server.exceptions import EmbeddingError
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_MODEL: str = "text-embedding-3-small"
 # text-embedding-3-small: 8191 token context; conservative character limit

@@ -53,6 +53,7 @@ document text or metadata.  Two mechanisms fill that gap:
 """
 
 import asyncio
+import logging
 import os
 from typing import Any, Optional
 
@@ -60,6 +61,8 @@ from mcp_project_context_server.integrations.vectorstore.base import (
     QueryResult,
     VectorStoreError,
 )
+
+logger = logging.getLogger(__name__)
 
 _COLLECTION_NAMESPACE = "collection"
 _DEFAULT_FIRESTORE_COLLECTION = "vector_store_documents"

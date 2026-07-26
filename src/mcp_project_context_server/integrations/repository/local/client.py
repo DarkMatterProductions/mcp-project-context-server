@@ -1,12 +1,15 @@
 """Local filesystem repository provider implementation."""
 
 import asyncio
+import logging
 import os
 import subprocess
 from pathlib import Path
 from typing import Optional
 
 from mcp_project_context_server.integrations.repository.base import RepositoryInfo
+
+logger = logging.getLogger(__name__)
 
 _SOURCE_EXTENSIONS: frozenset[str] = frozenset({".py", ".ts", ".js", ".go", ".rs", ".cs", ".java", ".rb", ".php"})
 _SKIP_DIRS: frozenset[str] = frozenset({".git", "node_modules", ".venv", "__pycache__", "dist", "build"})

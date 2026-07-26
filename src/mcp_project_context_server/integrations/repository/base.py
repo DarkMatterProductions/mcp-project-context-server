@@ -1,8 +1,10 @@
 """RepositoryProvider Protocol and shared data types."""
-
+import logging
 from dataclasses import dataclass
 from typing import Optional, Protocol, runtime_checkable
 from urllib.parse import urlparse
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

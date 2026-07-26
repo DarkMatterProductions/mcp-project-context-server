@@ -39,11 +39,13 @@ At least one of ``APPROVED_ORGS`` or ``APPROVED_REPOS`` must be set.
 ``validate_repo_access(repo_id)`` raises :exc:`RepositoryError` if the
 repo identifier is not in any approved list.
 """
-
+import logging
 import os
 from typing import Optional
 
 from mcp_project_context_server.integrations.repository.base import RepositoryError, RepositoryProvider
+
+logger = logging.getLogger(__name__)
 
 _SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"local", "github", "gitlab", "gitea"})
 

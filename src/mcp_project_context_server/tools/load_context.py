@@ -1,12 +1,16 @@
 """Tool: load_project_context — loads project.md, ADRs, and last session."""
 
+import logging
 import os
 
 from mcp import types
+from pathlib import Path
 
 from mcp_project_context_server.helpers.context import find_context_dir, resolve_project_path
 from mcp_project_context_server.integrations.repository.base import RepositoryError
 from mcp_project_context_server.integrations.repository.registry import get_repository_provider, validate_repo_access
+
+logger = logging.getLogger(__name__)
 
 
 async def handle(arguments: dict) -> list[types.TextContent]:
@@ -17,6 +21,7 @@ async def handle(arguments: dict) -> list[types.TextContent]:
         with the assembled project.md, ADRs, and latest session summary, or an
         error/"not found" message.
     """
+    print(Path(__file__))
     _project_path = os.getenv("PROJECT_PATH", arguments["project_path"])
     try:
         validate_repo_access(_project_path)

@@ -15,7 +15,7 @@ Design
 * The drop-and-recreate indexing strategy (ADR-00006) is implemented by
   ``create_collection`` — it drops the table and recreates it.
 """
-
+import logging
 import os
 import re
 from typing import Any, Optional
@@ -24,6 +24,8 @@ from mcp_project_context_server.integrations.vectorstore.base import (
     QueryResult,
     VectorStoreError,
 )
+
+logger = logging.getLogger(__name__)
 
 _TABLE_PREFIX = "vs_"
 

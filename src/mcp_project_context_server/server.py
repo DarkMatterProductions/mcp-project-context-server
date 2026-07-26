@@ -16,7 +16,6 @@ Set ``MCP_TRANSPORT`` to choose the transport:
 import asyncio
 import logging
 import os
-from pathlib import Path
 from typing import Any
 
 from mcp import types
@@ -30,15 +29,6 @@ from mcp_project_context_server.tools import (
     search_context,
 )
 
-_LOG_PATH = Path.home() / ".mcp-data" / "logs" / "project-context-server.log"
-_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-logging.basicConfig(
-    filename=_LOG_PATH,
-    filemode="a",
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 
@@ -184,7 +174,7 @@ async def _main() -> None:
 
 
 def run() -> None:
-    """Start the MCP server, selecting a transport via the ``MCP_TRANSPORT`` env var."""
+    """Start the MCP server, selecting transport via the ``MCP_TRANSPORT`` env var."""
     logger.info("project-context-server starting")
     try:
         asyncio.run(_main())

@@ -1,6 +1,7 @@
 """Gitea repository provider implementation using the Gitea REST API."""
 
 import base64
+import logging
 import os
 from typing import Optional
 
@@ -11,6 +12,8 @@ from mcp_project_context_server.integrations.repository.base import (
     RepositoryInfo,
     normalize_repo_identifier,
 )
+
+logger = logging.getLogger(__name__)
 
 _SOURCE_EXTENSIONS: frozenset[str] = frozenset({".py", ".ts", ".js", ".go", ".rs", ".cs", ".java", ".rb", ".php"})
 _MAX_SOURCE_FILES = 200

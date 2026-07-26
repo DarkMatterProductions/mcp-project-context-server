@@ -1,9 +1,11 @@
 """Shared helpers for .context/ directory resolution and file reading."""
-
+import logging
 import re
 from pathlib import Path
 
 from mcp_project_context_server.integrations.repository.base import normalize_repo_identifier
+
+logger = logging.getLogger(__name__)
 
 
 def find_context_dir(project_path: str | Path) -> Path | None:

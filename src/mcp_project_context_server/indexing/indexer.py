@@ -10,6 +10,7 @@ registry.
 """
 
 import asyncio
+import logging
 import os
 import sys
 from datetime import datetime, timezone
@@ -32,6 +33,8 @@ from mcp_project_context_server.integrations.embeddings.registry import get_embe
 from mcp_project_context_server.integrations.repository.base import RepositoryError
 from mcp_project_context_server.integrations.repository.registry import get_repository_provider
 from mcp_project_context_server.integrations.vectorstore.base import VectorStoreProvider
+
+logger = logging.getLogger(__name__)
 
 _EMBED_CONCURRENCY: int = int(os.getenv("EMBED_CONCURRENCY", "4"))
 

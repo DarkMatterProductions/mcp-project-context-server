@@ -1,4 +1,5 @@
 """Tool: list_repositories — list accessible repositories via the configured provider."""
+import logging
 
 from mcp import types
 
@@ -7,6 +8,8 @@ from mcp_project_context_server.integrations.repository.registry import (
     get_repository_provider,
     validate_repo_access,
 )
+
+logger = logging.getLogger(__name__)
 
 
 async def handle(arguments: dict) -> list[types.TextContent]:

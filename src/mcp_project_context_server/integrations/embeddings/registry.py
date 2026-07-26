@@ -46,10 +46,12 @@ Supported `EMBED_PROVIDER` values
     `GOOGLE_VERTEX_LOCATION`.
     Optional: `GOOGLE_VERTEX_EMBED_MODEL` (default: text-embedding-004).
 """
-
+import logging
 import os
 
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
+
+logger = logging.getLogger(__name__)
 
 _SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"ollama", "voyage", "openai", "cohere", "google", "vertexai"})
 

@@ -133,7 +133,7 @@ class TestCreateCollection:
 
         provider._index.remove_datapoints.assert_not_called()
         set_call = provider._firestore.collection.return_value.document.return_value.set.call_args
-        assert set_call.args[0] == {"metadata": {"env": "prod"}, "datapoint_ids": []}
+        assert set_call.arguments[0] == {"metadata": {"env": "prod"}, "datapoint_ids": []}
 
     @pytest.mark.asyncio
     async def test_removes_known_datapoints_and_docs(self, wired_provider) -> None:
@@ -242,7 +242,7 @@ class TestUpsert:
         )
 
         batch.set.assert_called_once()
-        data = batch.set.call_args.args[1]
+        data = batch.set.call_args.arguments[1]
         assert data == {"collection": "col", "document": "doc A", "metadata": {"f": "1"}}
         batch.commit.assert_called_once()
 
@@ -262,7 +262,7 @@ class TestUpsert:
         )
 
         meta_set_call = provider._firestore.collection.return_value.document.return_value.set.call_args
-        assert meta_set_call.args[0] == {"metadata": {"env": "prod"}, "datapoint_ids": ["existing", "new1"]}
+        assert meta_set_call.arguments[0] == {"metadata": {"env": "prod"}, "datapoint_ids": ["existing", "new1"]}
 
     @pytest.mark.asyncio
     async def test_raises_vector_store_error_on_failure(self, wired_provider) -> None:

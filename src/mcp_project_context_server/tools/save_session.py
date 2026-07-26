@@ -1,5 +1,5 @@
 """Tool: save_session_summary — writes a session summary to .context/sessions/."""
-
+import logging
 import os
 from datetime import datetime
 
@@ -8,6 +8,8 @@ from mcp import types
 from mcp_project_context_server.helpers.context import find_context_dir, resolve_project_path
 from mcp_project_context_server.integrations.repository.base import RepositoryError
 from mcp_project_context_server.integrations.repository.registry import get_repository_provider, validate_repo_access
+
+logger = logging.getLogger(__name__)
 
 
 async def handle(arguments: dict) -> list[types.TextContent]:

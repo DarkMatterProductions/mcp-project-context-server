@@ -1,5 +1,5 @@
 """Tool: index_project_context — re-indexes .context/ into the configured vector store."""
-
+import logging
 import os
 
 from mcp import types
@@ -7,6 +7,8 @@ from mcp import types
 from mcp_project_context_server.integrations.repository.base import RepositoryError
 from mcp_project_context_server.integrations.repository.registry import validate_repo_access
 from mcp_project_context_server.integrations.vectorstore.registry import get_indexer
+
+logger = logging.getLogger(__name__)
 
 
 async def handle(arguments: dict) -> list[types.TextContent]:

@@ -16,10 +16,13 @@ Set these environment variables to control the provider:
 """
 
 import asyncio
+import logging
 import os
 
 from mcp_project_context_server.exceptions import EmbeddingError
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_HOST: str = "http://localhost:11434"
 _DEFAULT_MODEL: str = "nomic-embed-text"

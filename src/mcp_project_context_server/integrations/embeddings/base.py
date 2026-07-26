@@ -14,8 +14,10 @@ Obtain a concrete instance from the registry::
     from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
     provider = get_embedding_provider()
 """
-
+import logging
 from typing import Protocol, runtime_checkable
+
+logger = logging.getLogger(__name__)
 
 
 @runtime_checkable

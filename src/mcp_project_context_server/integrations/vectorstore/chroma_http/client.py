@@ -14,6 +14,7 @@ Configuration
 """
 
 import asyncio
+import logging
 import os
 from typing import Any, Optional
 
@@ -21,6 +22,8 @@ from mcp_project_context_server.integrations.vectorstore.base import (
     QueryResult,
     VectorStoreError,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ChromaHttpVectorStoreProvider:

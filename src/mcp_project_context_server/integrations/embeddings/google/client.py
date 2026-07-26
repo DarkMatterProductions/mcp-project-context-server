@@ -12,10 +12,13 @@ Set these environment variables to control the provider:
 """
 
 import asyncio
+import logging
 import os
 
 from mcp_project_context_server.exceptions import EmbeddingError
 from mcp_project_context_server.integrations.embeddings.base import EmbeddingProvider
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_MODEL: str = "gemini-embedding-2"
 # gemini-embedding-2: 2048 token context; conservative character limit
