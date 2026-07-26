@@ -15,6 +15,7 @@ def find_context_dir(project_path: str | Path) -> Path | None:
     :return: (Path) The first ``.context/`` directory found while walking up from
         ``project_path``, or ``None`` if none exists in any parent.
     """
+    logger.debug(f"Executing 'find_context_dir' with the argument project_path: {project_path}")
     p = Path(project_path).resolve()
     for candidate in [p, *p.parents]:
         ctx = candidate / ".context"
@@ -83,6 +84,7 @@ def resolve_project_path(raw: str) -> tuple[str, bool]:
     :param raw: (str) The raw project path or identifier supplied by the caller.
     :return: (tuple) A two-element tuple ``(resolved_path, is_remote)``.
     """
+    logger.debug(f"Executing 'resolve_project_path' with the argument raw: {raw}")
     if raw.startswith("http://") or raw.startswith("https://"):
         return raw, True
     if _SHORT_IDENTIFIER_RE.match(raw):

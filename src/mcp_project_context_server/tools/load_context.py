@@ -4,7 +4,6 @@ import logging
 import os
 
 from mcp import types
-from pathlib import Path
 
 from mcp_project_context_server.helpers.context import find_context_dir, resolve_project_path
 from mcp_project_context_server.integrations.repository.base import RepositoryError
@@ -21,7 +20,7 @@ async def handle(arguments: dict) -> list[types.TextContent]:
         with the assembled project.md, ADRs, and latest session summary, or an
         error/"not found" message.
     """
-    print(Path(__file__))
+    logger.debug(f"Executing 'handle' with the argument arguments: {arguments}")
     _project_path = os.getenv("PROJECT_PATH", arguments["project_path"])
     try:
         validate_repo_access(_project_path)
