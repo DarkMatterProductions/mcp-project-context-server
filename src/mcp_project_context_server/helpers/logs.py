@@ -53,7 +53,7 @@ def setup_logging(logger_levels: dict[str, int | str] | None = None):
     # Guard against duplicate handlers if setup_logging() runs more than once
     if not root.handlers:
         root.addHandler(file_handler)
-        root.addHandler(stream_handler)
+        # root.addHandler(stream_handler)
 
     # --- Per-logger level overrides ---
     for name, level in (logger_levels or {}).items():
