@@ -20,6 +20,7 @@ from typing import Any
 
 from mcp import types
 from mcp.server import Server
+from mcp.types import CallToolResult, TextContent
 
 from mcp_project_context_server.tools import (
     index_context,
@@ -142,7 +143,7 @@ async def list_tools() -> list[types.Tool]:
 
 
 @server.call_tool()
-async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextContent]:
+async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent] | CallToolResult:
     """Dispatch an MCP tool call to its registered handler.
 
     :param name: (str) The name of the tool to invoke.

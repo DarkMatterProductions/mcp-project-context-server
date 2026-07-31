@@ -1,7 +1,9 @@
+import argparse
 import asyncio
 import json
 import os
 import sys
+from typing import Dict
 
 # ==========================================
 # CONFIGURATION
@@ -18,12 +20,24 @@ TEST_PATH = r"C:/Users/drahk/DMPProjects/mcp-project-context-server"
 # ==========================================
 # TEST PAYLOADS
 # ==========================================
-TEST_PAYLOADS = [
-    {
+TEST_PAYLOADS = {}
+
+# ==========================================
+# ARGUMENTS
+# ==========================================
+
+parser = argparse.ArgumentParser(description="Script for rendering output from the MCP server")
+parser.add_argument("--tool", "-t", choices=list(TEST_PAYLOADS.keys()).append("all"), default="all")
+parser.add_argument("--gh-org", "-o", type=str)
+parser.add_argument("--details", "-d", action="store_true")
+args = parser.parse_args()
+
+TEST_PAYLOADS = {
+    "load_project_context": {
         "name": "load_project_context",
         "arguments": {"project_path": TEST_PATH}
     },
-    {
+    "search_project_context": {
         "name": "search_project_context",
         "arguments": {
             "project_path": TEST_PATH,
@@ -31,22 +45,22 @@ TEST_PAYLOADS = [
             "n_results": 2
         }
     },
-    {
+    "save_session_summary": {
         "name": "save_session_summary",
         "arguments": {
             "project_path": TEST_PATH,
             "summary": "### Session\n- Upgraded script to handle massive JSON streams."
         }
     },
-    {
+    "index_project_context": {
         "name": "index_project_context",
         "arguments": {"project_path": TEST_PATH}
     },
-    {
+    "list_repositories": {
         "name": "list_repositories",
-        "arguments": {"org": "my-org"}
+        "arguments": {"org": f"{args.gh_org}"}
     }
-]
+}
 
 async def read_response(reader):
     """Reads a single line/message from the server stdout safely on Windows."""
@@ -71,7 +85,11 @@ async def send_request(writer, method, params, request_id):
     raw_payload = json.dumps(payload) + "\n"
     writer.write(raw_payload.encode('utf-8'))
     await writer.drain()
-    print(f"\n[CLIENT -> SERVER] Sent method: {method} (ID: {request_id})")
+    print(f"\n[CLIENT -> SERVER] Request Sent\n"
+          f"    ID: {request_id}\n"
+          f"    method: {method}\n"
+          f"    params: {params}\n"
+          )
 
 async def send_notification(writer, method, params):
     """Sends a JSON-RPC notification (no ID, no response expected)."""
@@ -84,6 +102,28 @@ async def send_notification(writer, method, params):
     writer.write(raw_payload.encode('utf-8'))
     await writer.drain()
     print(f"[CLIENT -> SERVER] Sent notification: {method}")
+
+from typing import Any
+
+def trunc_json_values(value: Any, details: bool, level: int = 0) -> Any:
+    if isinstance(value, str):
+        if len(value) > 1000 and not details:
+            return f"{value[:200]} ... [TRUNCATED FOR TERMINAL READABILITY] ..."
+        return value
+
+    if isinstance(value, dict):
+        return {
+            key: trunc_json_values(item, details, level + 1)
+            for key, item in value.items()
+        }
+
+    if isinstance(value, list):
+        return [
+            trunc_json_values(item, details, level + 1)
+            for item in value
+        ]
+
+    return value
 
 async def main():
     print(f"Starting MCP server via: {' '.join(SERVER_COMMAND)}")
@@ -121,23 +161,26 @@ async def main():
         print("Handshake completed successfully!\n" + "="*50)
 
         # Loop and test every single schema definition
-        for tool in TEST_PAYLOADS:
+        payloads: Dict[str, str | Dict[str, str | Dict[str, str | int]]] = TEST_PAYLOADS if args.tool == "all" else {args.tool: TEST_PAYLOADS[args.tool]}
+        for tool_name, tool in payloads.items():
             req_id += 1
-            tool_name = tool["name"]
+            print(f"[SERVER -> CLIENT] Request for '{tool_name}':")
+            tool_request = json.dumps(tool, indent=2)
+            print(tool_request)
 
             await send_request(writer, "tools/call", tool, req_id)
 
             response = await read_response(reader)
             print(f"[SERVER -> CLIENT] Response for '{tool_name}':")
 
-            # Print response preview cleanly (truncates giant text so terminal doesn't lag)
-            resp_str = json.dumps(response, indent=2)
-            if len(resp_str) > 1000:
-                # print(resp_str[:1000] + "\n\n... [TRUNCATED FOR TERMINAL READABILITY] ...")
-                print(resp_str)
-                print(f"Total Response Length: {len(resp_str)} characters.")
+            if isinstance(response, dict):
+                resp_str = json.dumps({key: trunc_json_values(value, args.details) for key, value in response.items()}, indent=2)
             else:
-                print(resp_str)
+                print("No response.")
+                break
+
+            print(resp_str)
+            print(f"Total Response Length: {len(resp_str)} characters.")
             print("-" * 50)
 
     except Exception as e:

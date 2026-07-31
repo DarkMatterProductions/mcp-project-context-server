@@ -2,6 +2,7 @@
 import logging
 
 from mcp import types
+from mcp.types import CallToolResult, TextContent
 
 from mcp_project_context_server.integrations.repository.base import RepositoryError
 from mcp_project_context_server.integrations.repository.registry import (
@@ -12,7 +13,7 @@ from mcp_project_context_server.integrations.repository.registry import (
 logger = logging.getLogger(__name__)
 
 
-async def handle(arguments: dict) -> list[types.TextContent]:
+async def handle(arguments: dict) -> list[TextContent] | CallToolResult:
     """Handle the ``list_repositories`` tool call.
 
     :param arguments: (dict) Tool input dict. Optional key ``"org"`` filters by
@@ -40,9 +41,16 @@ async def handle(arguments: dict) -> list[types.TextContent]:
 
     if not repos:
         return [types.TextContent(type="text", text="No repositories found.")]
-    lines = []
+    repos_structured_results = {}
+    repos_content_results = []
     for r in repos:
         status = "indexed" if r.indexed else "not indexed"
-        last = f" (last indexed: {r.last_indexed})" if r.last_indexed else ""
-        lines.append(f"- **{r.identifier}** — {r.description or 'no description'} [{status}{last}]")
-    return [types.TextContent(type="text", text="\n".join(lines))]
+        last_indexed = f" (last indexed: {r.last_indexed})" if r.last_indexed else ""
+        repos_content_results.append(types.TextContent(type="text", text=f"- **{r.identifier}** — {r.description or 'no description'} [{status}{last_indexed}]"))
+        repos_structured_results[r.identifier] = {
+            "identifier": types.TextContent(type="text", text=r.identifier),
+            "description": types.TextContent(type="text", text=r.description or 'no description'),
+            "status": types.TextContent(type="text", text=status),
+            "last_indexed": types.TextContent(type="text", text=last_indexed),
+        }
+    return types.CallToolResult(content=repos_content_results, structuredContent=repos_structured_results)
