@@ -13,7 +13,7 @@ from mcp_project_context_server.integrations.repository.registry import (
 logger = logging.getLogger(__name__)
 
 
-async def handle(arguments: dict) -> list[TextContent] | CallToolResult:
+async def handle(arguments: dict) -> CallToolResult:
     """Handle the ``list_repositories`` tool call.
 
     :param arguments: (dict) Tool input dict. Optional key ``"org"`` filters by
@@ -25,7 +25,7 @@ async def handle(arguments: dict) -> list[TextContent] | CallToolResult:
         provider = get_repository_provider()
         repos = await provider.list_repositories(org=org)
     except Exception as exc:
-        return [types.TextContent(type="text", text=f"Error listing repositories: {exc}")]
+        return types.CallToolResult(content=[types.TextContent(type="text", text=f"Error listing repositories: {exc}")])
 
     # Only surface repositories the allowlist actually permits — in
     # multi-tenant mode the provider may still be able to see repos outside
@@ -40,7 +40,7 @@ async def handle(arguments: dict) -> list[TextContent] | CallToolResult:
     repos = allowed_repos
 
     if not repos:
-        return [types.TextContent(type="text", text="No repositories found.")]
+        return types.CallToolResult(content=[types.TextContent(type="text", text="No repositories found.")])
     repos_structured_results = {}
     repos_content_results = []
     for r in repos:

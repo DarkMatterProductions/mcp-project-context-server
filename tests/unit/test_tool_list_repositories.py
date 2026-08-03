@@ -1,8 +1,9 @@
 """Tests for the list_repositories tool handler."""
-
+import re
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from mcp.types import TextContent
 
 from mcp_project_context_server.integrations.repository.base import RepositoryInfo
 from mcp_project_context_server.integrations.repository.registry import reset_provider_for_testing
@@ -17,11 +18,27 @@ class TestListRepositoriesTool:
 
     @pytest.mark.asyncio
     async def test_returns_formatted_list(self):
+        pattern = re.compile(r"org/repo[0-9]+")
+        repos_def = {
+            "org/repo1": {
+                "identifier": "org/repo1",
+                "name": "repo1",
+                "indexed": True,
+                "last_indexed": "2024-01-15",
+                "description": "First repo",
+            },
+            "org/repo2": {
+                "identifier": "org/repo2",
+                "name": "repo2",
+                "indexed": False,
+                "last_indexed": None,
+                "description": "",
+            }
+        }
         repos = [
             RepositoryInfo(
-                identifier="org/repo1", name="repo1", description="First repo", indexed=True, last_indexed="2024-01-15"
-            ),
-            RepositoryInfo(identifier="org/repo2", name="repo2", description="", indexed=False),
+                identifier=repo_details["identifier"], name=repo_details["name"], description=repo_details["description"], indexed=repo_details["indexed"], last_indexed=repo_details["last_indexed"]
+            ) for repo_id, repo_details in repos_def.items()
         ]
         mock_provider = AsyncMock()
         mock_provider.list_repositories = AsyncMock(return_value=repos)
@@ -32,13 +49,17 @@ class TestListRepositoriesTool:
         ):
             result = await handle({})
 
-        assert len(result) == 1
-        text = result[0].text
-        assert "org/repo1" in text
-        assert "indexed" in text
-        assert "last indexed: 2024-01-15" in text
-        assert "org/repo2" in text
-        assert "no description" in text
+        assert len(result.content) == 2
+        for content in result.content:
+            assert type(content) is TextContent
+            text = content.text
+            _id = pattern.search(text).group(0)
+            assert repos_def[_id]["identifier"] in text
+            if repos_def[_id]["description"] is not None and repos_def[_id]["description"] is not "":
+                assert repos_def[_id]["description"] in text
+            if repos_def[_id]["indexed"]:
+                assert "indexed" in text
+                assert f"last indexed: {repos_def[_id]['last_indexed']}" in text
 
     @pytest.mark.asyncio
     async def test_returns_no_repositories_found_for_empty_list(self):
@@ -98,6 +119,6 @@ class TestListRepositoriesTool:
         ):
             result = await handle({})
 
-        text = result[0].text
+        text = result.structuredContent
         assert "approved-org/repo1" in text
         assert "unapproved-org/repo2" not in text
