@@ -36,7 +36,7 @@ import os
 import pytest
 
 from shared.constructs import CHROMA_COMPATIBLE_PROVIDERS
-from tests.integration.base import MCPIntegrationBase
+from integration.base import MCPIntegrationBase
 
 pytestmark = pytest.mark.asyncio
 

@@ -72,8 +72,8 @@ class TestListRepositoriesTool:
         ):
             result = await handle({})
 
-        assert len(result) == 1
-        assert result[0].text == "No repositories found."
+        assert len(result.content) == 1
+        assert result.content[0].text == "No repositories found."
 
     @pytest.mark.asyncio
     async def test_returns_error_message_on_exception(self):
@@ -83,9 +83,9 @@ class TestListRepositoriesTool:
         ):
             result = await handle({})
 
-        assert len(result) == 1
-        assert "Error listing repositories" in result[0].text
-        assert "Provider not configured" in result[0].text
+        assert len(result.content) == 1
+        assert "Error listing repositories" in result.content[0].text
+        assert "Provider not configured" in result.content[0].text
 
     @pytest.mark.asyncio
     async def test_passes_org_to_provider(self):
@@ -119,6 +119,6 @@ class TestListRepositoriesTool:
         ):
             result = await handle({})
 
-        text = result.structuredContent
+        text = "\n".join(c.text for c in result.content)
         assert "approved-org/repo1" in text
         assert "unapproved-org/repo2" not in text

@@ -13,7 +13,7 @@ from datetime import date
 
 import pytest
 
-from tests.integration.base import MCPIntegrationBase
+from integration.base import MCPIntegrationBase
 
 pytestmark = pytest.mark.asyncio
 

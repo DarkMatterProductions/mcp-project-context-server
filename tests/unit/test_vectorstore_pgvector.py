@@ -137,7 +137,7 @@ class TestCreateCollection:
 
         await provider.create_collection("test-col", metadata={"env": "prod"})
 
-        calls = [str(c.arguments[0]).strip() for c in conn.execute.await_args_list if c.arguments]
+        calls = [str(c.args[0]).strip() for c in conn.execute.await_args_list if c.args]
         assert any("DROP TABLE IF EXISTS" in c for c in calls)
         assert any("DELETE FROM vs_collections" in c for c in calls)
         assert any("INSERT INTO vs_collections" in c for c in calls)
@@ -156,7 +156,7 @@ class TestDeleteCollection:
 
         await provider.delete_collection("my-col")
 
-        calls = [str(c.arguments[0]).strip() for c in conn.execute.await_args_list if c.arguments]
+        calls = [str(c.args[0]).strip() for c in conn.execute.await_args_list if c.args]
         assert any("DROP TABLE IF EXISTS" in c for c in calls)
         assert any("DELETE FROM vs_collections" in c for c in calls)
 
@@ -187,7 +187,7 @@ class TestUpsert:
         )
 
         execute_calls = conn.execute.await_args_list
-        sql_strings = [str(c.arguments[0]).strip() for c in execute_calls if c.arguments]
+        sql_strings = [str(c.args[0]).strip() for c in execute_calls if c.args]
         insert_calls = [s for s in sql_strings if "INSERT INTO" in s and "vs_collections" not in s]
         assert len(insert_calls) == 2  # one per document
 
