@@ -16,11 +16,17 @@ Set ``MCP_TRANSPORT`` to choose the transport:
 import asyncio
 import logging
 import os
-from typing import Any
 
-from mcp import types
-from mcp.server import Server
-from mcp.types import CallToolResult, TextContent
+
+from mcp.server import Server, ServerRequestContext
+from mcp.types import (
+    CallToolRequestParams,
+    CallToolResult,
+    ListToolsResult,
+    PaginatedRequestParams,
+    TextContent,
+    Tool,
+)
 
 from mcp_project_context_server.tools import (
     index_context,
@@ -33,17 +39,15 @@ from mcp_project_context_server.tools import (
 logger = logging.getLogger(__name__)
 
 
-server = Server("project-context")
-
-_TOOL_DEFINITIONS: list[types.Tool] = [
-    types.Tool(
+_TOOL_DEFINITIONS: list[Tool] = [
+    Tool(
         name="load_project_context",
         description=(
             "Load the full project context for the given project path. "
             "Returns project.md, all ADRs, and the latest session summary. "
             "You MUST call this at the start of every session."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "project_path": {
@@ -57,14 +61,14 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
             "required": ["project_path"],
         },
     ),
-    types.Tool(
+    Tool(
         name="search_project_context",
         description=(
             "Semantically search the indexed project context. "
             "Use this to find relevant past decisions, architecture notes, "
             "or code summaries related to your current task."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "project_path": {"type": "string"},
@@ -74,13 +78,13 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
             "required": ["project_path", "query"],
         },
     ),
-    types.Tool(
+    Tool(
         name="save_session_summary",
         description=(
             "Save a summary of the current session to .context/sessions/YYYY-MM-DD.md. "
             "Call this at the end of a session with a concise summary of what was done."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "project_path": {"type": "string"},
@@ -92,26 +96,26 @@ _TOOL_DEFINITIONS: list[types.Tool] = [
             "required": ["project_path", "summary"],
         },
     ),
-    types.Tool(
+    Tool(
         name="index_project_context",
         description=(
             "Re-index the .context/ directory into the vector store. "
             "Run this after updating project.md, adding ADRs, or refreshing BUNDLE.md."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {"project_path": {"type": "string"}},
             "required": ["project_path"],
         },
     ),
-    types.Tool(
+    Tool(
         name="list_repositories",
         description=(
             "List repositories accessible via the configured repository provider. "
             "In multi-tenant deployments, use this to discover which repositories are "
             "available before calling other tools.  Optionally filter by organisation name."
         ),
-        inputSchema={
+        input_schema={
             "type": "object",
             "properties": {
                 "org": {
@@ -133,28 +137,26 @@ _TOOL_HANDLERS = {
 }
 
 
-@server.list_tools()
-async def list_tools() -> list[types.Tool]:
-    """List the MCP tools exposed by this server.
+async def list_tools(ctx: ServerRequestContext, params: PaginatedRequestParams | None) -> ListToolsResult:
+    """List the MCP tools exposed by this context_server.
 
-    :return: (list) The registered ``types.Tool`` definitions advertised to MCP clients.
+    :return: (list) The registered ``Tool`` definitions advertised to MCP clients.
     """
-    return _TOOL_DEFINITIONS
+    return ListToolsResult(tools=_TOOL_DEFINITIONS)
 
 
-@server.call_tool()
-async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent] | CallToolResult:
+async def call_tool(ctx: ServerRequestContext, params: CallToolRequestParams) -> list[TextContent] | CallToolResult:
     """Dispatch an MCP tool call to its registered handler.
 
     :param name: (str) The name of the tool to invoke.
     :param arguments: (dict) The arguments supplied by the MCP client for this tool call.
-    :return: (list) The handler's ``types.TextContent`` results, or a single
+    :return: (list) The handler's ``TextContent`` results, or a single
         error message if ``name`` does not match a registered tool.
-    """
-    handler = _TOOL_HANDLERS.get(name)
+    """#name: str, arguments: dict[str, Any]
+    handler = _TOOL_HANDLERS.get(params.name)
     if not handler:
-        return [types.TextContent(type="text", text=f"Unknown tool: {name}")]
-    return await handler(arguments)
+        return CallToolResult(content=[TextContent(type="text", text=f"Unknown tool: {params.name}")])
+    return await handler(params.arguments)
 
 
 async def _main() -> None:
@@ -163,12 +165,12 @@ async def _main() -> None:
     if transport == "stdio":
         from mcp_project_context_server.transport.stdio import run_stdio
 
-        await run_stdio(server)
+        await run_stdio(context_server)
 
     elif transport == "sse":
         from mcp_project_context_server.transport.sse import run_sse
 
-        await run_sse(server)
+        await run_sse(context_server)
 
     else:
         raise EnvironmentError(f"Unsupported MCP_TRANSPORT value '{transport}'.  " "Supported values are: stdio, sse")
@@ -182,3 +184,16 @@ def run() -> None:
     except Exception:
         logger.exception("Server crashed at top level")
         raise
+
+
+context_server = Server(
+    name="project-context",
+    description=(
+        "Project Context Server.  Provides access to project context, "
+        "including repomix BUNDLED.md, project.md, ADRs, and session summaries."
+        "Use as the primary tool for AI-assisted development, and as the source "
+        "of truth for decisions on project development."
+    ),
+    on_list_tools=list_tools,
+    on_call_tool=call_tool,
+)
