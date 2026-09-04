@@ -100,7 +100,7 @@ class TestIncompatibleProviders(MCPIntegrationBase):
                 {"project_path": str(project_dir), "query": "anything"},
             )
 
-        assert result.isError
+        assert result.is_error
         text = self.get_tool_text(result)
         assert "cannot be used with" in text
         assert "vertexai" in text

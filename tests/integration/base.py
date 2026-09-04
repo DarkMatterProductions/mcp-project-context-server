@@ -91,9 +91,9 @@ class MCPIntegrationBase:
             The text from the first content block.
 
         Raises:
-            AssertionError: If `result.isError` is `True`.
+            AssertionError: If `result.is_error` is `True`.
         """
-        assert not getattr(result, "isError", False), (
+        assert not getattr(result, "is_error", False), (
             f"Tool call unexpectedly errored: {result}"
         )
         return MCPIntegrationBase.get_tool_text(result)

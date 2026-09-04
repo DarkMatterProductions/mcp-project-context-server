@@ -85,7 +85,7 @@ class TestIncompatibleProviders(MCPIntegrationBase):
         async with make_mcp_session({"EMBED_PROVIDER": "vertexai"}) as session:
             result = await session.call_tool(_TOOL, {"project_path": str(project_dir)})
 
-        assert result.isError
+        assert result.is_error
         text = self.get_tool_text(result)
         assert "cannot be used with" in text
         assert "vertexai" in text

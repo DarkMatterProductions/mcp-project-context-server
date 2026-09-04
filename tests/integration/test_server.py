@@ -48,19 +48,19 @@ class TestServerRegistration(MCPIntegrationBase):
             result = await session.list_tools()
         tool = next((t for t in result.tools if t.name == tool_name), None)
         assert tool is not None, f"Tool '{tool_name}' missing from registered tools"
-        assert tool.inputSchema is not None
+        assert tool.input_schema is not None
 
     async def test_load_project_context_requires_project_path(self, make_mcp_session):
         async with make_mcp_session() as session:
             result = await session.list_tools()
         tool = next(t for t in result.tools if t.name == "load_project_context")
-        assert "project_path" in tool.inputSchema.get("required", [])
+        assert "project_path" in tool.input_schema.get("required", [])
 
     async def test_search_project_context_requires_project_path_and_query(self, make_mcp_session):
         async with make_mcp_session() as session:
             result = await session.list_tools()
         tool = next(t for t in result.tools if t.name == "search_project_context")
-        required = tool.inputSchema.get("required", [])
+        required = tool.input_schema.get("required", [])
         assert "project_path" in required
         assert "query" in required
 
@@ -68,7 +68,7 @@ class TestServerRegistration(MCPIntegrationBase):
         async with make_mcp_session() as session:
             result = await session.list_tools()
         tool = next(t for t in result.tools if t.name == "save_session_summary")
-        required = tool.inputSchema.get("required", [])
+        required = tool.input_schema.get("required", [])
         assert "project_path" in required
         assert "summary" in required
 
@@ -76,13 +76,13 @@ class TestServerRegistration(MCPIntegrationBase):
         async with make_mcp_session() as session:
             result = await session.list_tools()
         tool = next(t for t in result.tools if t.name == "index_project_context")
-        assert "project_path" in tool.inputSchema.get("required", [])
+        assert "project_path" in tool.input_schema.get("required", [])
 
     async def test_list_repositories_has_no_required_fields(self, make_mcp_session):
         async with make_mcp_session() as session:
             result = await session.list_tools()
         tool = next(t for t in result.tools if t.name == "list_repositories")
-        required = tool.inputSchema.get("required", [])
+        required = tool.input_schema.get("required", [])
         assert required == []
 
     async def test_unknown_tool_returns_error_text(self, make_mcp_session):

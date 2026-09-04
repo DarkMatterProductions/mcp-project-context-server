@@ -100,8 +100,8 @@ async def test_missing_argument_raises_error(server_params):
 
             result = await session.call_tool("get_weather", {})  # missing 'city'
 
-            # MCP surfaces errors as isError=True, not exceptions
-            assert result.isError is True
+            # MCP surfaces errors as is_error=True, not exceptions
+            assert result.is_error is True
 ```
 
 ---
@@ -239,9 +239,9 @@ pytest tests/integration/ -v -s
   the stdio transport. Use `-s` with pytest to see them, or redirect: `args=["my_server.py"],
   env={"LOG_LEVEL": "DEBUG"}`.
 
-- **`result.isError` vs exceptions** — the MCP client does not raise Python exceptions for
-  tool errors. Instead, `result.isError` is `True` and the error message is in
-  `result.content[0].text`. Always check `isError` when testing failure paths.
+- **`result.is_error` vs exceptions** — the MCP client does not raise Python exceptions for
+  tool errors. Instead, `result.is_error` is `True` and the error message is in
+  `result.content[0].text`. Always check `is_error` when testing failure paths.
 
 - **`initialize()` is mandatory** — skipping it will cause all subsequent calls to hang or fail.
   Always call it right after opening the session.

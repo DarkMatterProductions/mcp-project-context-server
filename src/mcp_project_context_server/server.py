@@ -36,6 +36,11 @@ from mcp_project_context_server.tools import (
     search_context,
 )
 
+try:
+    from mcp_project_context_server._version import __version__
+except ImportError:
+    __version__ = "0.0.0.dev0"
+
 logger = logging.getLogger(__name__)
 
 
@@ -145,18 +150,25 @@ async def list_tools(ctx: ServerRequestContext, params: PaginatedRequestParams |
     return ListToolsResult(tools=_TOOL_DEFINITIONS)
 
 
-async def call_tool(ctx: ServerRequestContext, params: CallToolRequestParams) -> list[TextContent] | CallToolResult:
+async def call_tool(ctx: ServerRequestContext, params: CallToolRequestParams) -> CallToolResult:
     """Dispatch an MCP tool call to its registered handler.
 
     :param name: (str) The name of the tool to invoke.
     :param arguments: (dict) The arguments supplied by the MCP client for this tool call.
-    :return: (list) The handler's ``TextContent`` results, or a single
-        error message if ``name`` does not match a registered tool.
-    """#name: str, arguments: dict[str, Any]
+    :return: (CallToolResult) The handler's result normalised into a ``CallToolResult``,
+        or a single error message if ``name`` does not match a registered tool.
+    """
     handler = _TOOL_HANDLERS.get(params.name)
     if not handler:
         return CallToolResult(content=[TextContent(type="text", text=f"Unknown tool: {params.name}")])
-    return await handler(params.arguments)
+    try:
+        result = await handler(params.arguments)
+    except Exception as exc:
+        logger.exception("Tool '%s' raised an unhandled exception", params.name)
+        return CallToolResult(content=[TextContent(type="text", text=str(exc))], is_error=True)
+    if isinstance(result, CallToolResult):
+        return result
+    return CallToolResult(content=result)
 
 
 async def _main() -> None:
@@ -188,6 +200,7 @@ def run() -> None:
 
 context_server = Server(
     name="project-context",
+    version=__version__,
     description=(
         "Project Context Server.  Provides access to project context, "
         "including repomix BUNDLED.md, project.md, ADRs, and session summaries."
