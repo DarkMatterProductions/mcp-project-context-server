@@ -2,9 +2,7 @@
 
 import pytest
 
-from mcp_project_context_server.integrations.repository.registry import (
-    reset_provider_for_testing as reset_repo,
-)
+from mcp_project_context_server.integrations.repository.registry import reset_provider_for_testing as reset_repo
 from mcp_project_context_server.tools.find_latest_session_file import handle
 
 

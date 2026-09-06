@@ -11,7 +11,6 @@ No filesystem or external services are required.
 """
 
 import pytest
-
 from integration.base import MCPIntegrationBase
 
 pytestmark = pytest.mark.asyncio

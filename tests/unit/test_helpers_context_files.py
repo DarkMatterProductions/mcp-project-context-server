@@ -9,9 +9,7 @@ from mcp_project_context_server.helpers.context_files import (
     resolve_requested_files,
 )
 from mcp_project_context_server.integrations.repository.base import RepositoryError
-from mcp_project_context_server.integrations.repository.registry import (
-    reset_provider_for_testing as reset_repo,
-)
+from mcp_project_context_server.integrations.repository.registry import reset_provider_for_testing as reset_repo
 
 
 @pytest.fixture(autouse=True)

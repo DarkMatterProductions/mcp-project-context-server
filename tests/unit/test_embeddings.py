@@ -2,12 +2,12 @@
 import os
 
 import pytest
-
-from mcp_project_context_server.exceptions import EmbeddingError
-from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
 from shared import EMBEDDING_PROVIDER
 from shared.constants import NO_API_KEY_PROVIDER
 from shared.constructs import PROVIDERS
+
+from mcp_project_context_server.exceptions import EmbeddingError
+from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
 
 
 def _provider_param(provider: str) -> pytest.param:

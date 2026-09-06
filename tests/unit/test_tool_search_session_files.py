@@ -1,7 +1,6 @@
 """Tests for the search_session_files tool."""
 
 import pytest
-
 from mcp import types
 
 from mcp_project_context_server.tools.search_session_files import handle

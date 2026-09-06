@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 
 from mcp import StdioServerParameters
-
 from shared import KNOWN_INTERFERING_ENV_VARS, SRC_DIR
 
 

@@ -1,7 +1,6 @@
 """Tests for the search_adr_index tool."""
 
 import pytest
-
 from mcp import types
 
 from mcp_project_context_server.tools.search_adr_index import handle

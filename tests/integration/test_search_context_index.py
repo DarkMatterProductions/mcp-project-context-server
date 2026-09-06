@@ -34,9 +34,8 @@ Run only tests that require no external services:
 import os
 
 import pytest
-
-from shared.constructs import CHROMA_COMPATIBLE_PROVIDERS
 from integration.base import MCPIntegrationBase
+from shared.constructs import CHROMA_COMPATIBLE_PROVIDERS
 
 pytestmark = pytest.mark.asyncio
 

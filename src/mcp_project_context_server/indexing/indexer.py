@@ -28,7 +28,6 @@ from mcp_project_context_server.helpers.context import (
     read_context_files,
     resolve_project_path,
 )
-
 from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
 from mcp_project_context_server.integrations.repository.base import RepositoryError
 from mcp_project_context_server.integrations.repository.registry import get_repository_provider

@@ -1,4 +1,4 @@
-from .constants import PROVIDER_DEFAULTS, NO_API_KEY_PROVIDER
+from .constants import NO_API_KEY_PROVIDER, PROVIDER_DEFAULTS
 from .constructs import EMBEDDING_PROVIDER, KNOWN_INTERFERING_ENV_VARS, SRC_DIR
 
 __all__ = [

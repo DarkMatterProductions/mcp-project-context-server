@@ -4,7 +4,6 @@ import argparse
 from mcp_project_context_server.helpers.logs import ParseLogLevel, setup_logging
 from mcp_project_context_server.server import run
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--log-level",

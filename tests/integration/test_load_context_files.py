@@ -6,7 +6,6 @@ contents.
 """
 
 import pytest
-
 from integration.base import MCPIntegrationBase
 
 pytestmark = pytest.mark.asyncio

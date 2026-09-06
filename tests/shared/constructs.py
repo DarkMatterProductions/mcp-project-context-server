@@ -1,9 +1,10 @@
 from pathlib import Path
 
+from shared import PROVIDER_DEFAULTS
+
 from mcp_project_context_server.integrations.vectorstore.registry import (
     INCOMPATIBLE_EMBED_PROVIDERS_BY_VECTOR_STORE,
 )
-from shared import PROVIDER_DEFAULTS
 
 PROVIDERS = PROVIDER_DEFAULTS.keys()
 # Embed providers usable with the default (chroma-local) vector store.  Excludes

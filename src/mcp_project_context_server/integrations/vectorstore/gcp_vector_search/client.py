@@ -297,9 +297,7 @@ class GcpVectorSearchProvider:
         """
 
         def _sync() -> QueryResult:
-            from google.cloud.aiplatform.matching_engine.matching_engine_index_endpoint import (
-                Namespace,  # lazy import
-            )
+            from google.cloud.aiplatform.matching_engine.matching_engine_index_endpoint import Namespace  # lazy import
 
             endpoint = self._get_endpoint()
             response = endpoint.find_neighbors(

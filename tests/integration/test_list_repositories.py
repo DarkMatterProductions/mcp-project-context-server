@@ -12,7 +12,6 @@ Scenarios covered:
 - Response is always a single text content block.
 """
 import pytest
-
 from integration.base import MCPIntegrationBase
 
 pytestmark = pytest.mark.asyncio

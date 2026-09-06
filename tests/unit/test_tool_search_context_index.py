@@ -2,9 +2,7 @@
 
 import pytest
 
-from mcp_project_context_server.integrations.repository.registry import (
-    reset_provider_for_testing as reset_repo,
-)
+from mcp_project_context_server.integrations.repository.registry import reset_provider_for_testing as reset_repo
 from mcp_project_context_server.integrations.vectorstore.base import QueryResult, VectorStoreError
 from mcp_project_context_server.tools.search_context_index import handle
 
