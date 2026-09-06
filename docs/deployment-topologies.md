@@ -373,6 +373,14 @@ Developer laptops (clients)
 
 A single Cloud Run service handles embedding and retrieval for an entire organization. Vertex AI Agent Engine calls it with Google-signed OIDC tokens. Multiple GitHub organizations are supported from one deployment.
 
+> **Fully GCP-native alternative:** this topology uses Cloud SQL + pgvector for storage. Teams that want to
+> avoid operating PostgreSQL entirely can instead set `VECTOR_STORE_PROVIDER=gcp-vector-search` against a
+> pre-provisioned Vertex AI Vector Search Index/IndexEndpoint plus Firestore — see
+> [§2.4 in the configuration reference](configuration-reference.md#24-gcp-vector-search) and
+> [ADR-00023](../.context/decisions/ADR-00023-gcp-vertex-ai-vector-search-provider.md). That provider does
+> not create or deploy the Index/IndexEndpoint for you, so provisioning them is an extra prerequisite step
+> not shown in this walkthrough.
+
 ---
 
 ### Step 1 — Prerequisites

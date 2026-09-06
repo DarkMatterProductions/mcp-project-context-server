@@ -24,3 +24,4 @@ AGENT.md
 venv/
 *.pyc
 __pycache__/
+.env*

@@ -2,6 +2,9 @@
 
 ## Status
 Implemented
+Note: The implementation path referenced below (`indexing/chroma/indexer.py`) is **deprecated**.
+The canonical location is now `indexing/indexer.py` (`run_index_pipeline`).  The POSIX normalization
+convention is unchanged and applies to all vector store providers.
 
 ## Context
 
@@ -22,7 +25,9 @@ Additionally, `mcp-project-context-server` is intended to run on both Windows an
 
 All ChromaDB document IDs and metadata values that contain file paths are normalized to POSIX format using `.as_posix()` before being passed to the ChromaDB API. `Path` objects are converted to strings only at the ChromaDB API boundary, not at any intermediate point.
 
-This is implemented in `helpers/context.py` (`read_context_files()` returns a `dict[str, str]` where keys are `.as_posix()` strings) and in `indexing/chroma/indexer.py` (chunk document IDs and metadata `source` values use `.as_posix()`).
+This is implemented in `helpers/context.py` (`read_context_files()` returns a `dict[str, str]` where keys are `.as_posix()` strings) and in `indexing/indexer.py` (`run_index_pipeline` — chunk document IDs and metadata `source` values use `.as_posix()`).
+
+> **Deprecated**: the original implementation reference to `indexing/chroma/indexer.py` — that module now raises `RuntimeError` at call time.
 
 ```python
 # Correct — always forward slashes regardless of OS

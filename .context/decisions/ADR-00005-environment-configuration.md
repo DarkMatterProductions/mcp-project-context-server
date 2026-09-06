@@ -3,6 +3,8 @@
 ## Status
 Implemented (environment variables)
 Proposed (YAML configuration layer)
+Partially Superseded — see ADR-00015 (vector store abstraction) and ADR-00014 (embedding abstraction).
+The module paths in the table below reflect the post-abstraction layout; the original `integrations/chroma/client.py` and `indexing/chroma/indexer.py` paths are deprecated.
 
 ## Context
 
@@ -29,11 +31,22 @@ All runtime configuration is provided via environment variables. Defaults are se
 
 | Variable | Default | Module |
 |---|---|---|
-| `OLLAMA_HOST` | `http://localhost:11434` | `integrations/ollama/client.py` |
-| `EMBED_MODEL` | `nomic-embed-text` | `integrations/ollama/client.py` |
-| `CHROMA_DIR` | `~/.mcp-data/chroma` | `integrations/chroma/client.py` |
+| `OLLAMA_HOST` | `http://localhost:11434` | `integrations/embeddings/ollama/client.py` |
+| `EMBED_MODEL` | `nomic-embed-text` | `integrations/embeddings/ollama/client.py` |
+| `EMBED_PROVIDER` | `ollama` | `integrations/embeddings/registry.py` |
+| `CHROMA_DIR` | `~/.mcp-data/chroma` | `integrations/vectorstore/chroma_local/client.py` |
+| `CHROMA_HOST` | `localhost` | `integrations/vectorstore/chroma_http/client.py` |
+| `CHROMA_PORT` | `8000` | `integrations/vectorstore/chroma_http/client.py` |
+| `CHROMA_API_KEY` | *(unset)* | `integrations/vectorstore/chroma_http/client.py` |
+| `PGVECTOR_CONNECTION_STRING` | *(required)* | `integrations/vectorstore/pgvector/client.py` |
+| `VECTOR_STORE_PROVIDER` | `chroma-local` | `integrations/vectorstore/registry.py` |
 | `PROJECT_PATH` | resolved at tool call time | `tools/*.py` |
-| `EMBED_CONCURRENCY` | `4` | `indexing/chroma/indexer.py` |
+| `EMBED_CONCURRENCY` | `4` | `indexing/indexer.py` |
+
+> **Deprecated paths** (raise `RuntimeError` at call time):
+> - `integrations/chroma/client.py` → use `integrations/vectorstore/chroma_local/client.py` or `chroma_http/client.py`
+> - `indexing/chroma/indexer.py` → use `integrations/vectorstore/registry.get_indexer()` or the provider-owned indexer
+> - `indexing/ollama/embedder.py` → use `indexing/embedder.py`
 
 `pyyaml` is already present in `requirements.txt` in anticipation of a YAML configuration layer. See ADR Review Discussion below.
 

@@ -7,14 +7,133 @@ import subprocess
 import os
 import re
 import argparse
+import shutil
 import sys
 import platform
+import tarfile
+import tempfile
+import zipfile
+from collections import defaultdict
 from pathlib import Path
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Dict, Any
 
+import requests
 
-# Use 'git.exe' on Windows, 'git' on all other platforms
+# ── Constants ────────────────────────────────────────────────────────────────
+GH_CMD = "gh.exe" if platform.system() == "Windows" else "gh"
+GH_API_URL = "https://api.github.com/repos/cli/cli/releases/latest"
+INSTALL_DIR = Path.home() / "bin"
 GIT_CMD = 'git.exe' if platform.system() == 'Windows' else 'git'
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+def get_installed_version() -> str | None:
+    """Return the installed gh version string (e.g. '2.50.0'), or None."""
+    gh_path = shutil.which(GH_CMD) or INSTALL_DIR / GH_CMD
+    try:
+        result = subprocess.run(
+            [str(gh_path), "--version"],
+            capture_output=True, text=True, check=True
+        )
+        # Output: "gh version 2.50.0 (2024-05-01)"
+        return result.stdout.split()[2]
+    except (subprocess.CalledProcessError, FileNotFoundError, IndexError):
+        return None
+
+
+def get_latest_release() -> tuple[str, str]:
+    """Return (version, download_url) for the current platform from the GitHub API."""
+    system = platform.system()   # 'Linux', 'Darwin', 'Windows'
+    machine = platform.machine() # 'x86_64', 'arm64', 'AMD64', etc.
+
+    # Normalise OS label to match GitHub asset naming
+    os_map = {"Linux": "linux", "Darwin": "macOS", "Windows": "windows"}
+    os_label = os_map.get(system, system.lower())
+
+    # Normalise arch label
+    arch_map = {"x86_64": "amd64", "AMD64": "amd64", "aarch64": "arm64", "arm64": "arm64"}
+    arch_label = arch_map.get(machine, machine.lower())
+
+    response = requests.get(GH_API_URL, timeout=10)
+    response.raise_for_status()
+    data = response.json()
+
+    version = data["tag_name"].lstrip("v")  # e.g. '2.50.0'
+
+    # Asset names look like: gh_2.50.0_linux_amd64.tar.gz / gh_2.50.0_windows_amd64.zip
+    ext = "zip" if system == "Windows" else "tar.gz"
+    expected_name = f"gh_{version}_{os_label}_{arch_label}.{ext}"
+
+    for asset in data["assets"]:
+        if asset["name"] == expected_name:
+            return version, asset["browser_download_url"]
+
+    raise RuntimeError(
+        f"No matching asset found for {os_label}/{arch_label}. "
+        f"Looked for: {expected_name}"
+    )
+
+
+def version_tuple(v: str) -> tuple[int, ...]:
+    return tuple(int(x) for x in v.split("."))
+
+
+def download_and_install(url: str, version: str, dry_run: bool = False) -> None:
+    """Download the release archive and extract the gh binary to INSTALL_DIR."""
+    system = platform.system()
+    if dry_run:
+        print(f"Dry run mode. Would download and install gh {version} from {url} ...")
+        return
+
+    INSTALL_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"  Downloading from {url} ...")
+    response = requests.get(url, stream=True, timeout=60)
+    response.raise_for_status()
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        archive_path = tmp_path / ("gh_release.zip" if system == "Windows" else "gh_release.tar.gz")
+
+        with open(archive_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+        # Extract
+        if system == "Windows":
+            with zipfile.ZipFile(archive_path) as zf:
+                zf.extractall(tmp_path)
+        else:
+            with tarfile.open(archive_path, "r:gz") as tf:
+                tf.extractall(tmp_path)
+
+        # Find the binary inside the extracted tree
+        binary = next(tmp_path.rglob(GH_CMD), None)
+        if binary is None:
+            raise FileNotFoundError(f"Could not locate '{GH_CMD}' in downloaded archive.")
+
+        dest = INSTALL_DIR / GH_CMD
+        shutil.copy2(binary, dest)
+        dest.chmod(0o755)  # no-op on Windows, harmless
+        print(f"  Installed gh {version} → {dest}")
+
+
+def ensure_gh_cli(dry_run: bool = False) -> None:
+    print("Checking GitHub CLI (gh) ...")
+
+    latest_version, download_url = get_latest_release()
+    print(f"  Latest release : v{latest_version}")
+
+    installed_version = get_installed_version()
+
+    if installed_version is None:
+        print("  gh not found. Installing ...")
+        download_and_install(download_url, latest_version, dry_run)
+    elif version_tuple(installed_version) < version_tuple(latest_version):
+        print(f"  Installed version v{installed_version} is outdated. Upgrading ...")
+        download_and_install(download_url, latest_version, dry_run)
+    else:
+        print(f"  gh v{installed_version} is up to date. Nothing to do.")
 
 
 def get_distance_from_main() -> int:
@@ -136,7 +255,7 @@ def get_commits_since_tag(tag: str) -> List[str]:
         return []
 
 
-def get_commit_message(commit_hash: str) -> Tuple[str, str]:
+def get_commit_message(commit_hash: str) -> Dict[str, str]:
     """Get commit subject and body."""
     try:
         result = subprocess.run(
@@ -148,42 +267,75 @@ def get_commit_message(commit_hash: str) -> Tuple[str, str]:
         lines = result.stdout.split('\n', 1)
         subject = lines[0] if lines else ''
         body = lines[1] if len(lines) > 1 else ''
-        return subject, body
+        return {
+            "subject": subject,
+            "body": body
+        }
     except subprocess.CalledProcessError as e:
         print(f"Error getting commit message for {commit_hash}: {e}")
         if e.stdout:
             print(f"stdout: {e.stdout.strip()}")
         if e.stderr:
             print(f"stderr: {e.stderr.strip()}")
-        return '', ''
+        return {
+            "subject": "",
+            "body": ""
+        }
     except Exception as e:
         print(f"Error getting commit message for {commit_hash}: {e}")
-        return '', ''
+        return {
+            "subject": "",
+            "body": ""
+        }
 
 
 COMMIT_TYPES = {
-    'breaking':  'A backwards incompatible change to the API or Tools',
-    'rewrite':   'Complete rewrites / architectural overhauls',
-    'milestone': 'Significant feature milestones / stable releases',
-    'deprecate': 'Major deprecation cleanups',
-    'eos':       'End of support for a runtime/platform',
-    'license':   'License changes',
-    'security':  'Security-mandated incompatible changes',
-    'feature':   'A new feature or capability',
-    'fix':       'A bug fix',
-    'test':      'Adding or updating tests',
-    'docs':      'Documentation changes only',
-    'refactor':  'Code restructuring with no behaviour change',
-    'chore':     'Build system, tooling, or dependency changes',
-    'adrs':      'Adding or updating an Architecture Decision Record',
-    'adr':       'Adding or updating an Architecture Decision Record',
+    'breaking': {'name': 'breaking', 'description': 'A backwards incompatible change to the API or Tools', 'bump_type': 'major'},
+    'rewrite': {'name': 'rewrite', 'description': 'Complete rewrites / architectural overhauls', 'bump_type': 'major'},
+    'milestone': {'name': 'milestone', 'description': 'Significant feature milestones / stable releases', 'bump_type': 'major'},
+    'deprecate': {'name': 'deprecate', 'description': 'Major deprecation cleanups', 'bump_type': 'major'},
+    'eos': {'name': 'eos', 'description': 'End of support for a runtime/platform', 'bump_type': 'major'},
+    'license': {'name': 'license', 'description': 'License changes', 'bump_type': 'major'},
+    'security': {'name': 'security', 'description': 'Security-mandated incompatible changes', 'bump_type': 'major'},
+    'feature': {'name': 'feature', 'description': 'A new feature or capability', 'bump_type': 'minor'},
+    'fix': {'name': 'fix', 'description': 'A bug fix', 'bump_type': 'minor'},
+    'test': {'name': 'test', 'description': 'Adding or updating tests', 'bump_type': 'none'},
+    'docs': {'name': 'docs', 'description': 'Documentation changes only', 'bump_type': 'none'},
+    'refactor': {'name': 'refactor', 'description': 'Code restructuring with no behaviour change', 'bump_type': 'minor'},
+    'chore': {'name': 'chore', 'description': 'Build system, tooling, or dependency changes', 'bump_type': 'none'},
+    'adrs': {'name': 'adrs', 'description': 'Adding or updating an Architecture Decision Record', 'bump_type': 'minor'},
 }
 
-# Scopes that suppress version bumping regardless of commit type.
-NO_RELEASE_SCOPES = {'ci', 'tools'}
+
+INCREMENT_BUMP_TYPE_MESSAGES = {
+    'major': 'Incrementing major version',
+    'minor': 'Incrementing minor version',
+    'patch': 'Incrementing patch versio.',
+    'none': 'Skip building and publishing artifacts',
+}
 
 
-def determine_bump(commits: List[str]) -> str:
+RELEASE_OVERRIDE_SCOPES = {
+    'ci': {'name': 'ci', 'description': 'Changes to CI configuration files and scripts', 'bump_type': 'none'},
+    'tools': {'name': 'tools', 'description': 'Changes to build, release, or dependency tools', 'bump_type': 'none'},
+    'packaging': {'name': 'packaging', 'description': 'Changes to packaging configuration files and scripts', 'bump_type': 'none'},
+}
+
+
+def key_id_lookup(_type_scope_match: re.Match, mapping: dict) -> dict[str, str | bool]:
+    __type_id = _type_scope_match.group("type") if _type_scope_match else None
+    __force_major = _type_scope_match.group("force_major") if _type_scope_match else False
+    __scope_skip_version = _type_scope_match.group("scope") if _type_scope_match else False
+    key_ids = [key_id for key_id in mapping.keys() if key_id is not None and (key_id.startswith(__type_id) if __type_id else False)]
+    for key_id in key_ids:
+        type_id = mapping[key_id].copy()
+        type_id["force_major"] = __force_major
+        type_id["skip_version"] = __scope_skip_version
+        return type_id
+    return {'name': 'invalid', 'description': 'Invalid Type', 'bump_type': 'invalid', 'force_major': False, 'skip_version': False}
+
+
+def determine_bump(commits: List[str], verbose: bool = False, debug: bool=False) -> str:
     """
     Determine the semantic version bump based on commits.
     Returns 'major', 'minor', 'patch', or 'none' when all commits are docs/test/chore-only
@@ -193,97 +345,102 @@ def determine_bump(commits: List[str]) -> str:
     has_minor = False
     has_patch = False
     has_none = False
+    has_invalid = False
+    type_id_entry = lambda typescope_match: key_id_lookup(typescope_match, COMMIT_TYPES)
+    commit_ids: defaultdict[Any, dict[str, str | Dict[str, str]]] = defaultdict(dict)
 
     for commit_hash in commits:
-        subject, body = get_commit_message(commit_hash)
+        commit_ids[commit_hash] = get_commit_message(commit_hash)
+        commit_ids[commit_hash]["hash"] = commit_hash
+        commit_ids[commit_hash]["short_hash"] = commit_hash[:7]
+        type_scope_match = re.match(r'(?P<type>\w+)(?P<force_major>!?)\((?P<scope>\w+)\):[ ]+', commit_ids[commit_hash]["subject"])
+        commit_ids[commit_hash]["type_id"] = type_id_entry(type_scope_match)
 
-        # Extract scope; certain scopes always suppress a release regardless of type
-        scope_match = re.match(r'^\w+!?\(([^)]+)\):', subject)
-        if scope_match and scope_match.group(1) in NO_RELEASE_SCOPES:
-            scope = scope_match.group(1)
-            print(f"Commit scope '{scope}' is a no-release scope. Not building a release.")
-            has_none = True
-            continue
-
-        chore_or_doc_check = re.findall(r'^(docs|test|chore)\(.*\):', subject)
-        if chore_or_doc_check:
-            commit_type = chore_or_doc_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Not building a release.")
-            has_none = True
-
-        patch_bump_check = re.findall(r'^(fix|refactor|adr[s]*)\(.*\):', subject)
-        if patch_bump_check:
-            commit_type = patch_bump_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing patch version.")
-            has_patch = True
-
-        minor_bump_check = re.findall(r'^(feature|license)\(.*\):', subject)
-        if minor_bump_check:
-            commit_type = minor_bump_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing minor version.")
+        if commit_ids[commit_hash]["type_id"] is None:
+            raise ValueError(f"\"type_id_entry()\" should not have returned None for commit {commit_ids[commit_hash]['hash']} with subject: {commit_ids[commit_hash]['subject']}")
+        elif commit_ids[commit_hash]["type_id"]["force_major"] and not commit_ids[commit_hash]["type_id"]["skip_version"]:
+            has_major = True
+            print("** FORCE MAJOR OVERRIDE ENABLED **")
+            print("  Skipping version bump analysis.")
+            print()
+        elif commit_ids[commit_hash]["type_id"]["bump_type"] == "major":
+            has_major = True
+        elif commit_ids[commit_hash]["type_id"]["bump_type"] == "minor":
             has_minor = True
+        elif commit_ids[commit_hash]["type_id"]["bump_type"] == "patch":
+            has_patch = True
+        elif commit_ids[commit_hash]["type_id"]["bump_type"] == "none" or commit_ids[commit_hash]["type_id"]["skip_version"]:
+            has_none = True
+        elif commit_ids[commit_hash]["type_id"]["bump_type"] == "invalid":
+            has_invalid = True
 
-        major_bump_check = re.findall(r'^(breaking|rewrite|milestone|deprecate|eos|license|security)\(.*\):', subject)
-        if major_bump_check:
-            commit_type = major_bump_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing major version.")
-            has_major = True
-            break
 
-        major_bump_check = re.findall(r'^(feature|fix)!\(.*\):', subject)
-        if major_bump_check:
-            commit_type = major_bump_check[0]
-            print(f"Commit flagged as {commit_type} ({COMMIT_TYPES.get(commit_type, '')}). Incrementing major version.")
-            has_major = True
-            break
+    for commit_data in commit_ids.values():
+        if debug:
+            if commit_data["type_id"]:
+                print(f"Commit {commit_data['hash']}: ({commit_data['type_id']['name']}: {commit_data['subject']})")
 
-    if has_major:
-        bump = 'major'
+    if not any([has_major, has_minor, has_patch, has_none]) or has_invalid:
+        invalid_commits = [commit_ids[commit_hash] for commit_hash in commits if commit_ids[commit_hash]["type_id"] is None or commit_ids[commit_hash]["type_id"]["bump_type"] == "invalid"]
+        invalid_count = len(invalid_commits)
+        if invalid_count > 0:
+            print("\nInvalid commit details -")
+            for commit_hash in invalid_commits:
+                if debug:
+                    print(f"    Commit {commit_hash['hash']} has no recognized type in subject: '{commit_hash['subject']}'")
+            print(f"Unrecognized types identified in {invalid_count} commit(s) subject line(s). Exiting process.")
+        else:
+            print("\nNo valid commits found. Exiting process.")
+        sys.exit(-1)
+    elif has_major:
+        bump = "major"
     elif has_minor:
-        bump = 'minor'
+        bump = "minor"
     elif has_patch:
-        bump = 'patch'
+        bump = "patch"
     elif has_none:
-        bump = 'none'
+        bump = "none"
     else:
-        raise ValueError(f"No recognised commit type found in {len(commits)} commit(s). Cannot determine bump type.")
-
-    print(f"Determined bump type: {bump}")
+        raise ValueError(f"Cannot determine bump type.")
     return bump
 
 def increment_version(version: str, bump: str) -> Optional[str]:
     """Increment the version based on bump type."""
     major, minor, patch = map(int, version.split('.'))
 
-    if bump == 'major':
+    if bump == "major":
         major += 1
         minor = 0
         patch = 0
-    elif bump == 'minor':
+    elif bump == "minor":
         minor += 1
         patch = 0
-    elif bump == 'patch':
+    elif bump == "patch":
         patch += 1
-    elif bump == 'none':
+    elif bump == "none":
         pass  # No version change
     else:
         raise ValueError(f"Unknown Increment Type: {bump}")
 
-    if bump == 'none':
-        return None
+    if bump == "none":
+        return version
     else:
         return f'{major}.{minor}.{patch}'
 
 
-def determine_new_version(current_version: str, commits: List[str], force_bump: Optional[str] = None) -> Tuple[Optional[str], str]:
+def determine_new_version(
+        current_version: str, commits: List[str], force_bump: Optional[str] = None,
+        verbose: bool = False, debug: bool = False) -> Tuple[Optional[str], str]:
     """
-    Determine the new version based on current version and commits.
+    Determine the new version based on the current version and commits.
 
     Args:
         current_version: The current semantic version string (e.g. '1.2.3').
         commits: List of commit hashes since the last version tag.
         force_bump: Optional override for bump type ('major', 'minor', or 'patch').
                     When provided, skips commit analysis and uses this bump type directly.
+        verbose: Whether to print verbose output.
+        debug: Whether to print debug output.
 
     Returns:
         A tuple of (new_version, bump_used). new_version is None when there is nothing
@@ -292,11 +449,11 @@ def determine_new_version(current_version: str, commits: List[str], force_bump: 
     """
     if not commits and not force_bump:
         print("No new commits since last version")
-        return None, 'none'
+        return None, "none"
 
     if current_version == '0.0.0':
         # Apply forced bump from initial version, or default to 0.0.1
-        bump = force_bump or 'patch'
+        bump = force_bump or "patch"
         first_version = increment_version(current_version, bump)
         if force_bump:
             print(f"No previous version found. Setting first version to {first_version} (forced {force_bump})")
@@ -304,16 +461,12 @@ def determine_new_version(current_version: str, commits: List[str], force_bump: 
             print(f"No previous version found. Setting first version to {first_version}")
         return first_version, bump
 
-    # Use forced bump if provided, otherwise analyse commits
+    # Use forced bump if provided, otherwise analyze commits
     if force_bump:
         bump = force_bump
         print(f"Using forced bump type: {bump}")
     else:
-        bump = determine_bump(commits)
-
-    if bump == 'none':
-        print("No version-bumping commits found. Skipping release.")
-        return None, 'none'
+        bump = determine_bump(commits, verbose, debug)
 
     new_version = increment_version(current_version, bump)
     return new_version, bump
@@ -325,7 +478,7 @@ def build_artifacts(new_version: str, verbose: bool = False) -> List[Path]:
 
     # Run build, capturing stdout/stderr and optionally echoing to the console
     process = subprocess.Popen(
-        [sys.executable, '-m', 'build'],
+        [sys.executable, "-m", "build"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         env={
@@ -376,8 +529,8 @@ def build_artifacts(new_version: str, verbose: bool = False) -> List[Path]:
 def create_git_tag(version: str):
     """Create and push a git tag for the new version."""
     try:
-        subprocess.run([GIT_CMD, 'tag', version], check=True)
-        subprocess.run([GIT_CMD, 'push', 'origin', version], check=True)
+        subprocess.run([GIT_CMD, "tag", version], check=True)
+        subprocess.run([GIT_CMD, "push", "origin", version], check=True)
         print(f"Created and pushed git tag: {version}")
     except subprocess.CalledProcessError as e:
         print(f"Error creating git tag: {e}")
@@ -411,6 +564,7 @@ def get_repository_name():
 
 def create_github_release(version: str, artifacts: List, dry_run: bool = False):
     """Create a GitHub release with the provided artifacts."""
+    ensure_gh_cli(dry_run)
     if dry_run:
         print(f"[DRY-RUN] Would create GitHub release for {version} with artifacts:")
         for artifact in artifacts:
@@ -419,7 +573,7 @@ def create_github_release(version: str, artifacts: List, dry_run: bool = False):
 
     process = subprocess.Popen(
         [
-            'gh', 'release', 'create', version,
+            "gh", "release", "create", version,
             *[f"./dist/{str(a)}" for a in artifacts],
             '--title', f'{version}',
             '--notes', f'Automated release for {version}'
@@ -445,27 +599,34 @@ def create_github_release(version: str, artifacts: List, dry_run: bool = False):
 
 def main():
     """Main versioning workflow."""
-    # Setup argument parser
+    # Set up argument parser
     parser = argparse.ArgumentParser(
         description='Semantic Versioning Script for Git Repositories'
     )
     version_increment = parser.add_mutually_exclusive_group(required=False)
-    version_increment.add_argument('--major', action='store_true',
+    version_increment.add_argument('--major', action="store_true",
                                    help='Increment the major version (X.0.0)')
-    version_increment.add_argument('--minor', action='store_true',
+    version_increment.add_argument('--minor', action="store_true",
                                    help='Increment the minor version (X.Y.0)')
-    version_increment.add_argument('--patch', action='store_true',
+    version_increment.add_argument('--patch', action="store_true",
                                    help='Increment the patch version (X.Y.Z)')
-    parser.add_argument('--build', action='store_true',
+    parser.add_argument('--build', action="store_true",
                         help='Build distribution artifacts using python -m build')
-    parser.add_argument('--publish', action='store_true',
+    parser.add_argument('--rebuild', action="store_true",
+                        help='Force rebuild latest tag artifacts (Overrides --build)')
+    parser.add_argument('--publish', action="store_true",
                         help='Publish a GitHub release with built artifacts (requires --build)')
-    parser.add_argument('--dry-run', action='store_true',
+    parser.add_argument('--dry-run', action="store_true",
                         help='Perform a dry run without creating tags, builds, or releases')
-    parser.add_argument('--verbose', action='store_true',
-                        help='Stream build output to the console during python -m build')
+    parser.add_argument('--verbose', action="store_true",
+                        help='Enable verbose output for expanded console output')
+    parser.add_argument('--debug', action="store_true",
+                        help='Enable debug output')
 
     args = parser.parse_args()
+
+    if args.rebuild:
+        args.build = True
 
     if args.publish and not args.build:
         print("Error: --publish requires --build")
@@ -473,6 +634,7 @@ def main():
 
     print("=== Semantic Versioning Script ===\n")
 
+    # Check if dry-run mode is active
     # Check if dry-run mode is active
     if args.dry_run:
         print("🔍 DRY-RUN MODE ACTIVE - No tags, releases, or artifacts will be created\n")
@@ -488,38 +650,41 @@ def main():
 
     # Step 2: Get commits since last version
     commits = get_commits_since_tag(current_version)
-    print(f"Found {len(commits)} new commits\n")
 
     # Step 3: Resolve forced bump type from CLI flags (overrides commit analysis)
     if args.major:
-        force_bump = 'major'
+        force_bump = "major"
     elif args.minor:
-        force_bump = 'minor'
+        force_bump = "minor"
     elif args.patch:
-        force_bump = 'patch'
+        force_bump = "patch"
     else:
         force_bump = None
 
     # Step 4: Determine new base version
-    new_version, bump_used = determine_new_version(current_version, commits, force_bump)
+    new_version, bump_used = determine_new_version(current_version, commits, force_bump, args.verbose, args.debug)
+    if args.rebuild:
+        new_version = current_version
+    elif new_version is None:
+        print("No new commits since last version. Exiting.")
+        sys.exit(0)
+    print(f"New version: {new_version} ({INCREMENT_BUMP_TYPE_MESSAGES[bump_used]})")
+    print(f"Found {len(commits)} new commits\n")
 
     # Output version and bump type for GitHub Actions
-    github_output = os.environ.get('GITHUB_OUTPUT', None)
+    github_output = os.environ.get("GITHUB_OUTPUT", None)
     if github_output:
-        with open(github_output, 'a') as f:
+        with open(github_output, "a") as f:
             f.write(f'version={new_version}\n')
             f.write(f'bump={bump_used}\n')
 
-    if bump_used == 'none':
-        print("No release needed based on commit analysis. Exiting.")
+    if new_version == current_version and bump_used == 'none':
+        print("Tagged for skipping Build & Release. Exiting.")
         sys.exit(0)
-    elif new_version is None:
-        print("Cannot determine new version")
-        sys.exit(1)
 
     # Step 5: Build artifacts
     artifacts = []
-    if args.build:
+    if args.build or args.rebuild:
         if args.dry_run:
             print("\n[DRY-RUN] Would run python -m build")
             artifacts = [
@@ -535,18 +700,19 @@ def main():
                 new_version=new_version,
                 verbose=args.verbose
             )
+    else:
+        print("Skipping build step.")
 
     # Step 6: Create git tag
     if args.dry_run:
         print("[DRY-RUN] Would create git tag:", new_version)
     else:
-        print("Creating git tag...")
-        create_git_tag(new_version)
-
-    # Step 7: Publish GitHub release
-    if args.publish:
-        print("\nCreating GitHub release...")
-        create_github_release(new_version, artifacts, dry_run=args.dry_run)
+        # Step 7: Publish GitHub release
+        if args.publish and not args.rebuild:
+            print(f"Creating git tag: {new_version}")
+            create_git_tag(new_version)
+            print("\nCreating GitHub release...")
+            create_github_release(new_version, artifacts, dry_run=args.dry_run)
 
     print("\n=== Versioning Complete ===")
 

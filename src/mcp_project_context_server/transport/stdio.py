@@ -5,7 +5,6 @@ which is how Claude Desktop, Claude Code, Cursor, JetBrains AI Assistant,
 Continue Dev, and GitHub Copilot all launch MCP servers locally.
 """
 
-import asyncio
 import logging
 
 from mcp.server import Server
@@ -17,8 +16,8 @@ logger = logging.getLogger(__name__)
 async def run_stdio(server: Server) -> None:
     """Run *server* over STDIO until the stream is closed.
 
-    Args:
-        server: The configured MCP :class:`Server` instance.
+    :param server: (Server) The configured MCP :class:`Server` instance.
+    :return: (None) This function does not return a value.
     """
     logger.info("Starting MCP server in STDIO mode")
     async with stdio_server() as (read_stream, write_stream):

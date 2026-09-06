@@ -3,6 +3,10 @@
 ## Status
 Implemented (drop-and-recreate on manual trigger)
 Proposed (watchdog-based auto-reindex)
+Superseded in part — see ADR-00015 (vector store abstraction).
+The implementation path referenced below (`indexing/chroma/indexer.py`) is **deprecated**.
+The canonical implementation is now per-provider: `integrations/vectorstore/{chroma_local,chroma_http,pgvector}/indexer.py`,
+coordinated via `integrations/vectorstore/registry.get_indexer()`.  The shared pipeline lives in `indexing/indexer.py`.
 
 ## Context
 
@@ -33,7 +37,12 @@ A secondary question was whether indexing should be triggered automatically when
 3. All `.md` files in `.context/` are read, chunked, and embedded
 4. All valid embeddings are batch-added in a single call
 
-This is implemented in `indexing/chroma/indexer.py` via `index_project_context(project_path)`.
+This is implemented per-provider in `integrations/vectorstore/{chroma_local,chroma_http,pgvector}/indexer.py`
+via `index_project_context(project_path)`.  The shared pipeline (chunking, concurrent embedding, upsert)
+lives in `indexing/indexer.py::run_index_pipeline()`.  Entry point for callers:
+`integrations/vectorstore/registry.get_indexer()`.
+
+> **Deprecated**: `indexing/chroma/indexer.py` — raises `RuntimeError` at call time.
 
 `watchdog`-based auto-reindex is planned but not yet implemented. When added, it will watch the `.context/` directory for file creation, modification, and deletion events and trigger a debounced re-index automatically.
 
