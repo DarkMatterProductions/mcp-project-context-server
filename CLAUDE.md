@@ -2,6 +2,7 @@
 
 These instructions are for all agents working on this project. Please read them carefully and follow them closely. When in conflict, these rules supersede any other instructions. If you have any questions about these instructions, please ask for clarification.
 
+- When working within this project, always leverage the tools provided by the `project_context` connector.
 - At the start of every session, read and follow the instructions in the `.context/development-cycle.md` file.
 - When generating an new ADR, always check if there is a `.context/adr-creation-and-review-process.md` file. If there is, follow the defined process for creating a new ADR.
 - When reviewing an ADR, always check if there is a `.context/adr-creation-and-review-process.md` file. If there is, follow the defined process for reviewing and updating the ADR.
