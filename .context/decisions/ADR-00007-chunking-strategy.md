@@ -1,7 +1,7 @@
 # ADR-00007: Chunking strategy for markdown indexing
 
 ## Status
-Proposed
+Accepted
 
 ## Context
 
