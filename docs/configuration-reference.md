@@ -261,6 +261,52 @@ PGVECTOR_CONNECTION_STRING=postgresql://mcpuser:secret@db.internal:5432/mcp_cont
 
 ---
 
+### 2.4 `gcp-vector-search`
+
+Uses [Vertex AI Vector Search](https://cloud.google.com/vertex-ai/docs/vector-search/overview) against a
+**pre-provisioned** Index and IndexEndpoint. This provider does not create, deploy, or delete any Vertex AI
+infrastructure — see [ADR-00023](../.context/decisions/ADR-00023-gcp-vertex-ai-vector-search-provider.md).
+Document text and metadata (which Vector Search itself does not store) are kept in a Firestore sidecar in
+the same GCP project.
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `VECTOR_STORE_PROVIDER` | Yes | — | Set to `gcp-vector-search` |
+| `GCP_VECTOR_SEARCH_PROJECT` | Yes | — | Google Cloud project ID |
+| `GCP_VECTOR_SEARCH_LOCATION` | Yes | — | Google Cloud region, e.g. `us-central1` |
+| `GCP_VECTOR_SEARCH_INDEX_ID` | Yes | — | Resource ID of a pre-provisioned `MatchingEngineIndex` (must use `STREAM_UPDATE`) |
+| `GCP_VECTOR_SEARCH_INDEX_ENDPOINT_ID` | Yes | — | Resource ID of a pre-provisioned `MatchingEngineIndexEndpoint` |
+| `GCP_VECTOR_SEARCH_DEPLOYED_INDEX_ID` | Yes | — | `deployed_index_id` under which the index is deployed on the endpoint |
+| `GCP_VECTOR_SEARCH_FIRESTORE_COLLECTION` | No | `vector_store_documents` | Firestore collection used as the document/metadata sidecar |
+
+**When to use:** Teams already standardized on Google Cloud — especially alongside `EMBED_PROVIDER=vertexai`
+— who want a fully GCP-native embed + store pipeline without operating PostgreSQL or a ChromaDB server.
+
+**Prerequisites:**
+- A Vertex AI `MatchingEngineIndex` created with `index_update_method="STREAM_UPDATE"` (batch-update indexes
+  do not support the real-time upsert/remove calls this provider uses), deployed to a
+  `MatchingEngineIndexEndpoint`. **This provider does not create or deploy either resource** — provision them
+  yourself (Terraform, `gcloud`, or Console) before use, and ensure the index dimension matches your
+  configured `EMBED_PROVIDER`'s output dimension.
+- The Firestore API enabled in the same project, in Native mode.
+- [Application Default Credentials](https://cloud.google.com/docs/authentication/provide-credentials-adc)
+  (`gcloud auth application-default login` or `GOOGLE_APPLICATION_CREDENTIALS`) with permissions to read/write
+  the Index, IndexEndpoint, and Firestore.
+
+**Install extra:** `pip install "mcp-project-context-server[gcp-vector-search]"`
+
+**Example:**
+```bash
+VECTOR_STORE_PROVIDER=gcp-vector-search
+GCP_VECTOR_SEARCH_PROJECT=my-gcp-project
+GCP_VECTOR_SEARCH_LOCATION=us-central1
+GCP_VECTOR_SEARCH_INDEX_ID=1234567890123456789
+GCP_VECTOR_SEARCH_INDEX_ENDPOINT_ID=9876543210987654321
+GCP_VECTOR_SEARCH_DEPLOYED_INDEX_ID=mcp_context_deployed_v1
+```
+
+---
+
 ## 3. Repository Providers
 
 Set `REPO_PROVIDER` to tell the server how to fetch source code when a tool receives a `project_path` argument.
@@ -268,6 +314,13 @@ Set `REPO_PROVIDER` to tell the server how to fetch source code when a tool rece
 ```bash
 REPO_PROVIDER=local   # default
 ```
+
+All five tools — `load_project_context`, `search_project_context`,
+`index_project_context`, `save_session_summary`, and `list_repositories` —
+resolve `project_path` the same way: a filesystem path is read/written
+locally, while a `owner/repo` short identifier or a full repository URL is
+fetched (and, for `save_session_summary`, written) through the configured
+`REPO_PROVIDER` over its REST API — no local checkout required.
 
 ---
 
@@ -345,7 +398,8 @@ Multi-tenant mode allows a **single server deployment** to serve multiple organi
 - When `REPO_MULTI_TENANT=true`, the server exposes a `list_repositories` tool that lets agents discover which repos are available
 - `APPROVED_ORGS` restricts which organizations can be queried
 - `APPROVED_REPOS` provides fine-grained control on top of `APPROVED_ORGS`
-- If neither is set (with multi-tenant enabled), all repos accessible to the token can be indexed — use with caution
+- If neither `APPROVED_ORGS` nor `APPROVED_REPOS` is set while `REPO_MULTI_TENANT=true`, the server fails at startup — multi-tenant mode always requires an explicit allowlist
+- All five tools validate `project_path` against the allowlist before touching the filesystem or the provider's API — a `project_path` outside the allowlist is rejected regardless of which tool is called
 
 **Example:**
 ```bash
@@ -355,6 +409,38 @@ APPROVED_ORGS=acme,acme-labs
 APPROVED_REPOS=acme/backend,acme/frontend,acme-labs/infra
 GITHUB_TOKEN=ghp_...
 ```
+
+---
+
+### 3.6 Session Write Mode
+
+`save_session_summary` always writes locally when `project_path` is a
+filesystem path. When `project_path` is remote (`REPO_PROVIDER` is `github`,
+`gitlab`, or `gitea`), `REPO_SESSION_WRITE_MODE` controls how the write lands
+on the remote repository:
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `REPO_SESSION_WRITE_MODE` | No | `direct` | `direct` writes straight to a branch; `branch` creates a new branch per save |
+| `REPO_SESSION_BRANCH` | No | *(provider default branch)* | Only used in `direct` mode — target branch for the write. Ignored in `branch` mode |
+
+**`direct` mode (default):** writes to `REPO_SESSION_BRANCH` if set, otherwise
+the repository's default branch — the same single-branch behavior
+`write_file` has always had.
+
+**`branch` mode:** creates a new branch named `mcp-session/{date}-{HHMMSS}`
+off the default branch for every save, and writes there instead. The tool's
+response reports the branch name so a human can open a PR/MR from it. Nothing
+in the server automates that step or cleans up old session branches.
+
+**Example — review-first workflow:**
+```bash
+REPO_PROVIDER=github
+REPO_SESSION_WRITE_MODE=branch
+GITHUB_TOKEN=ghp_...
+```
+
+See [ADR-00022](../.context/decisions/ADR-00022-repository-write-mode-for-session-saves.md) for the rationale behind this default.
 
 ---
 
@@ -459,6 +545,12 @@ GOOGLE_APPROVED_SERVICE_ACCOUNTS=vertex-agent@my-gcp-project.iam.gserviceaccount
 | `CHROMA_HTTP_HEADERS` | Vector Store / chroma-http | — |
 | `PGVECTOR_CONNECTION_STRING` | Vector Store / pgvector | — |
 | `PGVECTOR_TABLE_NAME` | Vector Store / pgvector | `project_context_embeddings` |
+| `GCP_VECTOR_SEARCH_PROJECT` | Vector Store / gcp-vector-search | — |
+| `GCP_VECTOR_SEARCH_LOCATION` | Vector Store / gcp-vector-search | — |
+| `GCP_VECTOR_SEARCH_INDEX_ID` | Vector Store / gcp-vector-search | — |
+| `GCP_VECTOR_SEARCH_INDEX_ENDPOINT_ID` | Vector Store / gcp-vector-search | — |
+| `GCP_VECTOR_SEARCH_DEPLOYED_INDEX_ID` | Vector Store / gcp-vector-search | — |
+| `GCP_VECTOR_SEARCH_FIRESTORE_COLLECTION` | Vector Store / gcp-vector-search | `vector_store_documents` |
 | `REPO_PROVIDER` | Repository | `local` |
 | `GITHUB_TOKEN` | Repository / github | — |
 | `GITHUB_BASE_URL` | Repository / github | `https://api.github.com` |
@@ -469,6 +561,8 @@ GOOGLE_APPROVED_SERVICE_ACCOUNTS=vertex-agent@my-gcp-project.iam.gserviceaccount
 | `REPO_MULTI_TENANT` | Repository / multi-tenant | `false` |
 | `APPROVED_ORGS` | Repository / multi-tenant | *(all)* |
 | `APPROVED_REPOS` | Repository / multi-tenant | *(all)* |
+| `REPO_SESSION_WRITE_MODE` | Repository / session writes | `direct` |
+| `REPO_SESSION_BRANCH` | Repository / session writes | *(provider default branch)* |
 | `MCP_TRANSPORT` | Transport | `stdio` |
 | `MCP_HOST` | Transport / sse | `0.0.0.0` |
 | `MCP_PORT` | Transport / sse | `8080` |

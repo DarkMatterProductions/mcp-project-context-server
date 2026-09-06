@@ -103,7 +103,7 @@ Proceed with heading-boundary chunking as the new strategy, subject to implement
 - **Configurable chunk size**: The `CHUNK_SIZE` environment variable controls the maximum chunk size before sub-splitting
 - **Intelligent sub-splitting**: Large sections are intelligently divided rather than arbitrarily sliced
 - **Migration notification**: Users are informed via `load_project_context` output without needing to track ADR changes
-- **Code changes required**: `indexing/chroma/indexer.py` will be refactored to implement heading-boundary splitting with intelligent sub-splitting
+- **Code changes required**: `indexing/indexer.py` (`run_index_pipeline`) will be updated to implement heading-boundary splitting with intelligent sub-splitting. Note: `indexing/chroma/indexer.py` is deprecated — all chunking work targets the provider-agnostic `indexing/indexer.py`.
 - **Migration tracking**: System must track collection version to determine when to show migration notice
   - Collection metadata stores `server_version` field (server version from `pyproject.toml`)
   - On each collection update, store current server version (via `importlib.metadata.version()`) in metadata
