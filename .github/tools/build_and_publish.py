@@ -386,8 +386,7 @@ def determine_bump(commits: List[str], verbose: bool = False, debug: bool=False)
         if invalid_count > 0:
             print("\nInvalid commit details -")
             for commit_hash in invalid_commits:
-                if debug:
-                    print(f"    Commit {commit_hash['hash']} has no recognized type in subject: '{commit_hash['subject']}'")
+                print(f"    Commit {commit_hash['hash']} has no recognized type in subject: '{commit_hash['subject']}'")
             print(f"Unrecognized types identified in {invalid_count} commit(s) subject line(s). Exiting process.")
         else:
             print("\nNo valid commits found. Exiting process.")
