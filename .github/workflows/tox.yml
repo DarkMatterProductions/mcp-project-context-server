@@ -32,7 +32,7 @@ jobs:
           python -m pip install -e .
 
       - name: Run Pytest for coverage
-        run: pytest -s -vv --cov=mcp_project_context_server --cov-report term-missing  --cov-report=xml --junitxml=junit.xml -o junit_family=legacy tests/
+        run: pytest -s -vv --cov=mcp_project_context_server --cov-report term-missing  --cov-report=xml --junitxml=junit.xml -o junit_family=legacy tests/unit/
 
       - name: Run Tox
         run: tox
