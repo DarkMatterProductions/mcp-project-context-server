@@ -148,7 +148,10 @@ class TestSearchContextIndexWithVectorStore(MCPIntegrationBase):
         )
 
         async with make_mcp_session({"EMBED_PROVIDER": embed_provider}) as session:
-            await session.call_tool("index_project_context", {"project_path": str(project_dir)})
+            index_result = await session.call_tool("index_project_context", {"project_path": str(project_dir)})
+            index_text = self.assert_tool_not_error(index_result)
+            assert not index_text.startswith("Error:"), f"Indexing failed: {index_text}"
+
             result = await session.call_tool(
                 _TOOL,
                 {"project_path": str(project_dir), "query": "ChromaDB vector store", "n_results": 1},
@@ -156,5 +159,5 @@ class TestSearchContextIndexWithVectorStore(MCPIntegrationBase):
 
         self.assert_tool_not_error(result)
         results = result.structured_content["results"]
-        assert len(results) >= 1
+        assert len(results) >= 1, f"No search results; index reported: {index_text!r}"
         assert results[0]["file"] == "project.md"
