@@ -28,15 +28,26 @@ from mcp.types import (
 )
 
 from mcp_project_context_server.tools import (
+    create_adr,
+    edit_adr,
+    edit_project,
     find_latest_session_file,
     index_context,
+    list_adr_sections,
+    list_adrs,
     list_repositories,
     load_context_files,
+    read_adr,
+    read_adr_section,
+    read_adr_status,
     reload_active_context_file,
     save_session,
     search_adr_index,
+    search_adr_sections,
     search_context_index,
     search_session_files,
+    update_adr_status,
+    write_project,
 )
 
 try:
@@ -77,6 +88,52 @@ _SEARCH_OUTPUT_SCHEMA = {
         },
     },
     "required": ["results"],
+}
+
+_SEARCH_SECTIONS_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "results": {
+            "type": "array",
+            "description": "Individual matching hits, one per matched chunk.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "file": {"type": "string", "description": ".context/-relative path of the matched file."},
+                    "chunk": {"type": ["integer", "null"], "description": "Chunk index within the file, if known."},
+                    "content": {"type": "string", "description": "The matching chunk's text."},
+                    "distance": {"type": ["number", "null"], "description": "Vector distance to the query, if known."},
+                    "section": {
+                        "type": ["string", "null"],
+                        "description": "Top-level (##) section name the chunk belongs to, if known.",
+                    },
+                },
+                "required": ["file", "content"],
+            },
+        },
+        "warning": {
+            "type": "string",
+            "description": "Present only when the index was built with a different embedding provider/model.",
+        },
+    },
+    "required": ["results"],
+}
+
+_NUMBER_OR_FILENAME_PROPERTY = {
+    "type": ["string", "integer"],
+    "description": (
+        "The ADR's number (e.g. 12), short form (e.g. 'ADR-00012', case-insensitive), "
+        "or exact filename/path (e.g. 'ADR-00012-topic.md')."
+    ),
+}
+
+_AUTO_REINDEX_PROPERTY = {
+    "type": "boolean",
+    "default": False,
+    "description": (
+        "When true, automatically re-run `index_project_context` after the write and "
+        "include its result. When false (default), the response includes a manual-reindex reminder."
+    ),
 }
 
 _TOOL_DEFINITIONS: list[Tool] = [
@@ -249,6 +306,196 @@ _TOOL_DEFINITIONS: list[Tool] = [
             "required": [],
         },
     ),
+    Tool(
+        name="list_adrs",
+        description=(
+            "List every ADR in .context/decisions/ as a lightweight table (number, title, "
+            "status, filename). Use this before `read_adr`/`read_adr_section` to find which "
+            "ADR you need, without loading full ADR content."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {"project_path": _PROJECT_PATH_PROPERTY},
+            "required": ["project_path"],
+        },
+    ),
+    Tool(
+        name="read_adr",
+        description=(
+            "Read one ADR's full raw content by number or filename, tagged with its path and "
+            "SHA-512 hash so `reload_active_context_file` can later detect changes. Prefer "
+            "`read_adr_section` when you only need one section."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project_path": _PROJECT_PATH_PROPERTY,
+                "number_or_filename": _NUMBER_OR_FILENAME_PROPERTY,
+            },
+            "required": ["project_path", "number_or_filename"],
+        },
+    ),
+    Tool(
+        name="read_adr_status",
+        description=(
+            "Read one ADR's title and parsed Status without loading its full content. "
+            "Returns an explicit message for ADRs using the legacy `**Status:**` inline format."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project_path": _PROJECT_PATH_PROPERTY,
+                "number_or_filename": _NUMBER_OR_FILENAME_PROPERTY,
+            },
+            "required": ["project_path", "number_or_filename"],
+        },
+    ),
+    Tool(
+        name="list_adr_sections",
+        description="List one ADR's top-level (##) section names, in document order.",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project_path": _PROJECT_PATH_PROPERTY,
+                "number_or_filename": _NUMBER_OR_FILENAME_PROPERTY,
+            },
+            "required": ["project_path", "number_or_filename"],
+        },
+    ),
+    Tool(
+        name="read_adr_section",
+        description=(
+            "Read a single named top-level (##) section of one ADR (e.g. 'Context', "
+            "'Decision', 'Consequences'). Use `list_adr_sections` first if you don't know "
+            "the exact section name."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project_path": _PROJECT_PATH_PROPERTY,
+                "number_or_filename": _NUMBER_OR_FILENAME_PROPERTY,
+                "section": {"type": "string", "description": "Exact ## heading text, without the ## marker."},
+            },
+            "required": ["project_path", "number_or_filename", "section"],
+        },
+    ),
+    Tool(
+        name="search_adr_sections",
+        description=(
+            "Semantically search within a single resolved ADR, scoped by number or filename. "
+            "Use this to find relevant sections/passages inside one ADR you've already identified "
+            "(e.g. via `list_adrs` or `search_adr_index`)."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project_path": _PROJECT_PATH_PROPERTY,
+                "number_or_filename": _NUMBER_OR_FILENAME_PROPERTY,
+                "query": {"type": "string", "description": "Natural language search query"},
+                "n_results": {"type": "integer", "default": 5},
+            },
+            "required": ["project_path", "number_or_filename", "query"],
+        },
+        output_schema=_SEARCH_SECTIONS_OUTPUT_SCHEMA,
+    ),
+    Tool(
+        name="create_adr",
+        description=(
+            "Create a new ADR: allocates the next sequential number, writes a "
+            "'Proposed'-status stub with the given title and context, and placeholder text "
+            "in the remaining sections (Decision, Consequences, Alternatives Considered, "
+            "ADR Review Discussion). No lock/retry against concurrent creation."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project_path": _PROJECT_PATH_PROPERTY,
+                "title": {"type": "string", "description": "The ADR's topic title (used verbatim in the heading)."},
+                "context": {"type": "string", "description": "The Context section's content."},
+                "auto_reindex": _AUTO_REINDEX_PROPERTY,
+            },
+            "required": ["project_path", "title", "context"],
+        },
+    ),
+    Tool(
+        name="edit_adr",
+        description=(
+            "Replace a single named top-level (##) section of one ADR. Rejects the 'Status' "
+            "section — use `update_adr_status` for status transitions instead."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project_path": _PROJECT_PATH_PROPERTY,
+                "number_or_filename": _NUMBER_OR_FILENAME_PROPERTY,
+                "section": {"type": "string", "description": "Exact ## heading text, without the ## marker."},
+                "content": {"type": "string", "description": "The section's new body, excluding the heading line."},
+                "auto_reindex": _AUTO_REINDEX_PROPERTY,
+            },
+            "required": ["project_path", "number_or_filename", "section", "content"],
+        },
+    ),
+    Tool(
+        name="update_adr_status",
+        description=(
+            "Transition one ADR's Status, with lifecycle guardrails: rejects unknown statuses; "
+            "requires the target ADR to already exist for 'Superseded by ADR-XXXXX'; requires an "
+            "'explanation' for unusual (non-adjacent-forward) transitions; requires a populated "
+            "Decision section (or an 'explanation' to fold into it) before moving to 'Accepted'; "
+            "and removes the 'ADR Review Discussion' section once 'Accepted' is reached."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project_path": _PROJECT_PATH_PROPERTY,
+                "number_or_filename": _NUMBER_OR_FILENAME_PROPERTY,
+                "new_status": {
+                    "type": "string",
+                    "description": (
+                        "One of: Proposed, Under Review, Accepted, Implemented, Deprecated, "
+                        "or 'Superseded by ADR-XXXXX'."
+                    ),
+                },
+                "explanation": {
+                    "type": "string",
+                    "description": (
+                        "Required for unusual transitions and for reaching 'Accepted' with an "
+                        "unpopulated Decision section. Also appended as a timestamped entry to "
+                        "'ADR Review Discussion' when the ADR is currently Proposed/Under Review."
+                    ),
+                },
+                "auto_reindex": _AUTO_REINDEX_PROPERTY,
+            },
+            "required": ["project_path", "number_or_filename", "new_status"],
+        },
+    ),
+    Tool(
+        name="write_project",
+        description="Overwrite the full content of .context/project.md.",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project_path": _PROJECT_PATH_PROPERTY,
+                "content": {"type": "string", "description": "The full new content of project.md."},
+                "auto_reindex": _AUTO_REINDEX_PROPERTY,
+            },
+            "required": ["project_path", "content"],
+        },
+    ),
+    Tool(
+        name="edit_project",
+        description="Replace a single named top-level (##) section of .context/project.md.",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project_path": _PROJECT_PATH_PROPERTY,
+                "section": {"type": "string", "description": "Exact ## heading text, without the ## marker."},
+                "content": {"type": "string", "description": "The section's new body, excluding the heading line."},
+                "auto_reindex": _AUTO_REINDEX_PROPERTY,
+            },
+            "required": ["project_path", "section", "content"],
+        },
+    ),
 ]
 
 _TOOL_HANDLERS = {
@@ -261,6 +508,17 @@ _TOOL_HANDLERS = {
     "save_session_summary": save_session.handle,
     "index_project_context": index_context.handle,
     "list_repositories": list_repositories.handle,
+    "list_adrs": list_adrs.handle,
+    "read_adr": read_adr.handle,
+    "read_adr_status": read_adr_status.handle,
+    "list_adr_sections": list_adr_sections.handle,
+    "read_adr_section": read_adr_section.handle,
+    "search_adr_sections": search_adr_sections.handle,
+    "create_adr": create_adr.handle,
+    "edit_adr": edit_adr.handle,
+    "update_adr_status": update_adr_status.handle,
+    "write_project": write_project.handle,
+    "edit_project": edit_project.handle,
 }
 
 

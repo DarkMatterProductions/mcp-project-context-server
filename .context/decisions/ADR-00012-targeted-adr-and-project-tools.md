@@ -1,7 +1,8 @@
 # ADR-00012: Targeted tools for ADR and project.md access
 
 ## Status
-Accepted
+
+Implemented
 
 ## Context
 

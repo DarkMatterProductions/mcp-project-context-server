@@ -151,8 +151,8 @@ class TestSearchContextIndexSuccess:
         assert "Doc 2" in text
         assert result.structured_content == {
             "results": [
-                {"file": "f1.md", "chunk": None, "content": "Doc 1", "distance": None},
-                {"file": "f2.md", "chunk": None, "content": "Doc 2", "distance": None},
+                {"file": "f1.md", "chunk": None, "content": "Doc 1", "distance": None, "section": None},
+                {"file": "f2.md", "chunk": None, "content": "Doc 2", "distance": None, "section": None},
             ]
         }
 
