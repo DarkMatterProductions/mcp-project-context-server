@@ -3,7 +3,7 @@
 ## Status
 Implemented (environment variables)
 Proposed (YAML configuration layer)
-Partially Superseded — see ADR-00015 (vector store abstraction) and ADR-00014 (embedding abstraction).
+Partially Superseded — see ADR-00015 (vector store abstraction), ADR-00014 (embedding abstraction), and ADR-00024 (explicit provider configuration — no shape inference; removes the `EMBED_PROVIDER` default below).
 The module paths in the table below reflect the post-abstraction layout; the original `integrations/chroma/client.py` and `indexing/chroma/indexer.py` paths are deprecated.
 
 ## Context
@@ -33,7 +33,7 @@ All runtime configuration is provided via environment variables. Defaults are se
 |---|---|---|
 | `OLLAMA_HOST` | `http://localhost:11434` | `integrations/embeddings/ollama/client.py` |
 | `EMBED_MODEL` | `nomic-embed-text` | `integrations/embeddings/ollama/client.py` |
-| `EMBED_PROVIDER` | `ollama` | `integrations/embeddings/registry.py` |
+| `EMBED_PROVIDER` | *(required — no default; fails fast if unset, per ADR-00024)* | `integrations/embeddings/registry.py` |
 | `CHROMA_DIR` | `~/.mcp-data/chroma` | `integrations/vectorstore/chroma_local/client.py` |
 | `CHROMA_HOST` | `localhost` | `integrations/vectorstore/chroma_http/client.py` |
 | `CHROMA_PORT` | `8000` | `integrations/vectorstore/chroma_http/client.py` |

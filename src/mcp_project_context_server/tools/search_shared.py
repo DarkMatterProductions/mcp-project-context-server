@@ -10,6 +10,11 @@ import os
 
 from mcp import types
 
+try:
+    from mcp_project_context_server._version import __version__
+except ImportError:
+    __version__ = "0.0.0.dev0"
+
 from mcp_project_context_server.exceptions import EmbeddingError
 from mcp_project_context_server.helpers.context import (
     collection_name_for,
@@ -29,7 +34,13 @@ _MISMATCH_WARNING = (
     "⚠️  **Provider mismatch detected** — the index was built with "
     "`{old_provider}/{old_model}` but the current provider is "
     "`{new_provider}/{new_model}`.  Search results may be inaccurate.  "
-    "Please re-run `index_project_context` to rebuild the index.\n\n---\n\n"
+    "Please re-run `index_project_context` to rebuild the index."
+)
+
+_VERSION_MISMATCH_WARNING = (
+    "⚠️  **Server version mismatch detected** — the index was built with "
+    "server version `{old_version}` but the running server is "
+    "`{new_version}`.  Please re-run `index_project_context` to rebuild the index."
 )
 
 # Floor applied to the over-fetch multiplier so a small `n_results` still
@@ -85,7 +96,7 @@ async def run_search(
         return _empty_result(f"Collection '{col_name}' not found. Run index_project_context first.")
 
     # --- Provenance mismatch check ---
-    warning_prefix = ""
+    warnings: list[str] = []
     stored_meta = await store.get_collection_metadata(col_name)
     current_provider = get_embedding_provider()
     stored_embed_provider = stored_meta.get("embed_provider", "")
@@ -93,12 +104,25 @@ async def run_search(
 
     if stored_embed_provider and stored_embed_model:
         if stored_embed_provider != current_provider.provider_name or stored_embed_model != current_provider.model_name:
-            warning_prefix = _MISMATCH_WARNING.format(
-                old_provider=stored_embed_provider,
-                old_model=stored_embed_model,
-                new_provider=current_provider.provider_name,
-                new_model=current_provider.model_name,
+            warnings.append(
+                _MISMATCH_WARNING.format(
+                    old_provider=stored_embed_provider,
+                    old_model=stored_embed_model,
+                    new_provider=current_provider.provider_name,
+                    new_model=current_provider.model_name,
+                )
             )
+
+    stored_server_version = stored_meta.get("server_version", "")
+    if stored_server_version and stored_server_version != __version__:
+        warnings.append(
+            _VERSION_MISMATCH_WARNING.format(
+                old_version=stored_server_version,
+                new_version=__version__,
+            )
+        )
+
+    warning_prefix = "\n\n".join(warnings) + "\n\n---\n\n" if warnings else ""
 
     query_n_results = n_results
     if file_prefix is not None:

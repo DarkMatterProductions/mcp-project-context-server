@@ -12,7 +12,6 @@ registry.
 import asyncio
 import logging
 import os
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -28,6 +27,8 @@ from mcp_project_context_server.helpers.context import (
     read_context_files,
     resolve_project_path,
 )
+from mcp_project_context_server.helpers.context_files import hash_content
+from mcp_project_context_server.helpers.sections import chunk_section, split_sections
 from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
 from mcp_project_context_server.integrations.repository.base import RepositoryError
 from mcp_project_context_server.integrations.repository.registry import get_repository_provider
@@ -36,6 +37,7 @@ from mcp_project_context_server.integrations.vectorstore.base import VectorStore
 logger = logging.getLogger(__name__)
 
 _EMBED_CONCURRENCY: int = int(os.getenv("EMBED_CONCURRENCY", "4"))
+_MAX_CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "1500"))
 
 
 async def run_index_pipeline(project_path: str | Path, store: VectorStoreProvider) -> str:
@@ -71,7 +73,7 @@ async def run_index_pipeline(project_path: str | Path, store: VectorStoreProvide
     # missing .context/ directory is reported even when no embedding
     # provider is configured (EMBED_PROVIDER unset).
     embed_provider = get_embedding_provider()
-    chunk_size = embed_provider.max_chars
+    max_chars = min(_MAX_CHUNK_SIZE, embed_provider.max_chars)
     embed_chunk = embed_provider.embed_chunk
 
     collection_metadata = {
@@ -85,36 +87,53 @@ async def run_index_pipeline(project_path: str | Path, store: VectorStoreProvide
 
     await store.create_collection(col_name, metadata=collection_metadata)
 
-    all_chunks: list[tuple[str, str, str, int]] = []
+    all_chunks: list[tuple[str, str, str, int, str, str]] = []
     for filename, file_content in files.items():
-        for i, chunk in enumerate(file_content[j : j + chunk_size] for j in range(0, len(file_content), chunk_size)):
-            if chunk.strip():
-                all_chunks.append((f"{filename}::{i}", chunk, filename, i))
+        chunk_idx = 0
+        for section in split_sections(file_content):
+            section_sha512 = hash_content(section.content)
+            for piece in chunk_section(section, max_chars):
+                if piece.strip():
+                    all_chunks.append((f"{filename}::{chunk_idx}", piece, filename, chunk_idx, section.name, section_sha512))
+                    chunk_idx += 1
 
     if not all_chunks:
         return f"Indexed 0 chunks from {len(files)} files into collection '{col_name}'"
 
     semaphore = asyncio.Semaphore(_EMBED_CONCURRENCY)
 
-    async def _embed(doc_id: str, chunk: str, filename: str, chunk_idx: int):
+    async def _embed(doc_id: str, chunk: str, filename: str, chunk_idx: int, section: str, section_sha512: str):
         async with semaphore:
             try:
                 embedding = await embed_chunk(chunk)
-                return (doc_id, chunk, embedding, filename, chunk_idx)
+                return (doc_id, chunk, embedding, filename, chunk_idx, section, section_sha512)
             except Exception as e:
-                print(f"Warning: failed to embed {doc_id}: {e}", file=sys.stderr)
-                return None
+                logger.warning("Failed to embed %s: %s", doc_id, e)
+                return e
 
     results = await asyncio.gather(*[_embed(*c) for c in all_chunks])
 
-    valid = [r for r in results if r is not None]
+    valid = [r for r in results if not isinstance(r, Exception)]
     if valid:
         await store.upsert(
             collection_name=col_name,
             ids=[r[0] for r in valid],
             embeddings=[r[2] for r in valid],
             documents=[r[1] for r in valid],
-            metadatas=[{"file": r[3], "chunk": r[4]} for r in valid],
+            metadatas=[{"file": r[3], "chunk": r[4], "section": r[5], "section_sha512": r[6]} for r in valid],
+        )
+
+    failed_count = len(all_chunks) - len(valid)
+    if failed_count == len(all_chunks):
+        first_error = next(r for r in results if isinstance(r, Exception))
+        return (
+            f"Error: failed to embed all {len(all_chunks)} chunks from {len(files)} files "
+            f"— 0 chunks indexed. First error: {first_error}"
+        )
+    if failed_count:
+        return (
+            f"Indexed {len(valid)} chunks from {len(files)} files into collection '{col_name}' "
+            f"({failed_count} chunks failed to embed — see server logs)"
         )
 
     return f"Indexed {len(valid)} chunks from {len(files)} files into collection '{col_name}'"
