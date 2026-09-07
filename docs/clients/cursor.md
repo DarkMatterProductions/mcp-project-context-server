@@ -349,7 +349,7 @@ No configuration required — Cursor passes the workspace root as `project_path`
 {
    "env": {
       "REPO_PROVIDER": "github",
-      "REPO_AUTH_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      "REPO_AUTH_TOKEN": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
    }
 }
 ```
