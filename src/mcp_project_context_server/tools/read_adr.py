@@ -33,10 +33,13 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     if resolution.error:
         return [types.TextContent(type="text", text=resolution.error)]
 
+    info = resolution.info
     content = resolution.content
+    assert info is not None
+    assert content is not None
     return [
         types.TextContent(
             type="text",
-            text=format_tagged_file(resolution.info.path, hash_content(content), content),
+            text=format_tagged_file(info.path, hash_content(content), content),
         )
     ]

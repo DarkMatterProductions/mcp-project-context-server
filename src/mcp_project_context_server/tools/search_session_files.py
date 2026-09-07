@@ -9,7 +9,7 @@ from mcp_project_context_server.tools.search_shared import run_search
 logger = logging.getLogger(__name__)
 
 
-async def handle(arguments: dict) -> list[types.TextContent]:
+async def handle(arguments: dict) -> types.CallToolResult:
     """Handle the ``search_session_files`` tool call.
 
     :param arguments: (dict) Tool input dict. Requires keys ``"project_path"``

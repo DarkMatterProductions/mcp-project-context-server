@@ -150,7 +150,7 @@ def get_indexer() -> IndexFn:
     :raises EnvironmentError: If ``VECTOR_STORE_PROVIDER`` is set to an unrecognised value,
         or if the configured ``EMBED_PROVIDER`` is incompatible with it.
     """
-    provider_name = os.getenv("VECTOR_STORE_PROVIDER", _DEFAULT_PROVIDER).strip().lower()
+    provider_name: str = os.getenv("VECTOR_STORE_PROVIDER", _DEFAULT_PROVIDER).strip().lower()
 
     if provider_name not in _SUPPORTED_PROVIDERS:
         raise EnvironmentError(
@@ -160,6 +160,7 @@ def get_indexer() -> IndexFn:
 
     _assert_compatible_providers(provider_name)
 
+    store: VectorStoreProvider
     if provider_name == "chroma-local":
         store = ChromaLocalVectorStoreProvider()
     elif provider_name == "chroma-http":

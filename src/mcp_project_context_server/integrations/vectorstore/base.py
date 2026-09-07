@@ -27,7 +27,7 @@ class QueryResult:
     ids: list[str]
     documents: list[str]
     metadatas: list[dict]
-    distances: list[float] = field(default_factory=list)
+    distances: list[float | None] = field(default_factory=list)
 
 
 @runtime_checkable

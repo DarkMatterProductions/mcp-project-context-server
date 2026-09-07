@@ -43,4 +43,6 @@ async def handle(arguments: dict) -> types.CallToolResult:
             structured_content={"results": []},
         )
 
-    return await run_search(_project_path, query, n_results, exact_file=resolution.info.path)
+    info = resolution.info
+    assert info is not None
+    return await run_search(_project_path, query, n_results, exact_file=info.path)

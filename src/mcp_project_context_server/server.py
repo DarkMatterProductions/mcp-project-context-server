@@ -16,6 +16,8 @@ Set ``MCP_TRANSPORT`` to choose the transport:
 import asyncio
 import logging
 import os
+from collections.abc import Callable, Coroutine
+from typing import Any, cast
 
 from mcp.server import Server, ServerRequestContext
 from mcp.types import (
@@ -498,7 +500,9 @@ _TOOL_DEFINITIONS: list[Tool] = [
     ),
 ]
 
-_TOOL_HANDLERS = {
+ToolHandler = Callable[[dict[str, Any]], Coroutine[Any, Any, list[TextContent] | CallToolResult]]
+
+_TOOL_HANDLERS: dict[str, ToolHandler] = {
     "search_context_index": search_context_index.handle,
     "search_adr_index": search_adr_index.handle,
     "search_session_files": search_session_files.handle,
@@ -542,13 +546,13 @@ async def call_tool(ctx: ServerRequestContext, params: CallToolRequestParams) ->
     if not handler:
         return CallToolResult(content=[TextContent(type="text", text=f"Unknown tool: {params.name}")])
     try:
-        result = await handler(params.arguments)
+        result = await handler(params.arguments or {})
     except Exception as exc:
         logger.exception("Tool '%s' raised an unhandled exception", params.name)
         return CallToolResult(content=[TextContent(type="text", text=str(exc))], is_error=True)
     if isinstance(result, CallToolResult):
         return result
-    return CallToolResult(content=result)
+    return CallToolResult(content=cast(list[Any], result))
 
 
 async def _main() -> None:

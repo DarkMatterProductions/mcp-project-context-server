@@ -32,12 +32,17 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     if resolution.error:
         return [types.TextContent(type="text", text=resolution.error)]
 
-    sections = split_sections(resolution.content)
+    info = resolution.info
+    content = resolution.content
+    assert info is not None
+    assert content is not None
+
+    sections = split_sections(content)
     names = [section.name for section in sections if section.name]
     if not names:
-        text = f"ADR-{resolution.info.number:05d} ({resolution.info.filename}) has no top-level (##) sections."
+        text = f"ADR-{info.number:05d} ({info.filename}) has no top-level (##) sections."
     else:
-        text = f"Sections in ADR-{resolution.info.number:05d} ({resolution.info.filename}):\n" + "\n".join(
+        text = f"Sections in ADR-{info.number:05d} ({info.filename}):\n" + "\n".join(
             f"- {name}" for name in names
         )
 

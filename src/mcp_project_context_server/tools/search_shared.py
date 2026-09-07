@@ -144,7 +144,7 @@ async def run_search(
 
     documents = result.documents
     metadatas = result.metadatas
-    distances = result.distances if len(result.distances) == len(documents) else [None] * len(documents)
+    distances: list[float | None] = result.distances if len(result.distances) == len(documents) else [None] * len(documents)
 
     if file_prefix is not None:
         filtered = [

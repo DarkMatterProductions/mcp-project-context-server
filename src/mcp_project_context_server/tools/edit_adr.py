@@ -48,26 +48,31 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     if resolution.error:
         return [types.TextContent(type="text", text=resolution.error)]
 
-    updated = replace_section(resolution.content, section_name, new_content)
+    info = resolution.info
+    content = resolution.content
+    assert info is not None
+    assert content is not None
+
+    updated = replace_section(content, section_name, new_content)
     if updated is None:
-        available = [s.name for s in split_sections(resolution.content) if s.name]
+        available = [s.name for s in split_sections(content) if s.name]
         available_text = ", ".join(available) if available else "none"
         return [
             types.TextContent(
                 type="text",
                 text=(
-                    f"No section named '{section_name}' found in ADR-{resolution.info.number:05d} "
-                    f"({resolution.info.filename}). Available sections: {available_text}."
+                    f"No section named '{section_name}' found in ADR-{info.number:05d} "
+                    f"({info.filename}). Available sections: {available_text}."
                 ),
             )
         ]
 
     provider = get_repository_provider()
     resolved_path, is_remote = resolve_project_path(_project_path, provider.provider_name)
-    commit_message = f"Update '{section_name}' section of {resolution.info.filename}"
+    commit_message = f"Update '{section_name}' section of {info.filename}"
 
     if is_remote:
-        message = await write_context_file(provider, resolved_path, resolution.info.path, updated, commit_message)
+        message = await write_context_file(provider, resolved_path, info.path, updated, commit_message)
     else:
         context_dir = find_context_dir(resolved_path)
         if context_dir is None:
@@ -77,8 +82,8 @@ async def handle(arguments: dict) -> list[types.TextContent]:
                     text=f"No .context/ directory found near {arguments['project_path']}",
                 )
             ]
-        (context_dir / resolution.info.path).write_text(updated, encoding="utf-8")
-        message = f"Updated section '{section_name}' in {resolution.info.path}."
+        (context_dir / info.path).write_text(updated, encoding="utf-8")
+        message = f"Updated section '{section_name}' in {info.path}."
 
     final_text = await append_reindex_note(_project_path, message, auto_reindex)
     return [types.TextContent(type="text", text=final_text)]

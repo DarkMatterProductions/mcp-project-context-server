@@ -28,7 +28,7 @@ class AdrInfo:
     filename: str
     path: str
     title: str
-    status: str
+    status: str | None
     malformed: bool
 
 

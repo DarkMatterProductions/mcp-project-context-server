@@ -34,16 +34,21 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     if resolution.error:
         return [types.TextContent(type="text", text=resolution.error)]
 
-    section = find_section(resolution.content, section_name)
+    info = resolution.info
+    content = resolution.content
+    assert info is not None
+    assert content is not None
+
+    section = find_section(content, section_name)
     if section is None:
-        available = [s.name for s in split_sections(resolution.content) if s.name]
+        available = [s.name for s in split_sections(content) if s.name]
         available_text = ", ".join(available) if available else "none"
         return [
             types.TextContent(
                 type="text",
                 text=(
-                    f"No section named '{section_name}' found in ADR-{resolution.info.number:05d} "
-                    f"({resolution.info.filename}). Available sections: {available_text}."
+                    f"No section named '{section_name}' found in ADR-{info.number:05d} "
+                    f"({info.filename}). Available sections: {available_text}."
                 ),
             )
         ]

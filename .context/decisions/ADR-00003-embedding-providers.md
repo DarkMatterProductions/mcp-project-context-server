@@ -1,8 +1,7 @@
-# ADR-00003: Ollama-first embedding with planned cloud provider extensibility
+# ADR-00003: Ollama-first embedding provider
 
 ## Status
-Implemented (Ollama as initial provider)
-Proposed (cloud provider support)
+Superseded by ADR-00014
 
 ## Context
 
@@ -18,13 +17,15 @@ The original project goal was full local LLM support throughout the stack. Proje
 
 At the same time, cloud embedding providers offer higher model quality and may be preferred in environments where the data sensitivity concern does not apply.
 
+This decision was superseded on 2026-06-08: Ollama is no longer the default or sole embedding provider. The `EMBED_PROVIDER` environment variable is now required at startup, with supported values `ollama`, `voyage`, `openai`, `cohere`, `google`, `google-vertex` — the server fails fast if it is unset or unrecognised, with no silent fallback. See ADR-00014 for the full multi-provider embedding design.
+
 ## Decision
 
 Ollama was chosen as the initial and sole embedding provider. The default model is `nomic-embed-text`, configurable via the `EMBED_MODEL` environment variable. The Ollama host is configurable via `OLLAMA_HOST` (default: `http://localhost:11434`).
 
 The integration is isolated behind `integrations/ollama/` so that the `tools/` and `indexing/` layers have no direct provider dependency. Both sync (`get_embedding`) and async (`get_embedding_async`) interfaces are provided in `integrations/ollama/client.py`. The `indexing/ollama/embedder.py` module provides thin named wrappers (`embed_chunk`, `embed_chunk_async`) for semantic clarity in the indexing pipeline.
 
-Cloud provider support is planned as a configurable extension (see ADR Review Discussion below). The `integrations/` structure is designed to accommodate a provider abstraction.
+Cloud provider support was planned as a configurable extension; the `integrations/` structure was designed to accommodate a provider abstraction. See ADR-00027 for that sub-item's own record and ADR-00014 for its resolution.
 
 ## Consequences
 
@@ -36,26 +37,3 @@ Cloud provider support is planned as a configurable extension (see ADR Review Di
 
 - **OpenAI / Cohere / Gemini embeddings (cloud only)**: Rejected as the sole option. The local-first goal requires that the server function without internet access or API keys. Cloud providers remain viable as opt-in alternatives once a provider abstraction is introduced.
 - **HuggingFace sentence-transformers**: Rejected. While local, the dependency footprint (`torch`, `transformers`, CUDA/CPU build variants) is disproportionate for this server's use case and would significantly complicate installation.
-
-## ADR Review Discussion
-
-**Cloud provider extension (Proposed):**
-
-The following design questions are open and must be resolved before cloud provider support is implemented:
-
-1. **Provider selection mechanism**: Should the provider be selected via an env var (e.g., `EMBED_PROVIDER=openai`) or via the planned YAML config file (ADR-00005)? The env var approach is simpler; YAML config would allow per-project provider overrides.
-
-2. **Common interface**: All providers should expose the same `async embed(text: str) -> list[float]` interface. A base class or Protocol in `integrations/` should enforce this before cloud providers are added.
-
-3. **Context window differences**: `nomic-embed-text` supports 8192 tokens. Cloud providers vary. The chunking strategy (ADR-00007) currently ignores provider limits. A provider abstraction should expose a `max_tokens` or `max_chars` property that the indexer can respect.
-
-4. **Re-index on provider switch**: Changing the provider must invalidate the existing ChromaDB collection. The index should record which provider and model it was built with, and warn (or auto-rebuild) on mismatch.
-
-## Amendment — 2026-06-08 (Phase 2/3)
-
-Ollama is no longer the default embedding provider. EMBED_PROVIDER environment
-variable is now required at startup. Supported values: ollama, voyage, openai,
-cohere, google, google-vertex. The server fails fast at startup if EMBED_PROVIDER
-is not set or is unrecognised — there is no silent fallback.
-
-See ADR-00014 for the full multi-provider embedding design.

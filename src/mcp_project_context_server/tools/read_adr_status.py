@@ -32,13 +32,18 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     if resolution.error:
         return [types.TextContent(type="text", text=resolution.error)]
 
-    status, found = parse_status(resolution.content)
+    info = resolution.info
+    content = resolution.content
+    assert info is not None
+    assert content is not None
+
+    status, found = parse_status(content)
     if not found:
         return [
             types.TextContent(
                 type="text",
                 text=(
-                    f"ADR-{resolution.info.number:05d} ({resolution.info.filename}) uses the legacy "
+                    f"ADR-{info.number:05d} ({info.filename}) uses the legacy "
                     "`**Status:**` inline format, which is not supported by this tool. "
                     "Read the file directly (e.g. via `read_adr`) to determine its status."
                 ),
@@ -48,6 +53,6 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     return [
         types.TextContent(
             type="text",
-            text=f"ADR-{resolution.info.number:05d}: {resolution.info.title}\nStatus: {status}",
+            text=f"ADR-{info.number:05d}: {info.title}\nStatus: {status if status else 'Unknown'}",
         )
     ]

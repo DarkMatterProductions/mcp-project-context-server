@@ -40,7 +40,9 @@ def _append_review_discussion(content: str, explanation: str) -> str:
     entry = f"**[{timestamp}] [update_adr_status]:** {explanation.strip()}"
     body = _section_body(section)
     new_body = entry if body in _PLACEHOLDER_BODIES else f"{body}\n\n{entry}"
-    return replace_section(content, "ADR Review Discussion", new_body)
+    updated = replace_section(content, "ADR Review Discussion", new_body)
+    assert updated is not None
+    return updated
 
 
 def _classify_transition(current_status: str, new_status: str) -> str:
@@ -112,13 +114,18 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     if resolution.error:
         return [types.TextContent(type="text", text=resolution.error)]
 
-    current_status, found = parse_status(resolution.content)
+    info = resolution.info
+    content = resolution.content
+    assert info is not None
+    assert content is not None
+
+    current_status, found = parse_status(content)
     if not found:
         return [
             types.TextContent(
                 type="text",
                 text=(
-                    f"ADR-{resolution.info.number:05d} ({resolution.info.filename}) uses the legacy "
+                    f"ADR-{info.number:05d} ({info.filename}) uses the legacy "
                     "`**Status:**` inline format, which is not supported by this tool."
                 ),
             )
@@ -129,7 +136,7 @@ async def handle(arguments: dict) -> list[types.TextContent]:
         return [
             types.TextContent(
                 type="text",
-                text=f"ADR-{resolution.info.number:05d} is already '{current_status}'. No changes made.",
+                text=f"ADR-{info.number:05d} is already '{current_status}'. No changes made.",
             )
         ]
     if transition == "unusual" and not explanation:
@@ -137,13 +144,11 @@ async def handle(arguments: dict) -> list[types.TextContent]:
             types.TextContent(
                 type="text",
                 text=(
-                    f"Transitioning ADR-{resolution.info.number:05d} from '{current_status}' to "
+                    f"Transitioning ADR-{info.number:05d} from '{current_status}' to "
                     f"'{new_status}' is unusual and requires an 'explanation' argument describing why."
                 ),
             )
         ]
-
-    content = resolution.content
 
     if current_status in ("Proposed", "Under Review") and explanation:
         content = _append_review_discussion(content, explanation)
@@ -157,23 +162,25 @@ async def handle(arguments: dict) -> list[types.TextContent]:
                     types.TextContent(
                         type="text",
                         text=(
-                            f"Transitioning ADR-{resolution.info.number:05d} to 'Accepted' requires a "
+                            f"Transitioning ADR-{info.number:05d} to 'Accepted' requires a "
                             "populated Decision section. Provide 'explanation' with the decision "
                             "rationale, or populate Decision via edit_adr first."
                         ),
                     )
                 ]
             content = replace_section(content, "Decision", explanation.strip())
+            assert content is not None  # pre-existing: assumes ADR has a Decision section
         content = _remove_section(content, "ADR Review Discussion")
 
     content = replace_section(content, "Status", new_status)
+    assert content is not None
 
     provider = get_repository_provider()
     resolved_path, is_remote = resolve_project_path(_project_path, provider.provider_name)
-    commit_message = f"Update ADR-{resolution.info.number:05d} status: {current_status} -> {new_status}"
+    commit_message = f"Update ADR-{info.number:05d} status: {current_status} -> {new_status}"
 
     if is_remote:
-        message = await write_context_file(provider, resolved_path, resolution.info.path, content, commit_message)
+        message = await write_context_file(provider, resolved_path, info.path, content, commit_message)
     else:
         context_dir = find_context_dir(resolved_path)
         if context_dir is None:
@@ -183,8 +190,8 @@ async def handle(arguments: dict) -> list[types.TextContent]:
                     text=f"No .context/ directory found near {arguments['project_path']}",
                 )
             ]
-        (context_dir / resolution.info.path).write_text(content, encoding="utf-8")
-        message = f"Updated ADR-{resolution.info.number:05d} status: {current_status} -> {new_status}."
+        (context_dir / info.path).write_text(content, encoding="utf-8")
+        message = f"Updated ADR-{info.number:05d} status: {current_status} -> {new_status}."
 
     final_text = await append_reindex_note(_project_path, message, auto_reindex)
     return [types.TextContent(type="text", text=final_text)]

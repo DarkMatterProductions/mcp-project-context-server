@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add ADR-00012 toolset: `list_adrs`, `read_adr`, `read_adr_status`, `list_adr_sections`, `read_adr_section`, `edit_adr`, `search_adr_sections`, `update_adr_status`, and `create_adr` MCP tools, along with `helpers/adr` parsing and resolution utilities (`8f20b86`)
+- Add branch-based remote write support for ADR tools via `REPO_ADR_WRITE_MODE` (`branch`/`direct`), including optional auto-reindexing after writes (`8f20b86`)
+- Add heading-based markdown splitting utilities (`split_sections`, `chunk_section`) implementing ADR-00007's chunking strategy (`a243b86`)
+- Add heading-based chunking to the indexer with `section`/`section_sha512` chunk metadata for cheap per-section change detection (`f7b7713`)
+- Add `_MAX_CHUNK_SIZE` environment variable to override the indexer's chunk size (`f7b7713`)
+- Add ADR-00025 proposing safe, AST-based filter expressions for `list_adrs`, with a reusable filter evaluator in `helpers/filter_expr.py` (`5f3c83c`)
+- Add ADR-00026, ADR-00027, ADR-00028, and ADR-00029 documenting proposed structured-diagnostics, YAML configuration, cloud embedding provider, and watchdog-based auto-reindex features (`c5c5240`)
+- Add `repomix.config.json` and `.repomixignore` for repository packaging/documentation bundling (`3bf0413`)
+- Add CLAUDE.md instruction to always leverage the `project_context` connector tools (`937448a`)
+
+### Changed
+- Accept ADR-00012, consolidating the ADR/`project.md` tool surface and superseding ADR-00010 (`937448a`)
+- Accept ADR-00007, adopting heading-based chunking with intelligent sub-splitting as the official markdown indexing strategy (`43ffa9e`)
+- Rename `AdrInfo.number` to `AdrInfo.id` across the codebase for consistency with the new filter-expression tooling (`5f3c83c`)
+- Update ADR-00006, ADR-00005, and ADR-00003 statuses to reflect superseding/tracking decisions (ADR-00029, ADR-00028, ADR-00014 respectively) (`c5c5240`)
+- Restructure `BUNDLE.md` with proper Markdown headers and expanded directory/file examples (`a789c88`)
+- Improve embedding-failure logging in the indexer so partial failures are surfaced instead of silently dropped (`f7b7713`)
+- Improve error diagnostics for indexing failures in integration tests (`70a5436`)
+
+### Fixed
+- Remove the `ghp_` prefix from example `REPO_AUTH_TOKEN` placeholders across `docs/clients/*.md` to avoid tripping secret-scanning tools (`a789c88`)
+
 ---
 
 ## [0.0.4] - 2026-04-17

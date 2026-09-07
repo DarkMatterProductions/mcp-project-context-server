@@ -1,10 +1,7 @@
-# ADR-00005: Environment variable configuration with planned YAML layer
+# ADR-00005: Environment variable configuration
 
 ## Status
-Implemented (environment variables)
-Proposed (YAML configuration layer)
-Partially Superseded — see ADR-00015 (vector store abstraction), ADR-00014 (embedding abstraction), and ADR-00024 (explicit provider configuration — no shape inference; removes the `EMBED_PROVIDER` default below).
-The module paths in the table below reflect the post-abstraction layout; the original `integrations/chroma/client.py` and `indexing/chroma/indexer.py` paths are deprecated.
+Implemented
 
 ## Context
 
@@ -48,7 +45,7 @@ All runtime configuration is provided via environment variables. Defaults are se
 > - `indexing/chroma/indexer.py` → use `integrations/vectorstore/registry.get_indexer()` or the provider-owned indexer
 > - `indexing/ollama/embedder.py` → use `indexing/embedder.py`
 
-`pyyaml` is already present in `requirements.txt` in anticipation of a YAML configuration layer. See ADR Review Discussion below.
+`pyyaml` is already present in `requirements.txt` in anticipation of a YAML configuration layer, which remains unimplemented — see ADR-00028.
 
 ## Consequences
 
@@ -56,22 +53,9 @@ All runtime configuration is provided via environment variables. Defaults are se
 - There is no central config module — each module reads its own env vars. This is consistent and avoids a global config object, but means there is no single place to audit all configuration.
 - `pyyaml` is listed in `requirements.txt` but not in `pyproject.toml`. When the YAML layer is implemented, it must be added to `pyproject.toml` dependencies as well.
 - `PROJECT_PATH` is handled differently from the others — it is read at tool call time in individual `tools/` handlers, not at server startup. This allows the same server process to serve multiple project paths if needed in future.
+- Several individual variables and their implementation modules have since moved: `EMBED_PROVIDER` now resolves via a provider registry (ADR-00014) rather than a single hardcoded default, `CHROMA_*`/`PGVECTOR_*`/`VECTOR_STORE_PROVIDER` route through a vector store abstraction (ADR-00015), and provider configuration is now explicit with no shape inference (ADR-00024). The table above reflects that post-abstraction layout — the original `integrations/chroma/client.py` and `indexing/chroma/indexer.py` paths listed in earlier revisions of this table are deprecated. The env-var-based configuration mechanism itself (this decision) was not superseded by any of these — only the modules backing individual variables changed.
 
 ## Alternatives Considered
 
 - **`.env` files**: Rejected as the primary mechanism. MCP client subprocesses do not automatically load `.env` files. Would require the server to add a `python-dotenv` dependency and startup-time file loading.
 - **TOML config (pyproject.toml tool section)**: Rejected. `pyproject.toml` is a project metadata file, not a runtime config file. Mixing runtime config with build config creates ambiguity.
-
-## ADR Review Discussion
-
-**YAML configuration layer (Proposed):**
-
-The following design questions must be resolved before implementing the YAML layer:
-
-1. **File location**: Should the config live at `.context/config.yaml` (per-project, alongside the context directory) or `~/.mcp-data/project-context.yaml` (global, user-level)? Per-project config allows different settings per repository but may be committed to VCS accidentally. Global config is safer for secrets but cannot vary by project.
-
-2. **Precedence order**: Should environment variables override YAML values (env vars win), or should YAML set the authoritative config with env vars as an escape hatch? The 12-factor app convention is that env vars win. This is the recommended default.
-
-3. **Scope**: Should YAML config apply to all tools, or can individual projects override only specific keys? A flat key-value YAML file (matching the env var names) is the simplest starting point.
-
-4. **Implementation location**: A `config.py` module in `helpers/` that reads YAML then falls back to env vars would centralize config resolution without changing how individual modules consume values.

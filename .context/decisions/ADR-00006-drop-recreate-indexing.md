@@ -1,12 +1,7 @@
-# ADR-00006: Drop-and-recreate indexing with planned watchdog auto-reindex
+# ADR-00006: Drop-and-recreate indexing
 
 ## Status
-Implemented (drop-and-recreate on manual trigger)
-Proposed (watchdog-based auto-reindex)
-Superseded in part — see ADR-00015 (vector store abstraction).
-The implementation path referenced below (`indexing/chroma/indexer.py`) is **deprecated**.
-The canonical implementation is now per-provider: `integrations/vectorstore/{chroma_local,chroma_http,pgvector}/indexer.py`,
-coordinated via `integrations/vectorstore/registry.get_indexer()`.  The shared pipeline lives in `indexing/indexer.py`.
+Implemented
 
 ## Context
 
@@ -26,8 +21,6 @@ When `index_project_context` is called, the server must update the ChromaDB coll
 
 The `.context/` directories indexed by this server are small by design — typically a handful of markdown files totaling tens of kilobytes. Full rebuild time is negligible for this data volume.
 
-A secondary question was whether indexing should be triggered automatically when `.context/` files change on disk, rather than requiring an explicit `index_project_context` tool call. The `watchdog` library (already in `requirements.txt`) provides cross-platform file system event monitoring.
-
 ## Decision
 
 **Drop-and-recreate** was chosen for the `index_project_context` implementation. On each call:
@@ -44,7 +37,7 @@ lives in `indexing/indexer.py::run_index_pipeline()`.  Entry point for callers:
 
 > **Deprecated**: `indexing/chroma/indexer.py` — raises `RuntimeError` at call time.
 
-`watchdog`-based auto-reindex is planned but not yet implemented. When added, it will watch the `.context/` directory for file creation, modification, and deletion events and trigger a debounced re-index automatically.
+Automatic reindexing on file-change events (rather than requiring an explicit `index_project_context` call) was also considered as a follow-up; it is tracked separately in ADR-00029 and remains unimplemented.
 
 ## Consequences
 
@@ -52,7 +45,6 @@ lives in `indexing/indexer.py::run_index_pipeline()`.  Entry point for callers:
 - **Correctness on renames/deletes**: Files that are renamed or deleted are automatically excluded from the next index — no explicit deletion logic is needed.
 - **Collection unavailability during rebuild**: Between the drop and the final batch-add, the collection contains no documents. A `search_project_context` call during this window will return zero results. For the typical use case (manual trigger, small dataset, fast rebuild), this window is negligible.
 - **No partial-failure recovery**: If the embed step fails mid-way through a large index operation, the collection is left empty. The user must call `index_project_context` again. Individual chunk embedding failures are logged and skipped rather than aborting the entire operation.
-- **Watchdog debouncing**: When the auto-reindex feature is implemented, rapid successive file saves (e.g., editor autosave) must be debounced to avoid triggering redundant full rebuilds.
 
 ## Alternatives Considered
 
