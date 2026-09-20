@@ -1,0 +1,29 @@
+name: Commit Validation
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-commits:
+    name: Validate Branch Commit Message Formatting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.14
+
+      - name: Run validation tooling on branch commits
+        run: |
+          # Configure git to track and fetch the main branch
+          git remote set-branches origin main
+          git fetch --depth=1 origin main:main
+          python .github/tools/validate_commits.py
