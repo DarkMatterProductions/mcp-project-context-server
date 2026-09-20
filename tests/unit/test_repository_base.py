@@ -63,6 +63,9 @@ class TestRepositoryProviderProtocol:
             async def fetch_source_bundle(self, repo_id: str):
                 return None
 
+            async def fetch_root_file(self, repo_id: str, filename: str):
+                return None
+
             async def fetch_source_files(self, repo_id: str) -> dict[str, str]:
                 return {}
 

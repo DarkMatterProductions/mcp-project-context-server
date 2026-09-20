@@ -114,6 +114,25 @@ class GitLabRepositoryProvider:
                 return resp.text
             return None
 
+    async def fetch_root_file(self, repo_id: str, filename: str) -> Optional[str]:
+        """Fetch the content of *filename* from the repository root, or ``None``.
+
+        :param repo_id: (str) The ``namespace/project`` identifier or full URL of the repository.
+        :param filename: (str) The name of the file to fetch, relative to the repository root.
+        :return: (str) The contents of *filename*, or ``None`` if it does not exist.
+        """
+        encoded_id = self._url_encode_id(repo_id)
+        branch = await self.get_default_branch(repo_id)
+        encoded_path = quote(filename, safe="")
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{self._api_base}/projects/{encoded_id}/repository/files/{encoded_path}/raw?ref={branch}",
+                headers=self._headers(),
+            )
+            if resp.status_code == 200:
+                return resp.text
+            return None
+
     async def fetch_source_files(self, repo_id: str) -> dict[str, str]:
         """Fetch source code files from the repository tree.
 

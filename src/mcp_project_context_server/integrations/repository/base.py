@@ -43,6 +43,15 @@ class RepositoryProvider(Protocol):
         """
         ...
 
+    async def fetch_root_file(self, repo_id: str, filename: str) -> Optional[str]:
+        """Fetch a single file from the repository root (not under .context/), or None.
+
+        :param repo_id: (str) The ``owner/repo`` identifier (or equivalent) of the repository.
+        :param filename: (str) The name of the file to fetch, relative to the repository root.
+        :return: (str) The contents of *filename*, or ``None`` if it does not exist.
+        """
+        ...
+
     async def fetch_source_files(self, repo_id: str) -> dict[str, str]:
         """Fetch source code files from the repository.
 

@@ -65,6 +65,20 @@ class LocalRepositoryProvider:
         return None
 
     @staticmethod
+    async def fetch_root_file(repo_id: str, filename: str) -> Optional[str]:
+        """Return the content of ``<repo_id>/<filename>``, or None.
+
+        :param repo_id: (str) Filesystem path to the project root.
+        :param filename: (str) The name of the file to read, relative to ``repo_id``.
+        :return: (str) The contents of *filename*, or ``None`` if it does not exist.
+        """
+        logger.debug(f"Executing 'fetch_root_file' with the arguments repo_id: {repo_id}, filename: {filename}")
+        target = Path(repo_id) / filename
+        if target.is_file():
+            return target.read_text(encoding="utf-8")
+        return None
+
+    @staticmethod
     async def fetch_source_files(repo_id: str) -> dict[str, str]:
         """Return source code files under ``repo_id``, skipping common non-source dirs.
 

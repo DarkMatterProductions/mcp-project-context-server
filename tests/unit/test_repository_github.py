@@ -83,6 +83,47 @@ class TestFetchContextFiles:
         assert result["project.md"] == "# Project"
 
 
+class TestFetchRootFile:
+    """Tests for GitHubRepositoryProvider.fetch_root_file."""
+
+    @pytest.mark.asyncio
+    async def test_returns_none_on_404(self, provider):
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            result = await provider.fetch_root_file("owner/repo", "config.yaml")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_returns_content_on_200(self, provider):
+        listing_response = MagicMock()
+        listing_response.status_code = 200
+        listing_response.json.return_value = {
+            "download_url": "https://raw.githubusercontent.com/owner/repo/main/config.yaml",
+        }
+
+        raw_response = MagicMock()
+        raw_response.status_code = 200
+        raw_response.text = "key: value"
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(side_effect=[listing_response, raw_response])
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            result = await provider.fetch_root_file("owner/repo", "config.yaml")
+
+        assert result == "key: value"
+
+
 class TestWriteFile:
     """Tests for GitHubRepositoryProvider.write_file."""
 

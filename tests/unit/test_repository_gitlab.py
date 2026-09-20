@@ -88,6 +88,49 @@ class TestFetchContextFiles:
         assert result["project.md"] == "# Project"
 
 
+class TestFetchRootFile:
+    """Tests for GitLabRepositoryProvider.fetch_root_file."""
+
+    @pytest.mark.asyncio
+    async def test_returns_none_on_non_200(self, provider):
+        branch_response = MagicMock()
+        branch_response.status_code = 200
+        branch_response.json.return_value = {"default_branch": "main"}
+
+        raw_response = MagicMock()
+        raw_response.status_code = 404
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(side_effect=[branch_response, raw_response])
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            result = await provider.fetch_root_file("owner/repo", "config.yaml")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_returns_content_on_200(self, provider):
+        branch_response = MagicMock()
+        branch_response.status_code = 200
+        branch_response.json.return_value = {"default_branch": "main"}
+
+        raw_response = MagicMock()
+        raw_response.status_code = 200
+        raw_response.text = "key: value"
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(side_effect=[branch_response, raw_response])
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            result = await provider.fetch_root_file("owner/repo", "config.yaml")
+
+        assert result == "key: value"
+
+
 class TestWriteFile:
     """Tests for GitLabRepositoryProvider.write_file."""
 

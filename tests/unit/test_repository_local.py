@@ -66,6 +66,23 @@ class TestFetchSourceBundle:
         assert result == "# Bundle content"
 
 
+class TestFetchRootFile:
+    """Tests for LocalRepositoryProvider.fetch_root_file."""
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_file_missing(self, tmp_path, provider):
+        result = await provider.fetch_root_file(str(tmp_path), "config.yaml")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_returns_content_when_file_exists(self, tmp_path, provider):
+        (tmp_path / "config.yaml").write_text("key: value")
+
+        result = await provider.fetch_root_file(str(tmp_path), "config.yaml")
+
+        assert result == "key: value"
+
+
 class TestWriteFile:
     """Tests for LocalRepositoryProvider.write_file."""
 

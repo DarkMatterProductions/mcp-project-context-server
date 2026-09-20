@@ -112,6 +112,28 @@ class GitHubRepositoryProvider:
             raw = await client.get(download_url, headers=self._headers())
             return raw.text
 
+    async def fetch_root_file(self, repo_id: str, filename: str) -> Optional[str]:
+        """Fetch the content of *filename* from the repository root, or ``None``.
+
+        :param repo_id: (str) The ``owner/repo`` identifier or full URL of the repository.
+        :param filename: (str) The name of the file to fetch, relative to the repository root.
+        :return: (str) The contents of *filename*, or ``None`` if it does not exist.
+        """
+        owner, repo = self._split(repo_id)
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{self._base_url}/repos/{owner}/{repo}/contents/{filename}",
+                headers=self._headers(),
+            )
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            download_url = data.get("download_url")
+            if not download_url:
+                return None
+            raw = await client.get(download_url, headers=self._headers())
+            return raw.text
+
     async def fetch_source_files(self, repo_id: str) -> dict[str, str]:
         """Fetch source code files via the Git Trees API.
 
