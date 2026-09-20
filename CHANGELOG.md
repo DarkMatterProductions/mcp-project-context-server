@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+---
+
+## [1.1.0] - 2026-09-20
+
+### Added
 - Add ADR-00012 toolset: `list_adrs`, `read_adr`, `read_adr_status`, `list_adr_sections`, `read_adr_section`, `edit_adr`, `search_adr_sections`, `update_adr_status`, and `create_adr` MCP tools, along with `helpers/adr` parsing and resolution utilities (`8f20b86`)
 - Add branch-based remote write support for ADR tools via `REPO_ADR_WRITE_MODE` (`branch`/`direct`), including optional auto-reindexing after writes (`8f20b86`)
 - Add heading-based markdown splitting utilities (`split_sections`, `chunk_section`) implementing ADR-00007's chunking strategy (`a243b86`)
@@ -19,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add ADR-00026, ADR-00027, ADR-00028, and ADR-00029 documenting proposed structured-diagnostics, YAML configuration, cloud embedding provider, and watchdog-based auto-reindex features (`c5c5240`)
 - Add `repomix.config.json` and `.repomixignore` for repository packaging/documentation bundling (`3bf0413`)
 - Add CLAUDE.md instruction to always leverage the `project_context` connector tools (`937448a`)
+- Add `bootstrap_context` and `get_bootstrap_questions` MCP tools with a reusable, extensible question registry (`helpers/bootstrap_templates.py`, `helpers/custom_bootstrap_questions.py`) for interview-driven `.context/` scaffolding (`e0ca1e2`)
+- Add `ADR_CREATE_AND_MANAGEMENT.md` and `PLANNING_LOOP.md` governance templates, bundled as package data and read via `importlib.resources` (`e0ca1e2`)
+- Add `fetch_root_file` implementation across GitHub, GitLab, Gitea, and Local repository providers, with support for merging custom bootstrap questions from a `.project-bootstrap-questions.yaml` file at the repository root (`e0ca1e2`)
+- Add `pyyaml>=6.0` dependency for YAML file parsing (`e0ca1e2`)
+- Add `validate_commits.py` script and `validate-commits.yml` CI workflow to enforce `type(scope):` commit message conventions on pull requests (`c219b2a`)
 
 ### Changed
 - Accept ADR-00012, consolidating the ADR/`project.md` tool surface and superseding ADR-00010 (`937448a`)
@@ -28,9 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restructure `BUNDLE.md` with proper Markdown headers and expanded directory/file examples (`a789c88`)
 - Improve embedding-failure logging in the indexer so partial failures are surfaced instead of silently dropped (`f7b7713`)
 - Improve error diagnostics for indexing failures in integration tests (`70a5436`)
-
-### Fixed
-- Remove the `ghp_` prefix from example `REPO_AUTH_TOKEN` placeholders across `docs/clients/*.md` to avoid tripping secret-scanning tools (`a789c88`)
+- Accept ADR-00011, replacing its open design questions with the implemented interview-driven, additive-only `bootstrap_context` design: content is resolved via `get_bootstrap_questions` answers rather than metadata-file inference, all artifacts are additive-only (skip if already present), and the governance ADR is created via the existing `create_adr` tool (`e0ca1e2`)
+- Tighten type annotations and null-safety across ADR utilities and response parsing, including optional `status` handling in `read_adr_status` and broader `repos_content_results` content types (`5a3d4f0`, `6972be4`)
+- Restrict the Qodana workflow to run only on `pull_request` targeting `main`, dropping the unused `workflow_dispatch` trigger and `push`/`releases/*` branch triggers (`c219b2a`)
 
 ---
 
@@ -103,5 +118,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/DarkMatterProductions/mcp-project-context-server/compare/cca6114...HEAD
+[Unreleased]: https://github.com/DarkMatterProductions/mcp-project-context-server/compare/1.1.0...HEAD
+[1.1.0]: https://github.com/DarkMatterProductions/mcp-project-context-server/compare/cca6114...1.1.0
 
