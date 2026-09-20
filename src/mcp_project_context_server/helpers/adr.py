@@ -131,7 +131,7 @@ async def resolve_adr(project_path: str, number_or_filename: str | int) -> AdrRe
     return AdrResolution(info=target, content=content, error=None)
 
 
-def parse_status(content: str) -> tuple[str | None, bool]:
+def parse_status(content: str) -> tuple[str, bool]:
     """Parse the value of an ADR's ``## Status`` section.
 
     :param content: (str) The ADR's full markdown content.
