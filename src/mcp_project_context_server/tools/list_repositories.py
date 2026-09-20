@@ -2,7 +2,7 @@
 import logging
 
 from mcp import types
-from mcp.types import CallToolResult, TextContent
+from mcp.types import AudioContent, CallToolResult, EmbeddedResource, ImageContent, ResourceLink, TextContent
 
 from mcp_project_context_server.integrations.repository.base import RepositoryError
 from mcp_project_context_server.integrations.repository.registry import (
@@ -42,7 +42,7 @@ async def handle(arguments: dict) -> CallToolResult:
     if not repos:
         return types.CallToolResult(content=[types.TextContent(type="text", text="No repositories found.")])
     repos_structured_results = {}
-    repos_content_results = []
+    repos_content_results: list[TextContent | ImageContent | AudioContent | ResourceLink | EmbeddedResource] = []
     for r in repos:
         status = "indexed" if r.indexed else "not indexed"
         last_indexed = f" (last indexed: {r.last_indexed})" if r.last_indexed else ""
@@ -53,4 +53,4 @@ async def handle(arguments: dict) -> CallToolResult:
             "status": types.TextContent(type="text", text=status),
             "last_indexed": types.TextContent(type="text", text=last_indexed),
         }
-    return types.CallToolResult(content=repos_content_results, structuredContent=repos_structured_results)
+    return types.CallToolResult(content=repos_content_results, structured_content=repos_structured_results)

@@ -1,7 +1,7 @@
 # ADR-00010: ADR tooling design
 
 ## Status
-Proposed
+Superseded by ADR-00012
 
 ## Context
 

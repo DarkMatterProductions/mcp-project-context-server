@@ -1,0 +1,26 @@
+# Add patterns to ignore here, one per line
+# Example:
+# *.log
+# tmp/
+/src/*.egg-info/
+/.benchmarks/
+/.context/
+/.git/
+/.github/
+/.idea/
+/.tox/
+/.vscode/
+/.venv/
+/.*venv/
+/tests/
+/dist/
+/build/
+/docs/
+
+.claude/
+.env*
+.converage
+*.ini
+junit.xml
+qodana.yaml
+*.sav

@@ -10,6 +10,11 @@ import os
 
 from mcp import types
 
+try:
+    from mcp_project_context_server._version import __version__
+except ImportError:
+    __version__ = "0.0.0.dev0"
+
 from mcp_project_context_server.exceptions import EmbeddingError
 from mcp_project_context_server.helpers.context import (
     collection_name_for,
@@ -29,7 +34,13 @@ _MISMATCH_WARNING = (
     "⚠️  **Provider mismatch detected** — the index was built with "
     "`{old_provider}/{old_model}` but the current provider is "
     "`{new_provider}/{new_model}`.  Search results may be inaccurate.  "
-    "Please re-run `index_project_context` to rebuild the index.\n\n---\n\n"
+    "Please re-run `index_project_context` to rebuild the index."
+)
+
+_VERSION_MISMATCH_WARNING = (
+    "⚠️  **Server version mismatch detected** — the index was built with "
+    "server version `{old_version}` but the running server is "
+    "`{new_version}`.  Please re-run `index_project_context` to rebuild the index."
 )
 
 # Floor applied to the over-fetch multiplier so a small `n_results` still
@@ -47,7 +58,7 @@ def _empty_result(text: str) -> types.CallToolResult:
 
 
 async def run_search(
-    project_path: str, query: str, n_results: int, file_prefix: str | None = None
+    project_path: str, query: str, n_results: int, file_prefix: str | None = None, exact_file: str | None = None
 ) -> types.CallToolResult:
     """Run a semantic search over the indexed `.context/` collection.
 
@@ -58,6 +69,9 @@ async def run_search(
         with this prefix are returned (used to scope search to ``decisions/`` or
         ``sessions/``). The store is over-fetched so the filter still has enough
         candidates to select from.
+    :param exact_file: (str) When set, only hits whose ``metadata["file"]`` equals
+        this exact path are returned (used to scope search to a single resolved
+        ADR). Mutually exclusive with *file_prefix*; also triggers over-fetch.
     :return: (CallToolResult) The unstructured text (matching context snippets,
         optionally prefixed with a provider/model mismatch warning, or an
         error/"not found" message) alongside a ``structured_content`` object of
@@ -85,7 +99,7 @@ async def run_search(
         return _empty_result(f"Collection '{col_name}' not found. Run index_project_context first.")
 
     # --- Provenance mismatch check ---
-    warning_prefix = ""
+    warnings: list[str] = []
     stored_meta = await store.get_collection_metadata(col_name)
     current_provider = get_embedding_provider()
     stored_embed_provider = stored_meta.get("embed_provider", "")
@@ -93,15 +107,28 @@ async def run_search(
 
     if stored_embed_provider and stored_embed_model:
         if stored_embed_provider != current_provider.provider_name or stored_embed_model != current_provider.model_name:
-            warning_prefix = _MISMATCH_WARNING.format(
-                old_provider=stored_embed_provider,
-                old_model=stored_embed_model,
-                new_provider=current_provider.provider_name,
-                new_model=current_provider.model_name,
+            warnings.append(
+                _MISMATCH_WARNING.format(
+                    old_provider=stored_embed_provider,
+                    old_model=stored_embed_model,
+                    new_provider=current_provider.provider_name,
+                    new_model=current_provider.model_name,
+                )
             )
 
+    stored_server_version = stored_meta.get("server_version", "")
+    if stored_server_version and stored_server_version != __version__:
+        warnings.append(
+            _VERSION_MISMATCH_WARNING.format(
+                old_version=stored_server_version,
+                new_version=__version__,
+            )
+        )
+
+    warning_prefix = "\n\n".join(warnings) + "\n\n---\n\n" if warnings else ""
+
     query_n_results = n_results
-    if file_prefix is not None:
+    if file_prefix is not None or exact_file is not None:
         query_n_results = max(n_results * _OVER_FETCH_MULTIPLIER, _OVER_FETCH_FLOOR)
 
     try:
@@ -117,7 +144,7 @@ async def run_search(
 
     documents = result.documents
     metadatas = result.metadatas
-    distances = result.distances if len(result.distances) == len(documents) else [None] * len(documents)
+    distances: list[float | None] = result.distances if len(result.distances) == len(documents) else [None] * len(documents)
 
     if file_prefix is not None:
         filtered = [
@@ -129,15 +156,35 @@ async def run_search(
         documents = [doc for doc, _, _ in filtered]
         metadatas = [meta for _, meta, _ in filtered]
         distances = [dist for _, _, dist in filtered]
+    elif exact_file is not None:
+        filtered = [
+            (doc, meta, dist)
+            for doc, meta, dist in zip(documents, metadatas, distances)
+            if meta.get("file", "") == exact_file
+        ]
+        filtered = filtered[:n_results]
+        documents = [doc for doc, _, _ in filtered]
+        metadatas = [meta for _, meta, _ in filtered]
+        distances = [dist for _, _, dist in filtered]
 
     if not documents:
         return _empty_result(f"{warning_prefix}No results found.")
 
     items = [
-        {"file": meta.get("file", "?"), "chunk": meta.get("chunk"), "content": doc, "distance": dist}
+        {
+            "file": meta.get("file", "?"),
+            "chunk": meta.get("chunk"),
+            "content": doc,
+            "distance": dist,
+            "section": meta.get("section"),
+        }
         for doc, meta, dist in zip(documents, metadatas, distances)
     ]
-    output_parts = [f"**[{item['file']}]**\n{item['content']}" for item in items]
+
+    def _label(item: dict) -> str:
+        return f"{item['file']} § {item['section']}" if item["section"] else item["file"]
+
+    output_parts = [f"**[{_label(item)}]**\n{item['content']}" for item in items]
     body = "\n\n---\n\n".join(output_parts)
 
     structured_content: dict = {"results": items}

@@ -88,6 +88,13 @@ class CohereEmbeddingProvider(EmbeddingProvider):
                 ),
                 timeout=_EMBED_TIMEOUT_SECONDS,
             )
-            return list(response.embeddings.float_[0])
+            floats = response.embeddings.float_
+            if not floats:
+                raise EmbeddingError(
+                    f"Cohere embedding response for model={self._model} did not include float embeddings."
+                )
+            return list(floats[0])
+        except EmbeddingError:
+            raise
         except Exception as exc:
             raise EmbeddingError(f"Cohere embedding failed (model={self._model}): {exc}") from exc

@@ -2,7 +2,7 @@
 
 These tests verify that:
 - The MCP handshake completes successfully.
-- All nine expected tools are registered with the server.
+- All expected tools are registered with the server.
 - Each tool exposes the correct input-schema shape (required fields present).
 - Calling an unknown tool name returns a graceful error text rather than
   crashing the server.
@@ -25,6 +25,17 @@ _EXPECTED_TOOLS = {
     "save_session_summary",
     "index_project_context",
     "list_repositories",
+    "list_adrs",
+    "read_adr",
+    "read_adr_status",
+    "list_adr_sections",
+    "read_adr_section",
+    "search_adr_sections",
+    "create_adr",
+    "edit_adr",
+    "update_adr_status",
+    "write_project",
+    "edit_project",
 }
 
 
@@ -40,10 +51,10 @@ class TestServerRegistration(MCPIntegrationBase):
         registered = {t.name for t in result.tools}
         assert _EXPECTED_TOOLS == registered
 
-    async def test_exactly_nine_tools_registered(self, make_mcp_session):
+    async def test_exactly_twenty_tools_registered(self, make_mcp_session):
         async with make_mcp_session() as session:
             result = await session.list_tools()
-        assert len(result.tools) == 9
+        assert len(result.tools) == 20
 
     @pytest.mark.parametrize("tool_name", sorted(_EXPECTED_TOOLS))
     async def test_each_tool_has_input_schema(self, make_mcp_session, tool_name):

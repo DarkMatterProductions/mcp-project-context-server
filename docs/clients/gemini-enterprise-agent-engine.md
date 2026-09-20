@@ -88,7 +88,7 @@ PGVECTOR_CONNECTION_STRING=postgresql://mcpuser:***@/mcp_context?host=/cloudsql/
 
 # Repository — GitHub multi-tenant
 REPO_PROVIDER=github
-REPO_AUTH_TOKEN=ghp_xx...xxxx
+REPO_AUTH_TOKEN=xx...xxxx
 REPO_MULTI_TENANT=true
 APPROVED_ORGS=acme,acme-labs
 # Optionally restrict to specific repos:

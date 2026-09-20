@@ -399,7 +399,7 @@ Alternatively, set `PROJECT_PATH` in the server's `env` block to pin it to one p
 {
    "env": {
       "REPO_PROVIDER": "github",
-      "REPO_AUTH_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      "REPO_AUTH_TOKEN": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
    }
 }
 ```

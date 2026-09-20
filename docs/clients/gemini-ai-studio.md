@@ -349,7 +349,7 @@ No configuration required. Pass the absolute path to your project as `project_pa
 {
   "env": {
     "REPO_PROVIDER": "github",
-    "REPO_AUTH_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    "REPO_AUTH_TOKEN": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
   }
 }
 ```

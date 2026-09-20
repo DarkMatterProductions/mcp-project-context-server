@@ -376,7 +376,7 @@ No configuration required. The workspace root is used as `project_path`. To pin 
 {
    "env": {
       "REPO_PROVIDER": "github",
-      "REPO_AUTH_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      "REPO_AUTH_TOKEN": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
    }
 }
 ```

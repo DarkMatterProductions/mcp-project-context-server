@@ -375,7 +375,7 @@ No configuration required, but Claude Code does not automatically know your repo
 {
    "env": {
       "REPO_PROVIDER": "github",
-      "REPO_AUTH_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      "REPO_AUTH_TOKEN": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
    }
 }
 ```

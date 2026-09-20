@@ -147,7 +147,7 @@ class GcpVectorSearchProvider:
     def _get_firestore(self) -> Any:
         """Return the Firestore client, initialising it on first use."""
         if self._firestore is None:
-            from google.cloud import firestore  # lazy import
+            from google.cloud import firestore  # type: ignore[attr-defined]  # lazy import
 
             self._firestore = firestore.Client(project=self._project)
         return self._firestore
@@ -308,7 +308,7 @@ class GcpVectorSearchProvider:
             )
             neighbors = response[0] if response else []
             ids = [n.id for n in neighbors]
-            distances = [float(n.distance) for n in neighbors]
+            distances: list[float | None] = [float(n.distance) for n in neighbors]
 
             db = self._get_firestore()
             documents: list[str] = []
