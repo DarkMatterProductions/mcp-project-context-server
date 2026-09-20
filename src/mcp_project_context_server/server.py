@@ -30,10 +30,12 @@ from mcp.types import (
 )
 
 from mcp_project_context_server.tools import (
+    bootstrap_context,
     create_adr,
     edit_adr,
     edit_project,
     find_latest_session_file,
+    get_bootstrap_questions,
     index_context,
     list_adr_sections,
     list_adrs,
@@ -498,6 +500,58 @@ _TOOL_DEFINITIONS: list[Tool] = [
             "required": ["project_path", "section", "content"],
         },
     ),
+    Tool(
+        name="get_bootstrap_questions",
+        description=(
+            "Get the interview question set for a bootstrap artifact (currently 'project', "
+            "for .context/project.md). Ask the user each question, then pass the answers as "
+            "`project_sections` to `bootstrap_context`. Pass `project_path` to also merge in "
+            "any repo-supplied custom questions from a `.project-bootstrap-questions.yaml` file "
+            "at the repository root."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "target": {
+                    "type": "string",
+                    "default": "project",
+                    "description": "The bootstrap artifact to get interview questions for.",
+                },
+                "project_path": _PROJECT_PATH_PROPERTY,
+            },
+            "required": [],
+        },
+    ),
+    Tool(
+        name="bootstrap_context",
+        description=(
+            "Atomically scaffold a brand-new .context/ directory for a project that doesn't "
+            "have one yet: creates decisions/ and sessions/, writes the bundled "
+            "ADR_CREATE_AND_MANAGEMENT.md and PLANNING_LOOP.md governance docs, writes an "
+            "interview-driven project.md (answers from `get_bootstrap_questions`), and creates "
+            "a governance ADR-00001 establishing the project's ADR process. Every step is "
+            "additive and idempotent — artifacts that already exist are skipped, not overwritten. "
+            "If the repository has a `.project-bootstrap-questions.yaml` file at its root, its "
+            "questions are merged into the interview set used for project.md."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project_path": _PROJECT_PATH_PROPERTY,
+                "project_name": {"type": "string", "description": "The project's name, used in project.md's title."},
+                "project_sections": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"},
+                    "description": (
+                        "Interview answers keyed by the 'key' fields from "
+                        "`get_bootstrap_questions('project')`, e.g. {'One-liner': '...'}."
+                    ),
+                },
+                "auto_reindex": _AUTO_REINDEX_PROPERTY,
+            },
+            "required": ["project_path", "project_name"],
+        },
+    ),
 ]
 
 ToolHandler = Callable[[dict[str, Any]], Coroutine[Any, Any, list[TextContent] | CallToolResult]]
@@ -523,6 +577,8 @@ _TOOL_HANDLERS: dict[str, ToolHandler] = {
     "update_adr_status": update_adr_status.handle,
     "write_project": write_project.handle,
     "edit_project": edit_project.handle,
+    "get_bootstrap_questions": get_bootstrap_questions.handle,
+    "bootstrap_context": bootstrap_context.handle,
 }
 
 

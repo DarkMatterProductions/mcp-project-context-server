@@ -37,6 +37,7 @@ dependencies = [
     "httpx>=0.27",
     "starlette",
     "uvicorn",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -113,6 +114,9 @@ where = ["src"]  # Look for packages in src/
 
 [tool.setuptools.package-dir]
 "" = "src"
+
+[tool.setuptools.package-data]
+mcp_project_context_server = ["templates/*.md"]
 
 [tool.pytest.ini_options]
 pythonpath = [
