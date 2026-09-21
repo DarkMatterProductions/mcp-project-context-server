@@ -4,6 +4,7 @@ Every integration test class should inherit from `MCPIntegrationBase` so that
 common server-params construction, project scaffolding, and response-assertion
 helpers are available without duplication.
 """
+
 import os
 import sys
 from pathlib import Path
@@ -74,9 +75,7 @@ class MCPIntegrationBase:
                 not a text block.
         """
         assert result.content, "call_tool result has no content"
-        assert result.content[0].type == "text", (
-            f"Expected text content, got {result.content[0].type!r}"
-        )
+        assert result.content[0].type == "text", f"Expected text content, got {result.content[0].type!r}"
         return result.content[0].text
 
     @staticmethod
@@ -92,9 +91,7 @@ class MCPIntegrationBase:
         Raises:
             AssertionError: If `result.is_error` is `True`.
         """
-        assert not getattr(result, "is_error", False), (
-            f"Tool call unexpectedly errored: {result}"
-        )
+        assert not getattr(result, "is_error", False), f"Tool call unexpectedly errored: {result}"
         return MCPIntegrationBase.get_tool_text(result)
 
     # ------------------------------------------------------------------

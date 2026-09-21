@@ -1,4 +1,5 @@
 """Tool: bootstrap_context — atomically scaffold a new .context/ directory."""
+
 import logging
 import os
 from importlib import resources
@@ -80,11 +81,7 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     else:
         root = Path(resolved_path).resolve()
         if not root.is_dir():
-            return [
-                types.TextContent(
-                    type="text", text=f"'{arguments['project_path']}' is not an existing directory."
-                )
-            ]
+            return [types.TextContent(type="text", text=f"'{arguments['project_path']}' is not an existing directory.")]
         context_dir = root / ".context"
         (context_dir / "decisions").mkdir(parents=True, exist_ok=True)
         (context_dir / "sessions").mkdir(parents=True, exist_ok=True)
@@ -110,9 +107,7 @@ async def handle(arguments: dict) -> list[types.TextContent]:
         summary.append("- `.context/project.md`: skipped (already exists).")
     else:
         content = render_project_md(project_name, project_sections, project_questions)
-        result = await write_project.handle(
-            {"project_path": _project_path, "content": content, "auto_reindex": False}
-        )
+        result = await write_project.handle({"project_path": _project_path, "content": content, "auto_reindex": False})
         summary.append(f"- `.context/project.md`: {result[0].text.splitlines()[0]}")
 
     existing_adrs, _warnings = await list_adrs(_project_path)

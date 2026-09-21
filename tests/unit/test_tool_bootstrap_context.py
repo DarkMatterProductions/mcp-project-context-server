@@ -1,4 +1,5 @@
 """Tests for the bootstrap_context tool."""
+
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -43,7 +44,11 @@ class TestBootstrapContextLocal:
         assert "# Project: My Project" in project_md
         assert "Does a thing." in project_md
 
-        adr_file = context_dir / "decisions" / "ADR-00001-consistent-use-of-architecture-decision-records-in-the-standard-development-cycle.md"
+        adr_file = (
+            context_dir
+            / "decisions"
+            / "ADR-00001-consistent-use-of-architecture-decision-records-in-the-standard-development-cycle.md"
+        )
         assert adr_file.exists()
         assert "Status\nProposed" in adr_file.read_text(encoding="utf-8")
 
@@ -85,7 +90,11 @@ class TestBootstrapContextLocal:
 
         assert (context_dir / "project.md").read_text(encoding="utf-8") == "Pre-existing content."
         assert (context_dir / "ADR_CREATE_AND_MANAGEMENT.md").exists()
-        assert (context_dir / "decisions" / "ADR-00001-consistent-use-of-architecture-decision-records-in-the-standard-development-cycle.md").exists()
+        assert (
+            context_dir
+            / "decisions"
+            / "ADR-00001-consistent-use-of-architecture-decision-records-in-the-standard-development-cycle.md"
+        ).exists()
 
         text = result[0].text
         assert "`.context/project.md`: skipped (already exists)." in text

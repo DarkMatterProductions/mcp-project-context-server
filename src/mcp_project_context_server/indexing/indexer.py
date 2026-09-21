@@ -168,7 +168,12 @@ async def run_index_pipeline(project_path: str | Path, store: VectorStoreProvide
             embeddings=[embedding for _, embedding in results],
             documents=[chunk.text for chunk, _ in results],
             metadatas=[
-                {"file": chunk.filename, "chunk": chunk.segment, "section": chunk.section, "section_sha512": chunk.section_sha512}
+                {
+                    "file": chunk.filename,
+                    "chunk": chunk.segment,
+                    "section": chunk.section,
+                    "section_sha512": chunk.section_sha512,
+                }
                 for chunk, _ in results
             ],
         )

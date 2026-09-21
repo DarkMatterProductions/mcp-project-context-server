@@ -74,6 +74,7 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
         """
         try:
             import ollama
+
             client = ollama.Client(host=self._host)
             response = await asyncio.wait_for(
                 asyncio.to_thread(client.embed, model=self._model, input=text),

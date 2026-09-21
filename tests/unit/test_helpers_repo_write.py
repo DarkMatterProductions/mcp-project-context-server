@@ -1,4 +1,5 @@
 """Tests for helpers/repo_write.py — remote write-mode plumbing and reindex notes."""
+
 import pytest
 
 from mcp_project_context_server.helpers.repo_write import append_reindex_note, write_context_file

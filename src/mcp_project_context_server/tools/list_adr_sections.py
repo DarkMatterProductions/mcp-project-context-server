@@ -1,4 +1,5 @@
 """Tool: list_adr_sections — list an ADR's top-level section names in order."""
+
 import logging
 import os
 
@@ -42,8 +43,6 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     if not names:
         text = f"ADR-{info.number:05d} ({info.filename}) has no top-level (##) sections."
     else:
-        text = f"Sections in ADR-{info.number:05d} ({info.filename}):\n" + "\n".join(
-            f"- {name}" for name in names
-        )
+        text = f"Sections in ADR-{info.number:05d} ({info.filename}):\n" + "\n".join(f"- {name}" for name in names)
 
     return [types.TextContent(type="text", text=text)]

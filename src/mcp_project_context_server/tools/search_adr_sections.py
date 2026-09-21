@@ -1,4 +1,5 @@
 """Tool: search_adr_sections — semantic search scoped to a single resolved ADR."""
+
 import logging
 import os
 

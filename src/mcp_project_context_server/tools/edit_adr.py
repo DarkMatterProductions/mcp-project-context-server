@@ -1,4 +1,5 @@
 """Tool: edit_adr — replace a single named top-level section of an ADR."""
+
 import logging
 import os
 

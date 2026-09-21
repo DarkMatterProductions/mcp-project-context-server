@@ -1,4 +1,5 @@
 """Tests for the custom_bootstrap_questions helper."""
+
 from unittest.mock import AsyncMock, patch
 
 import pytest

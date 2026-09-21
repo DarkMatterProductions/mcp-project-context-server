@@ -1,4 +1,5 @@
 """Shared helpers for loading, hashing, and listing individual .context/ files."""
+
 import hashlib
 import logging
 from pathlib import Path

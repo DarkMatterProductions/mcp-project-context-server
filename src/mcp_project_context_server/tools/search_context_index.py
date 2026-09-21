@@ -1,4 +1,5 @@
 """Tool: search_context_index — semantic search over the whole indexed context."""
+
 import logging
 import os
 

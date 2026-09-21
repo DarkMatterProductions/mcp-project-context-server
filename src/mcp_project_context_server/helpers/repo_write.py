@@ -5,6 +5,7 @@ filesystem writes) since local preconditions (e.g. creating ``decisions/``)
 differ per tool. This module only covers the remote path, generalized from
 ``tools/save_session.py``'s ``_handle_remote``.
 """
+
 import logging
 import os
 from datetime import datetime
@@ -55,8 +56,7 @@ async def write_context_file(
         await provider.create_branch(repo_id, branch_name)
         await provider.write_file(repo_id, target_path, content, commit_message, branch=branch_name)
         return (
-            f"Wrote `{rel_path}` to new branch `{branch_name}` on `{repo_id}` "
-            f"(provider: {provider.provider_name})."
+            f"Wrote `{rel_path}` to new branch `{branch_name}` on `{repo_id}` " f"(provider: {provider.provider_name})."
         )
     except RepositoryError as exc:
         return f"Error writing `{rel_path}`: {exc}"

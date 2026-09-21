@@ -12,7 +12,7 @@ def pytest_collection_modifyitems(session, config, items):
     def get_test_priority(item):
         # item.path is a native pathlib.Path object in modern pytest
         # (Fall back to Path(item.fspath) for older versions)
-        test_path = getattr(item, 'path', Path(item.fspath))
+        test_path = getattr(item, "path", Path(item.fspath))
 
         # Check the folder names safely as sequence parts
         path_parts = test_path.parts

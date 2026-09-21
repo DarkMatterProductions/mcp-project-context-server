@@ -1,4 +1,5 @@
 """Loads repo-supplied custom bootstrap questions and merges them with the built-ins."""
+
 import logging
 from pathlib import Path
 

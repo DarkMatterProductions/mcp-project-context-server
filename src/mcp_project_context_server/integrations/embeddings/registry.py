@@ -46,6 +46,7 @@ Supported `EMBED_PROVIDER` values
     `GOOGLE_VERTEX_LOCATION`.
     Optional: `GOOGLE_VERTEX_EMBED_MODEL` (default: text-embedding-004).
 """
+
 import logging
 import os
 

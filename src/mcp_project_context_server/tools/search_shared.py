@@ -5,8 +5,8 @@ the collection at index time and compares it against the current provider
 configuration.  If the embedding provider or model has changed, a warning is
 prepended to the results so the user knows the index may need rebuilding.
 """
+
 import logging
-import os
 
 from mcp import types
 
@@ -144,7 +144,9 @@ async def run_search(
 
     documents = result.documents
     metadatas = result.metadatas
-    distances: list[float | None] = result.distances if len(result.distances) == len(documents) else [None] * len(documents)
+    distances: list[float | None] = (
+        result.distances if len(result.distances) == len(documents) else [None] * len(documents)
+    )
 
     if file_prefix is not None:
         filtered = [

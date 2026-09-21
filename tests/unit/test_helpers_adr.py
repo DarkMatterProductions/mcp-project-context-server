@@ -1,4 +1,5 @@
 """Tests for helpers/adr.py — ADR discovery, resolution, and section editing."""
+
 import pytest
 
 from mcp_project_context_server.helpers.adr import (

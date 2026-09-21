@@ -1,4 +1,5 @@
 """Tool: read_adr — read one ADR's full raw content by number or filename."""
+
 import logging
 import os
 

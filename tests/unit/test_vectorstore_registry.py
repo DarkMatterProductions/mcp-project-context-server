@@ -67,4 +67,3 @@ class TestGetVectorStore:
         monkeypatch.setenv("VECTOR_STORE_PROVIDER", "totally-unknown")
         with pytest.raises(EnvironmentError, match="Unsupported VECTOR_STORE_PROVIDER"):
             get_vector_store()
-

@@ -27,6 +27,7 @@ unreachable or not configured.
 Run only tests that require no external services:
     pytest tests/integration/test_index_context.py -v -m "not external_services"
 """
+
 import os
 
 import pytest

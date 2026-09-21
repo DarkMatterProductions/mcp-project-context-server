@@ -5,6 +5,7 @@ Naming convention (from ``.context/adr-creation-and-review-process.md``):
 reused. Files that don't match this convention are excluded from `list_adrs`'s
 results and reported as warnings instead.
 """
+
 import re
 from dataclasses import dataclass
 

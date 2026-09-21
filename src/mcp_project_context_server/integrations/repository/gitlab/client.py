@@ -1,4 +1,5 @@
 """GitLab repository provider implementation using the GitLab REST API."""
+
 import logging
 import os
 from typing import Optional

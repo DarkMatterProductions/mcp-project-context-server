@@ -1,4 +1,5 @@
 """Tool: list_repositories — list accessible repositories via the configured provider."""
+
 import logging
 
 from mcp import types
@@ -46,10 +47,14 @@ async def handle(arguments: dict) -> CallToolResult:
     for r in repos:
         status = "indexed" if r.indexed else "not indexed"
         last_indexed = f" (last indexed: {r.last_indexed})" if r.last_indexed else ""
-        repos_content_results.append(types.TextContent(type="text", text=f"- **{r.identifier}** — {r.description or 'no description'} [{status}{last_indexed}]"))
+        repos_content_results.append(
+            types.TextContent(
+                type="text", text=f"- **{r.identifier}** — {r.description or 'no description'} [{status}{last_indexed}]"
+            )
+        )
         repos_structured_results[r.identifier] = {
             "identifier": types.TextContent(type="text", text=r.identifier),
-            "description": types.TextContent(type="text", text=r.description or 'no description'),
+            "description": types.TextContent(type="text", text=r.description or "no description"),
             "status": types.TextContent(type="text", text=status),
             "last_indexed": types.TextContent(type="text", text=last_indexed),
         }

@@ -1,4 +1,5 @@
 """Tests for the create_adr tool."""
+
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -67,13 +68,9 @@ class TestCreateAdrLocal:
         project_dir = tmp_path / "project"
         (project_dir / ".context").mkdir(parents=True)
 
-        await handle(
-            {"project_path": str(project_dir), "title": "Weird Title! With Punctuation?", "context": "ctx"}
-        )
+        await handle({"project_path": str(project_dir), "title": "Weird Title! With Punctuation?", "context": "ctx"})
 
-        assert (
-            project_dir / ".context" / "decisions" / "ADR-00001-weird-title-with-punctuation.md"
-        ).exists()
+        assert (project_dir / ".context" / "decisions" / "ADR-00001-weird-title-with-punctuation.md").exists()
 
     @pytest.mark.asyncio
     async def test_auto_reindex_runs_indexer(self, tmp_path, mocker):
@@ -111,9 +108,7 @@ class TestCreateAdrLocal:
         monkeypatch.setenv("APPROVED_ORGS", "approved-org")
         monkeypatch.delenv("APPROVED_REPOS", raising=False)
 
-        result = await handle(
-            {"project_path": "unapproved-org/some-repo", "title": "X", "context": "ctx"}
-        )
+        result = await handle({"project_path": "unapproved-org/some-repo", "title": "X", "context": "ctx"})
 
         assert "not permitted" in result[0].text
 
@@ -139,9 +134,7 @@ class TestCreateAdrRemote:
                 return_value=mock_provider,
             ),
         ):
-            result = await handle(
-                {"project_path": "owner/repo", "title": "Remote Decision", "context": "ctx"}
-            )
+            result = await handle({"project_path": "owner/repo", "title": "Remote Decision", "context": "ctx"})
 
         mock_provider.create_branch.assert_called_once()
         mock_provider.write_file.assert_called_once()

@@ -21,7 +21,9 @@ class TestSearchSessionFiles:
 
     @pytest.mark.asyncio
     async def test_structured_content_passes_through_untouched(self, mocker):
-        structured = {"results": [{"file": "sessions/2026-01-01.md", "chunk": None, "content": "snippet", "distance": None}]}
+        structured = {
+            "results": [{"file": "sessions/2026-01-01.md", "chunk": None, "content": "snippet", "distance": None}]
+        }
         mocker.patch(
             "mcp_project_context_server.tools.search_session_files.run_search",
             return_value=types.CallToolResult(

@@ -36,6 +36,7 @@ Incompatible combinations
 ``chroma-http``: the two SDKs deadlock when loaded into the same process on
 Windows.  Use ``VECTOR_STORE_PROVIDER=pgvector`` with Vertex AI instead.
 """
+
 import logging
 import os
 from collections.abc import Callable, Coroutine

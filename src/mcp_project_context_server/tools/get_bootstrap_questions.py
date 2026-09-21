@@ -1,4 +1,5 @@
 """Tool: get_bootstrap_questions — the interview question set for a bootstrap artifact."""
+
 import logging
 
 from mcp import types

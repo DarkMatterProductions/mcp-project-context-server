@@ -9,6 +9,7 @@ Tip: run only integration tests with:
 Skip tests that need external services (ChromaDB, Ollama) with:
     pytest tests/integration/ -v -m "not external_services"
 """
+
 import os
 import sys
 from contextlib import asynccontextmanager

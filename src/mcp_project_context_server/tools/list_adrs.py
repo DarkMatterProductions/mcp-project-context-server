@@ -1,4 +1,5 @@
 """Tool: list_adrs — lightweight structural listing of .context/decisions/."""
+
 import logging
 import os
 

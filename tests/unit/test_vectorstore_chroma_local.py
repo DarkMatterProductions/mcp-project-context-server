@@ -38,9 +38,7 @@ def mock_client(provider: ChromaLocalVectorStoreProvider) -> MagicMock:
 
 
 class TestChromaDirResolution:
-    def test_tilde_prefixed_chroma_dir_is_expanded_to_home(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_tilde_prefixed_chroma_dir_is_expanded_to_home(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("CHROMA_DIR", "~/.mcp-data/Projects/example/chroma")
         provider = ChromaLocalVectorStoreProvider()
         assert provider._dir == Path.home() / ".mcp-data" / "Projects" / "example" / "chroma"
@@ -185,9 +183,7 @@ class TestListIds:
 
 class TestDeleteByIds:
     @pytest.mark.asyncio
-    async def test_noop_when_ids_empty(
-        self, provider: ChromaLocalVectorStoreProvider, mock_client: MagicMock
-    ) -> None:
+    async def test_noop_when_ids_empty(self, provider: ChromaLocalVectorStoreProvider, mock_client: MagicMock) -> None:
         await provider.delete_by_ids("col", [])
         mock_client.get_collection.assert_not_called()
 

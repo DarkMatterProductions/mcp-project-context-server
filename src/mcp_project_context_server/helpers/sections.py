@@ -6,6 +6,7 @@ chunk, with a staged fallback for sections that exceed a caller-supplied
 maximum size (natural paragraph breaks, then ``###`` sub-headings, then
 allowing an oversized chunk as a last resort).
 """
+
 import re
 from dataclasses import dataclass
 
@@ -127,7 +128,7 @@ def chunk_section(section: Section, max_chars: int) -> list[str]:
     heading_match = _TOP_HEADING_RE.match(section.content) or _TITLE_RE.match(section.content)
     if heading_match:
         heading_line = section.content[: heading_match.end()]
-        body = section.content[heading_match.end() :].lstrip("\n")
+        body = section.content[heading_match.end():].lstrip("\n")
     else:
         heading_line = f"## {section.name}" if section.name else ""
         body = section.content
