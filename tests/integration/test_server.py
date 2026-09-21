@@ -36,6 +36,8 @@ _EXPECTED_TOOLS = {
     "update_adr_status",
     "write_project",
     "edit_project",
+    "get_bootstrap_questions",
+    "bootstrap_context",
 }
 
 
@@ -51,10 +53,10 @@ class TestServerRegistration(MCPIntegrationBase):
         registered = {t.name for t in result.tools}
         assert _EXPECTED_TOOLS == registered
 
-    async def test_exactly_twenty_tools_registered(self, make_mcp_session):
+    async def test_exactly_twenty_two_tools_registered(self, make_mcp_session):
         async with make_mcp_session() as session:
             result = await session.list_tools()
-        assert len(result.tools) == 20
+        assert len(result.tools) == 22
 
     @pytest.mark.parametrize("tool_name", sorted(_EXPECTED_TOOLS))
     async def test_each_tool_has_input_schema(self, make_mcp_session, tool_name):
