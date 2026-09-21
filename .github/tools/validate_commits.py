@@ -5,7 +5,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import List, Any, Dict, Literal
-from shared_helpers import key_id_lookup
+from shared_helpers import key_id_lookup, get_last_version, analyze_commits, determine_new_version
 from constants import COMMIT_TYPES, RELEASE_OVERRIDE_SCOPES
 
 # ── Constants ────────────────────────────────────────────────────────────────
@@ -84,22 +84,9 @@ def validate_commit_messages(commits: List[str]) -> Dict[str, Dict[str, List[Dic
     has_none = False
     has_invalid = False
     type_id_entry = lambda typescope_match: key_id_lookup(typescope_match, COMMIT_TYPES)
-    commit_ids: defaultdict[Any, Dict[str, str | Dict[str, str]]] = defaultdict(dict)
+    commit_ids: defaultdict[Any, Dict[str, str | Dict[str, str]]] = analyze_commits(commits)
 
     for commit_hash in commits:
-        commit_ids[commit_hash] = get_commit_message(commit_hash)
-        commit_ids[commit_hash]["hash"] = commit_hash
-        commit_ids[commit_hash]["short_hash"] = commit_hash[:7]
-        subject = commit_ids[commit_hash]["subject"]
-        if re.match(r'^Merge\b', subject):
-            merge_type = COMMIT_TYPES['merge'].copy()
-            merge_type["force_major"] = False
-            merge_type["skip_version"] = False
-            commit_ids[commit_hash]["type_id"] = merge_type
-        else:
-            type_scope_match = re.match(r'(?P<type>\w+)(?P<force_major>!?)\((?P<scope>\w+)\):[ ]+', subject)
-            commit_ids[commit_hash]["type_id"] = type_id_entry(type_scope_match)
-
         if commit_ids[commit_hash]["type_id"]["force_major"] and not commit_ids[commit_hash]["type_id"]["skip_version"]:
             has_major = True
             print("** FORCE MAJOR OVERRIDE ENABLED **")
@@ -146,7 +133,7 @@ def validate_commit_messages(commits: List[str]) -> Dict[str, Dict[str, List[Dic
     if bump is not None:
         print(f"\nBump type: {bump[0]} ({bump[1]})")
 
-    return analyzed_commits
+    return analyzed_commits, bump
 
 if __name__ == "__main__":
     import argparse
@@ -159,10 +146,16 @@ if __name__ == "__main__":
     print("Validating commit messages...")
 
     unvalidated_commits = get_commits_since_branch_head(args.source, args.destination)
-    validated_commits = validate_commit_messages(unvalidated_commits)
+    validated_commits, bump = validate_commit_messages(unvalidated_commits)
+
+    current_version = get_last_version()
+    print(f"Current version: {current_version}")
+    print()
+    new_version, bump_used = determine_new_version(current_version, unvalidated_commits, None, False, False)
+    print(f"New version: {new_version} Enforced Bump Type: {bump_used}")
 
     print()
-    print("Identified Commits:")
+    print("Valid Commits:")
     for commit_hash in validated_commits["valid"]["commits"]:
         scope_skip_versioning = f" (Scope Enforced Skip Version Increment)" if commit_hash["type_id"]["skip_version"] else f""
         print(f"    Commit {commit_hash['hash']} has recognized commit type (Type: {COMMIT_TYPES[commit_hash['type_id']['name']]['name']} - Scope: {commit_hash['type_id']['scope_id']} / Bump: {commit_hash['type_id']['bump_type']}{scope_skip_versioning}) in subject: '{commit_hash['subject']}'")
