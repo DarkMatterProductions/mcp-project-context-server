@@ -1,4 +1,5 @@
 """Tests for the search_adr_sections tool."""
+
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -27,9 +28,7 @@ class TestSearchAdrSections:
         (project_dir / ".context" / "decisions").mkdir(parents=True)
 
         with patch("mcp_project_context_server.tools.search_adr_sections.run_search") as mock_run_search:
-            result = await handle(
-                {"project_path": str(project_dir), "number_or_filename": 99, "query": "q"}
-            )
+            result = await handle({"project_path": str(project_dir), "number_or_filename": 99, "query": "q"})
 
         assert "No ADR found matching '99'" in result.content[0].text
         assert result.structured_content == {"results": []}
@@ -70,9 +69,7 @@ class TestSearchAdrSections:
         monkeypatch.setenv("APPROVED_ORGS", "approved-org")
         monkeypatch.delenv("APPROVED_REPOS", raising=False)
 
-        result = await handle(
-            {"project_path": "unapproved-org/some-repo", "number_or_filename": 1, "query": "q"}
-        )
+        result = await handle({"project_path": "unapproved-org/some-repo", "number_or_filename": 1, "query": "q"})
 
         assert "not permitted" in result.content[0].text
         assert result.structured_content == {"results": []}

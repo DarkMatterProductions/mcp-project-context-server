@@ -1,4 +1,5 @@
 """Tool: read_adr_status — read one ADR's parsed status and title."""
+
 import logging
 import os
 

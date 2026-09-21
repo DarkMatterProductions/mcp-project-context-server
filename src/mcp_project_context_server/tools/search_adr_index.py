@@ -1,4 +1,5 @@
 """Tool: search_adr_index — semantic search scoped to .context/decisions/."""
+
 import logging
 import os
 

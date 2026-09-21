@@ -103,9 +103,7 @@ class LocalRepositoryProvider:
         return result
 
     @staticmethod
-    async def write_file(
-        repo_id: str, path: str, content: str, message: str, branch: Optional[str] = None
-    ) -> None:
+    async def write_file(repo_id: str, path: str, content: str, message: str, branch: Optional[str] = None) -> None:
         """Write ``content`` to ``<repo_id>/<path>``, creating parent directories.
 
         ``message`` and ``branch`` are ignored for the local provider (no
@@ -118,7 +116,9 @@ class LocalRepositoryProvider:
         :param branch: (str) Ignored by the local provider.
         :return: (None) This method does not return a value.
         """
-        logger.debug(f"Executing 'write_file' with the arguments repo_id: {repo_id}, path: {path}, content: {content}, message: {message}, branch: {branch}")
+        logger.debug(
+            f"Executing 'write_file' with the arguments repo_id: {repo_id}, path: {path}, content: {content}, message: {message}, branch: {branch}"
+        )
         target = Path(repo_id) / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
@@ -132,7 +132,9 @@ class LocalRepositoryProvider:
         :param from_branch: (str) Ignored by the local provider.
         :return: (None) This method does not return a value.
         """
-        logger.debug(f"Executing 'create_branch' with the arguments repo_id: {repo_id}, new_branch: {new_branch}, from_branch: {from_branch}")
+        logger.debug(
+            f"Executing 'create_branch' with the arguments repo_id: {repo_id}, new_branch: {new_branch}, from_branch: {from_branch}"
+        )
         return None
 
     @staticmethod

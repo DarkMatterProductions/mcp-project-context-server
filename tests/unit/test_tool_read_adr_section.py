@@ -1,4 +1,5 @@
 """Tests for the read_adr_section tool."""
+
 import pytest
 
 from mcp_project_context_server.integrations.repository.registry import reset_provider_for_testing
@@ -28,9 +29,7 @@ class TestReadAdrSection:
         decisions_dir.mkdir(parents=True)
         (decisions_dir / "ADR-00001-first.md").write_text(_WELL_FORMED, encoding="utf-8")
 
-        result = await handle(
-            {"project_path": str(project_dir), "number_or_filename": 1, "section": "Decision"}
-        )
+        result = await handle({"project_path": str(project_dir), "number_or_filename": 1, "section": "Decision"})
 
         text = result[0].text
         assert text.startswith("## Decision")
@@ -44,9 +43,7 @@ class TestReadAdrSection:
         decisions_dir.mkdir(parents=True)
         (decisions_dir / "ADR-00001-first.md").write_text(_WELL_FORMED, encoding="utf-8")
 
-        result = await handle(
-            {"project_path": str(project_dir), "number_or_filename": 1, "section": "Nonexistent"}
-        )
+        result = await handle({"project_path": str(project_dir), "number_or_filename": 1, "section": "Nonexistent"})
 
         text = result[0].text
         assert "No section named 'Nonexistent'" in text
@@ -57,8 +54,6 @@ class TestReadAdrSection:
         project_dir = tmp_path / "project"
         (project_dir / ".context" / "decisions").mkdir(parents=True)
 
-        result = await handle(
-            {"project_path": str(project_dir), "number_or_filename": 99, "section": "Decision"}
-        )
+        result = await handle({"project_path": str(project_dir), "number_or_filename": 99, "section": "Decision"})
 
         assert "No ADR found matching '99'" in result[0].text

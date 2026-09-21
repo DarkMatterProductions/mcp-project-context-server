@@ -39,6 +39,7 @@ At least one of ``APPROVED_ORGS`` or ``APPROVED_REPOS`` must be set.
 ``validate_repo_access(repo_id)`` raises :exc:`RepositoryError` if the
 repo identifier is not in any approved list.
 """
+
 import logging
 import os
 from typing import Optional

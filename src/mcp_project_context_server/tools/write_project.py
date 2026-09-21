@@ -1,4 +1,5 @@
 """Tool: write_project — overwrite the full content of .context/project.md."""
+
 import logging
 import os
 

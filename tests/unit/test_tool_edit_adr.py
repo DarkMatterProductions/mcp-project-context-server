@@ -1,4 +1,5 @@
 """Tests for the edit_adr tool."""
+
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -107,9 +108,7 @@ class TestEditAdrRemote:
         monkeypatch.setenv("REPO_ADR_WRITE_MODE", "direct")
         mock_provider = AsyncMock()
         mock_provider.provider_name = "github"
-        mock_provider.fetch_context_files = AsyncMock(
-            return_value={"decisions/ADR-00001-first.md": _WELL_FORMED}
-        )
+        mock_provider.fetch_context_files = AsyncMock(return_value={"decisions/ADR-00001-first.md": _WELL_FORMED})
         mock_provider.get_default_branch = AsyncMock(return_value="main")
 
         with (

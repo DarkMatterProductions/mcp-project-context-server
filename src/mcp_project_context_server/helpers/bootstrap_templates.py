@@ -1,4 +1,5 @@
 """Question registry and rendering helpers for bootstrapping new .context/ projects."""
+
 from dataclasses import dataclass
 
 import yaml

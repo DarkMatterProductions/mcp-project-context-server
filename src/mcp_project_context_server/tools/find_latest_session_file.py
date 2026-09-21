@@ -1,4 +1,5 @@
 """Tool: find_latest_session_file — deterministic lookup of the newest session file."""
+
 import logging
 import os
 

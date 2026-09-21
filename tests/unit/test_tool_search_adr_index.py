@@ -21,7 +21,9 @@ class TestSearchAdrIndex:
 
     @pytest.mark.asyncio
     async def test_structured_content_passes_through_untouched(self, mocker):
-        structured = {"results": [{"file": "decisions/0001-foo.md", "chunk": None, "content": "snippet", "distance": None}]}
+        structured = {
+            "results": [{"file": "decisions/0001-foo.md", "chunk": None, "content": "snippet", "distance": None}]
+        }
         mocker.patch(
             "mcp_project_context_server.tools.search_adr_index.run_search",
             return_value=types.CallToolResult(

@@ -46,7 +46,9 @@ async def _run(tmp_path, store, embed_provider=None):
     with (
         patch("mcp_project_context_server.tools.search_shared.validate_repo_access"),
         patch("mcp_project_context_server.tools.search_shared.get_repository_provider", return_value=_repo_provider()),
-        patch("mcp_project_context_server.tools.search_shared.resolve_project_path", return_value=(str(tmp_path), False)),
+        patch(
+            "mcp_project_context_server.tools.search_shared.resolve_project_path", return_value=(str(tmp_path), False)
+        ),
         patch("mcp_project_context_server.tools.search_shared.get_vector_store", return_value=store),
         patch(
             "mcp_project_context_server.tools.search_shared.get_embedding_provider",
@@ -59,7 +61,9 @@ async def _run(tmp_path, store, embed_provider=None):
 class TestRunSearchProvenanceWarnings:
     @pytest.mark.asyncio
     async def test_no_mismatch_no_warning(self, tmp_path):
-        store = _vector_store({"embed_provider": "ollama", "embed_model": "nomic-embed-text", "server_version": "1.0.0"})
+        store = _vector_store(
+            {"embed_provider": "ollama", "embed_model": "nomic-embed-text", "server_version": "1.0.0"}
+        )
 
         with patch("mcp_project_context_server.tools.search_shared.__version__", "1.0.0"):
             result = await _run(tmp_path, store)
@@ -69,7 +73,9 @@ class TestRunSearchProvenanceWarnings:
 
     @pytest.mark.asyncio
     async def test_embed_provider_mismatch_warns(self, tmp_path):
-        store = _vector_store({"embed_provider": "openai", "embed_model": "text-embedding-3-small", "server_version": "1.0.0"})
+        store = _vector_store(
+            {"embed_provider": "openai", "embed_model": "text-embedding-3-small", "server_version": "1.0.0"}
+        )
 
         with patch("mcp_project_context_server.tools.search_shared.__version__", "1.0.0"):
             result = await _run(tmp_path, store)
@@ -82,7 +88,9 @@ class TestRunSearchProvenanceWarnings:
 
     @pytest.mark.asyncio
     async def test_server_version_mismatch_warns(self, tmp_path):
-        store = _vector_store({"embed_provider": "ollama", "embed_model": "nomic-embed-text", "server_version": "0.9.0"})
+        store = _vector_store(
+            {"embed_provider": "ollama", "embed_model": "nomic-embed-text", "server_version": "0.9.0"}
+        )
 
         with patch("mcp_project_context_server.tools.search_shared.__version__", "1.0.0"):
             result = await _run(tmp_path, store)
@@ -94,7 +102,9 @@ class TestRunSearchProvenanceWarnings:
 
     @pytest.mark.asyncio
     async def test_both_provider_and_version_mismatch_warns_for_both(self, tmp_path):
-        store = _vector_store({"embed_provider": "openai", "embed_model": "text-embedding-3-small", "server_version": "0.9.0"})
+        store = _vector_store(
+            {"embed_provider": "openai", "embed_model": "text-embedding-3-small", "server_version": "0.9.0"}
+        )
 
         with patch("mcp_project_context_server.tools.search_shared.__version__", "1.0.0"):
             result = await _run(tmp_path, store)

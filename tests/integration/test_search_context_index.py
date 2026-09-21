@@ -31,6 +31,7 @@ Run the full suite (including external-service tests) with:
 Run only tests that require no external services:
     pytest tests/integration/test_search_context_index.py -v -m "not external_services"
 """
+
 import os
 
 import pytest

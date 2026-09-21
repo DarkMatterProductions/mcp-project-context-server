@@ -1,4 +1,5 @@
 """Tool: read_adr_section — read a single named top-level section of an ADR."""
+
 import logging
 import os
 

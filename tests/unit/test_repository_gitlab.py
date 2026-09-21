@@ -355,4 +355,5 @@ class TestListRepositories:
             repos = await provider.list_repositories()
 
         call_url = mock_client.get.call_args[0][0]
+        assert repos == []
         assert "membership=true" in call_url

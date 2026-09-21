@@ -13,6 +13,7 @@ Usage
     store = get_vector_store()
     collection = await store.get_or_create_collection("my-project")
 """
+
 import logging
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable

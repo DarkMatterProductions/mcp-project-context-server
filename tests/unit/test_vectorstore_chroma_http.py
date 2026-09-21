@@ -247,9 +247,7 @@ class TestListIds:
 
 class TestDeleteByIds:
     @pytest.mark.asyncio
-    async def test_noop_when_ids_empty(
-        self, provider: ChromaHttpVectorStoreProvider, mock_client: MagicMock
-    ) -> None:
+    async def test_noop_when_ids_empty(self, provider: ChromaHttpVectorStoreProvider, mock_client: MagicMock) -> None:
         await provider.delete_by_ids("col", [])
         mock_client.get_collection.assert_not_called()
 

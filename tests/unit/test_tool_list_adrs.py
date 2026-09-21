@@ -1,4 +1,5 @@
 """Tests for the list_adrs tool."""
+
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -104,9 +105,7 @@ class TestListAdrsRemote:
     async def test_remote_lists_adrs(self):
         mock_provider = AsyncMock()
         mock_provider.provider_name = "github"
-        mock_provider.fetch_context_files = AsyncMock(
-            return_value={"decisions/ADR-00001-first.md": _WELL_FORMED}
-        )
+        mock_provider.fetch_context_files = AsyncMock(return_value={"decisions/ADR-00001-first.md": _WELL_FORMED})
 
         with patch(
             "mcp_project_context_server.helpers.context_files.get_repository_provider",

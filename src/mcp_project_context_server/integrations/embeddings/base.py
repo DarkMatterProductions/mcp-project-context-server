@@ -14,6 +14,7 @@ Obtain a concrete instance from the registry::
     from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
     provider = get_embedding_provider()
 """
+
 import logging
 from typing import Protocol, runtime_checkable
 
@@ -28,6 +29,7 @@ class EmbeddingProvider(Protocol):
     file I/O, or expensive initialization — those should be deferred to the
     first call to ``embed_chunk()``.
     """
+
     @property
     def provider_name(self) -> str:
         """Short identifier for the provider, e.g. ``"ollama"``, ``"voyage"``."""

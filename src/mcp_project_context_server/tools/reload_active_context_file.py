@@ -1,4 +1,5 @@
 """Tool: reload_active_context_file — refresh files whose on-disk content changed."""
+
 import logging
 import os
 

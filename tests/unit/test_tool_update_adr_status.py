@@ -1,4 +1,5 @@
 """Tests for the update_adr_status tool — the full lifecycle transition matrix."""
+
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -53,9 +54,7 @@ class TestUpdateAdrStatus:
         decisions_dir = project_dir / ".context" / "decisions"
         _write(decisions_dir, "ADR-00001-x.md", _adr())
 
-        result = await handle(
-            {"project_path": str(project_dir), "number_or_filename": 1, "new_status": "Bogus"}
-        )
+        result = await handle({"project_path": str(project_dir), "number_or_filename": 1, "new_status": "Bogus"})
 
         assert "Invalid status 'Bogus'" in result[0].text
 
@@ -66,9 +65,7 @@ class TestUpdateAdrStatus:
         adr_file = decisions_dir / "ADR-00001-x.md"
         _write(decisions_dir, "ADR-00001-x.md", _adr(status="Proposed"))
 
-        result = await handle(
-            {"project_path": str(project_dir), "number_or_filename": 1, "new_status": "Proposed"}
-        )
+        result = await handle({"project_path": str(project_dir), "number_or_filename": 1, "new_status": "Proposed"})
 
         assert "already 'Proposed'" in result[0].text
         assert "No changes made" in result[0].text
@@ -81,9 +78,7 @@ class TestUpdateAdrStatus:
         adr_file = decisions_dir / "ADR-00001-x.md"
         _write(decisions_dir, "ADR-00001-x.md", _adr(status="Proposed"))
 
-        result = await handle(
-            {"project_path": str(project_dir), "number_or_filename": 1, "new_status": "Under Review"}
-        )
+        result = await handle({"project_path": str(project_dir), "number_or_filename": 1, "new_status": "Under Review"})
 
         content = adr_file.read_text(encoding="utf-8")
         assert "## Status\n\nUnder Review" in content
@@ -95,9 +90,7 @@ class TestUpdateAdrStatus:
         decisions_dir = project_dir / ".context" / "decisions"
         _write(decisions_dir, "ADR-00001-x.md", _adr(status="Proposed"))
 
-        result = await handle(
-            {"project_path": str(project_dir), "number_or_filename": 1, "new_status": "Implemented"}
-        )
+        result = await handle({"project_path": str(project_dir), "number_or_filename": 1, "new_status": "Implemented"})
 
         assert "unusual" in result[0].text
         assert "requires an 'explanation'" in result[0].text
@@ -156,9 +149,7 @@ class TestUpdateAdrStatus:
             _adr(status="Under Review", discussion="Some discussion here.", decision="We decided X."),
         )
 
-        result = await handle(
-            {"project_path": str(project_dir), "number_or_filename": 1, "new_status": "Accepted"}
-        )
+        result = await handle({"project_path": str(project_dir), "number_or_filename": 1, "new_status": "Accepted"})
 
         content = adr_file.read_text(encoding="utf-8")
         assert "## ADR Review Discussion" not in content
@@ -172,9 +163,7 @@ class TestUpdateAdrStatus:
         adr_file = decisions_dir / "ADR-00001-x.md"
         _write(decisions_dir, "ADR-00001-x.md", _adr(status="Under Review", decision="[Pending review]"))
 
-        result = await handle(
-            {"project_path": str(project_dir), "number_or_filename": 1, "new_status": "Accepted"}
-        )
+        result = await handle({"project_path": str(project_dir), "number_or_filename": 1, "new_status": "Accepted"})
 
         assert "requires a" in result[0].text
         assert "Decision section" in result[0].text
@@ -247,9 +236,7 @@ class TestUpdateAdrStatus:
         decisions_dir = project_dir / ".context" / "decisions"
         _write(decisions_dir, "ADR-00002-legacy.md", _LEGACY)
 
-        result = await handle(
-            {"project_path": str(project_dir), "number_or_filename": 2, "new_status": "Implemented"}
-        )
+        result = await handle({"project_path": str(project_dir), "number_or_filename": 2, "new_status": "Implemented"})
 
         assert "legacy" in result[0].text.lower()
         assert "not supported" in result[0].text
@@ -259,9 +246,7 @@ class TestUpdateAdrStatus:
         project_dir = tmp_path / "project"
         (project_dir / ".context" / "decisions").mkdir(parents=True)
 
-        result = await handle(
-            {"project_path": str(project_dir), "number_or_filename": 99, "new_status": "Implemented"}
-        )
+        result = await handle({"project_path": str(project_dir), "number_or_filename": 99, "new_status": "Implemented"})
 
         assert "No ADR found matching '99'" in result[0].text
 

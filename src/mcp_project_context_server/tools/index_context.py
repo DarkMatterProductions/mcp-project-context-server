@@ -1,4 +1,5 @@
 """Tool: index_project_context — re-indexes .context/ into the configured vector store."""
+
 import logging
 import os
 

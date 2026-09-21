@@ -1,4 +1,5 @@
 """Tests for the get_bootstrap_questions tool."""
+
 import pytest
 
 from mcp_project_context_server.integrations.repository.registry import reset_provider_for_testing

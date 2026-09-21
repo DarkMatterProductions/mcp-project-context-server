@@ -1,4 +1,5 @@
 """Tool: create_adr — allocate the next ADR number and write a new ADR stub."""
+
 import logging
 import os
 import re

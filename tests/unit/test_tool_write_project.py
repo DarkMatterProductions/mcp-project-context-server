@@ -1,4 +1,5 @@
 """Tests for the write_project tool."""
+
 from unittest.mock import AsyncMock, patch
 
 import pytest

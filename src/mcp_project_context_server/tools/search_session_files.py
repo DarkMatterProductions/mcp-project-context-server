@@ -1,4 +1,5 @@
 """Tool: search_session_files — semantic search scoped to .context/sessions/."""
+
 import logging
 import os
 

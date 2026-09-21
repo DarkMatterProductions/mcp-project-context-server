@@ -1,4 +1,5 @@
 """Tests for EmbeddingProvider."""
+
 import asyncio
 import logging
 import os
@@ -18,7 +19,11 @@ def _provider_param(provider: str) -> pytest.param:
     """Return a pytest.param for *provider_name*, marked skip when opted out."""
     env_key = f"SKIP_EMBED_PROVIDER_{provider.upper().replace('-', '_')}"
     if os.getenv(env_key):
-        return pytest.param(*EMBEDDING_PROVIDER(provider), marks=pytest.mark.skip(reason=f"{env_key} is set, and disables {provider}"), id=provider)
+        return pytest.param(
+            *EMBEDDING_PROVIDER(provider),
+            marks=pytest.mark.skip(reason=f"{env_key} is set, and disables {provider}"),
+            id=provider,
+        )
     return pytest.param(*EMBEDDING_PROVIDER(provider), id=provider)
 
 
@@ -61,22 +66,21 @@ def _install_fake_voyage_errors(mock_sdk) -> None:
     mock_sdk.error.TryAgain = _FakeVoyageTryAgain
 
 
-
 @pytest.mark.parametrize(
     "embed_provider_name, embed_default_model, embed_override_model, embed_max_chars, embed_api_key, embed_host_url, embed_import_path",
-    [_provider_param(p) for p in PROVIDERS]
+    [_provider_param(p) for p in PROVIDERS],
 )
 class TestEmbeddingProviders:
     def test_default_config(
-            self,
-            monkeypatch,
-            embed_provider_name,
-            embed_default_model,
-            embed_override_model,
-            embed_max_chars,
-            embed_api_key,
-            embed_host_url,
-            embed_import_path,
+        self,
+        monkeypatch,
+        embed_provider_name,
+        embed_default_model,
+        embed_override_model,
+        embed_max_chars,
+        embed_api_key,
+        embed_host_url,
+        embed_import_path,
     ):
         """Provider uses the default model when COHERE_EMBED_MODEL is not set."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
@@ -102,15 +106,15 @@ class TestEmbeddingProviders:
             assert provider._api_key == embed_api_key
 
     def test_config_from_env(
-            self,
-            monkeypatch,
-            embed_provider_name,
-            embed_default_model,
-            embed_override_model,
-            embed_max_chars,
-            embed_api_key,
-            embed_host_url,
-            embed_import_path,
+        self,
+        monkeypatch,
+        embed_provider_name,
+        embed_default_model,
+        embed_override_model,
+        embed_max_chars,
+        embed_api_key,
+        embed_host_url,
+        embed_import_path,
     ):
         """Provider reads model name from COHERE_EMBED_MODEL."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
@@ -124,16 +128,16 @@ class TestEmbeddingProviders:
             assert provider._api_key == "test-key"
 
     def test_missing_api_key_raises_environment_error(
-            self,
-            monkeypatch,
-            skip_if_no_api_key,
-            embed_provider_name,
-            embed_default_model,
-            embed_override_model,
-            embed_max_chars,
-            embed_api_key,
-            embed_host_url,
-            embed_import_path,
+        self,
+        monkeypatch,
+        skip_if_no_api_key,
+        embed_provider_name,
+        embed_default_model,
+        embed_override_model,
+        embed_max_chars,
+        embed_api_key,
+        embed_host_url,
+        embed_import_path,
     ):
         """EnvironmentError is raised when COHERE_API_KEY is not set."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
@@ -145,16 +149,16 @@ class TestEmbeddingProviders:
             get_embedding_provider()
 
     def test_empty_api_key_raises_environment_error(
-            self,
-            monkeypatch,
-            skip_if_no_api_key,
-            embed_provider_name,
-            embed_default_model,
-            embed_override_model,
-            embed_max_chars,
-            embed_api_key,
-            embed_host_url,
-            embed_import_path,
+        self,
+        monkeypatch,
+        skip_if_no_api_key,
+        embed_provider_name,
+        embed_default_model,
+        embed_override_model,
+        embed_max_chars,
+        embed_api_key,
+        embed_host_url,
+        embed_import_path,
     ):
         """EnvironmentError is raised when COHERE_API_KEY is empty."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
@@ -166,15 +170,15 @@ class TestEmbeddingProviders:
             get_embedding_provider()
 
     def test_max_chars(
-            self,
-            monkeypatch,
-            embed_provider_name,
-            embed_default_model,
-            embed_override_model,
-            embed_max_chars,
-            embed_api_key,
-            embed_host_url,
-            embed_import_path,
+        self,
+        monkeypatch,
+        embed_provider_name,
+        embed_default_model,
+        embed_override_model,
+        embed_max_chars,
+        embed_api_key,
+        embed_host_url,
+        embed_import_path,
     ):
         """max_chars returns a positive integer."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
@@ -187,16 +191,16 @@ class TestEmbeddingProviders:
 
     @pytest.mark.asyncio
     async def test_embed_returns_vector(
-            self,
-            monkeypatch,
-            mocker,
-            embed_provider_name,
-            embed_default_model,
-            embed_override_model,
-            embed_max_chars,
-            embed_api_key,
-            embed_host_url,
-            embed_import_path,
+        self,
+        monkeypatch,
+        mocker,
+        embed_provider_name,
+        embed_default_model,
+        embed_override_model,
+        embed_max_chars,
+        embed_api_key,
+        embed_host_url,
+        embed_import_path,
     ):
         """embed() returns the embedding vector from the API response."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
@@ -277,7 +281,9 @@ class TestEmbeddingProviders:
             mock_client.embed.assert_called_once_with(model="embed-multilingual-v3.0", input="hello world")
         elif embed_provider_name == "voyage":
             mock_sdk.AsyncClient.assert_called_once_with(api_key="test-key")
-            mock_client.embed.assert_called_once_with(["hello world"], model="embed-multilingual-v3.0", input_type="document")
+            mock_client.embed.assert_called_once_with(
+                ["hello world"], model="embed-multilingual-v3.0", input_type="document"
+            )
         elif embed_provider_name == "openai":
             mock_sdk.AsyncOpenAI.assert_called_once_with(api_key="test-key")
             mock_client.embeddings.create.assert_called_once_with(model="embed-multilingual-v3.0", input="hello world")
@@ -291,7 +297,9 @@ class TestEmbeddingProviders:
             )
         elif embed_provider_name == "google":
             mock_sdk.Client.assert_called_once_with(api_key="test-key")
-            mock_client.aio.models.embed_content.assert_called_once_with(model="embed-multilingual-v3.0", contents="hello world")
+            mock_client.aio.models.embed_content.assert_called_once_with(
+                model="embed-multilingual-v3.0", contents="hello world"
+            )
         elif embed_provider_name == "vertexai":
             mock_sdk.init.assert_called_once_with(
                 project="test-project-name", location="test-location", api_transport="rest"
@@ -301,16 +309,16 @@ class TestEmbeddingProviders:
 
     @pytest.mark.asyncio
     async def test_embed_raises_embedding_error_on_failure(
-            self,
-            monkeypatch,
-            mocker,
-            embed_provider_name,
-            embed_default_model,
-            embed_override_model,
-            embed_max_chars,
-            embed_api_key,
-            embed_host_url,
-            embed_import_path,
+        self,
+        monkeypatch,
+        mocker,
+        embed_provider_name,
+        embed_default_model,
+        embed_override_model,
+        embed_max_chars,
+        embed_api_key,
+        embed_host_url,
+        embed_import_path,
     ):
         """embed() wraps exceptions in EmbeddingError."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
@@ -375,16 +383,16 @@ class TestEmbeddingProviders:
 
     @pytest.mark.asyncio
     async def test_embed_error_chains_original_exception(
-            self,
-            monkeypatch,
-            mocker,
-            embed_provider_name,
-            embed_default_model,
-            embed_override_model,
-            embed_max_chars,
-            embed_api_key,
-            embed_host_url,
-            embed_import_path,
+        self,
+        monkeypatch,
+        mocker,
+        embed_provider_name,
+        embed_default_model,
+        embed_override_model,
+        embed_max_chars,
+        embed_api_key,
+        embed_host_url,
+        embed_import_path,
     ):
         """EmbeddingError.__cause__ is the original exception."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
@@ -444,16 +452,16 @@ class TestEmbeddingProviders:
 
     @pytest.mark.asyncio
     async def test_embed_uses_custom_model(
-            self,
-            monkeypatch,
-            mocker,
-            embed_provider_name,
-            embed_default_model,
-            embed_override_model,
-            embed_max_chars,
-            embed_api_key,
-            embed_host_url,
-            embed_import_path,
+        self,
+        monkeypatch,
+        mocker,
+        embed_provider_name,
+        embed_default_model,
+        embed_override_model,
+        embed_max_chars,
+        embed_api_key,
+        embed_host_url,
+        embed_import_path,
     ):
         """embed() passes the configured model name to the SDK call."""
         monkeypatch.setenv("EMBED_PROVIDER", embed_provider_name)
@@ -524,7 +532,9 @@ class TestEmbeddingProviders:
                 embedding_types=["float"],
             )
         elif embed_provider_name == "google":
-            mock_client.aio.models.embed_content.assert_called_once_with(model="embed-multilingual-v3.0", contents="text")
+            mock_client.aio.models.embed_content.assert_called_once_with(
+                model="embed-multilingual-v3.0", contents="text"
+            )
         elif embed_provider_name == "vertexai":
             mock_text_cls.from_pretrained.assert_called_once_with("embed-multilingual-v3.0")
 

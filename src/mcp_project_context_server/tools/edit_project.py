@@ -1,4 +1,5 @@
 """Tool: edit_project — replace a single named top-level section of .context/project.md."""
+
 import logging
 import os
 

@@ -64,9 +64,7 @@ logger = logging.getLogger(__name__)
 
 _PROJECT_PATH_PROPERTY = {
     "type": "string",
-    "description": (
-        "Absolute filesystem path, a short 'owner/repo' identifier, " "or a full https:// repository URL."
-    ),
+    "description": ("Absolute filesystem path, a short 'owner/repo' identifier, " "or a full https:// repository URL."),
 }
 
 _SEARCH_OUTPUT_SCHEMA = {

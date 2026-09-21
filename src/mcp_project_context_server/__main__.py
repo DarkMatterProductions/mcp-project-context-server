@@ -1,4 +1,5 @@
 """Entry point for running the server as a module (``python -m mcp_project_context_server``)."""
+
 import argparse
 
 from mcp_project_context_server.helpers.logs import ParseLogLevel, setup_logging
@@ -11,8 +12,7 @@ parser.add_argument(
     metavar="name=LEVEL",
     dest="log_level",
     default={},
-    help="Override log level for a specific logger, e.g. urllib3=WARNING. "
-         "Can be passed multiple times.",
+    help="Override log level for a specific logger, e.g. urllib3=WARNING. " "Can be passed multiple times.",
 )
 
 arguments = parser.parse_args()

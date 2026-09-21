@@ -15,6 +15,7 @@ Design
 * The drop-and-recreate indexing strategy (ADR-00006) is implemented by
   ``create_collection`` — it drops the table and recreates it.
 """
+
 import logging
 import os
 import re

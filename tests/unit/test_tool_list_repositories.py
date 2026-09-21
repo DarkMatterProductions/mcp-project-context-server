@@ -1,4 +1,5 @@
 """Tests for the list_repositories tool handler."""
+
 import re
 from unittest.mock import AsyncMock, patch
 
@@ -33,12 +34,17 @@ class TestListRepositoriesTool:
                 "indexed": False,
                 "last_indexed": None,
                 "description": "",
-            }
+            },
         }
         repos = [
             RepositoryInfo(
-                identifier=repo_details["identifier"], name=repo_details["name"], description=repo_details["description"], indexed=repo_details["indexed"], last_indexed=repo_details["last_indexed"]
-            ) for repo_id, repo_details in repos_def.items()
+                identifier=repo_details["identifier"],
+                name=repo_details["name"],
+                description=repo_details["description"],
+                indexed=repo_details["indexed"],
+                last_indexed=repo_details["last_indexed"],
+            )
+            for repo_id, repo_details in repos_def.items()
         ]
         mock_provider = AsyncMock()
         mock_provider.list_repositories = AsyncMock(return_value=repos)
@@ -55,7 +61,7 @@ class TestListRepositoriesTool:
             text = content.text
             _id = pattern.search(text).group(0)
             assert repos_def[_id]["identifier"] in text
-            if repos_def[_id]["description"] is not None and repos_def[_id]["description"] is not "":
+            if repos_def[_id]["description"] is not None and repos_def[_id]["description"] != "":
                 assert repos_def[_id]["description"] in text
             if repos_def[_id]["indexed"]:
                 assert "indexed" in text

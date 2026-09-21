@@ -1,4 +1,5 @@
 """Tests for the bootstrap_templates helper."""
+
 from mcp_project_context_server.helpers.bootstrap_templates import (
     BOOTSTRAP_TARGETS,
     PROJECT_QUESTIONS,
@@ -76,7 +77,9 @@ class TestParseCustomQuestions:
 
         assert warnings == []
         assert questions == [
-            BootstrapQuestion(key="Deployment Target", question="Where is this deployed?", help_text="e.g. AWS, on-prem."),
+            BootstrapQuestion(
+                key="Deployment Target", question="Where is this deployed?", help_text="e.g. AWS, on-prem."
+            ),
             BootstrapQuestion(key="Team Ownership", question="Who owns this?", help_text=""),
         ]
 

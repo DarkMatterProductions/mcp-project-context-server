@@ -1,4 +1,5 @@
 """Shared helpers for .context/ directory resolution and file reading."""
+
 import logging
 import re
 from pathlib import Path

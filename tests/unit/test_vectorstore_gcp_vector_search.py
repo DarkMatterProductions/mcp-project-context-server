@@ -403,9 +403,13 @@ class TestQuery:
         provider._endpoint.find_neighbors.return_value = [[neighbor1, neighbor2]]
 
         doc1 = MagicMock()
-        doc1.get.return_value = MagicMock(exists=True, to_dict=lambda: {"document": "Doc 1", "metadata": {"file": "f1.md"}})
+        doc1.get.return_value = MagicMock(
+            exists=True, to_dict=lambda: {"document": "Doc 1", "metadata": {"file": "f1.md"}}
+        )
         doc2 = MagicMock()
-        doc2.get.return_value = MagicMock(exists=True, to_dict=lambda: {"document": "Doc 2", "metadata": {"file": "f2.md"}})
+        doc2.get.return_value = MagicMock(
+            exists=True, to_dict=lambda: {"document": "Doc 2", "metadata": {"file": "f2.md"}}
+        )
         provider._firestore.collection.return_value.document.side_effect = lambda doc_id: {
             "id1": doc1,
             "id2": doc2,
