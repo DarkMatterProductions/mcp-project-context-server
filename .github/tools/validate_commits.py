@@ -5,26 +5,14 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import List, Any, Dict, Literal
-from constants import COMMIT_TYPES
+from shared_helpers import key_id_lookup
+from constants import COMMIT_TYPES, RELEASE_OVERRIDE_SCOPES
 
 # ── Constants ────────────────────────────────────────────────────────────────
 GH_CMD = "gh.exe" if platform.system() == "Windows" else "gh"
 GH_API_URL = "https://api.github.com/repos/cli/cli/releases/latest"
 INSTALL_DIR = Path.home() / "bin"
 GIT_CMD = 'git.exe' if platform.system() == 'Windows' else 'git'
-
-
-def key_id_lookup(_type_scope_match: re.Match, mapping: Dict) -> Dict[str, str | bool]:
-    __type_id = _type_scope_match.group("type") if _type_scope_match else None
-    __force_major = _type_scope_match.group("force_major") if _type_scope_match else False
-    __scope_skip_version = _type_scope_match.group("scope") if _type_scope_match else False
-    key_ids = [key_id for key_id in mapping.keys() if key_id is not None and (key_id.startswith(__type_id) if __type_id else False)]
-    for key_id in key_ids:
-        type_id = mapping[key_id].copy()
-        type_id["force_major"] = __force_major
-        type_id["skip_version"] = __scope_skip_version
-        return type_id
-    return {'name': 'invalid', 'description': 'Invalid Type', 'bump_type': 'invalid', 'force_major': False, 'skip_version': False}
 
 
 def get_commits_since_branch_head(source: str = "HEAD", destination:str = "main") -> List[str]:
@@ -84,12 +72,17 @@ def get_commit_message(commit_hash: str) -> Dict[str, str]:
             "body": ""
         }
 
-def validate_commit_messages(commits: List[str]) -> str:
+def validate_commit_messages(commits: List[str]) -> Dict[str, Dict[str, List[Dict[str, str | Dict[str, str]]] | int]]:
     """
     Determine the semantic version bump based on commits.
     Returns 'major', 'minor', 'patch', or 'none' when all commits are docs/test/chore-only
     or scoped to a no-release scope (e.g. 'ci', 'tools').
     """
+    has_major = False
+    has_minor = False
+    has_patch = False
+    has_none = False
+    has_invalid = False
     type_id_entry = lambda typescope_match: key_id_lookup(typescope_match, COMMIT_TYPES)
     commit_ids: defaultdict[Any, Dict[str, str | Dict[str, str]]] = defaultdict(dict)
 
@@ -107,6 +100,22 @@ def validate_commit_messages(commits: List[str]) -> str:
             type_scope_match = re.match(r'(?P<type>\w+)(?P<force_major>!?)\((?P<scope>\w+)\):[ ]+', subject)
             commit_ids[commit_hash]["type_id"] = type_id_entry(type_scope_match)
 
+        if commit_ids[commit_hash]["type_id"]["force_major"] and not commit_ids[commit_hash]["type_id"]["skip_version"]:
+            has_major = True
+            print("** FORCE MAJOR OVERRIDE ENABLED **")
+            print("  Skipping version bump analysis.")
+            print()
+        elif commit_ids[commit_hash]["type_id"]["bump_type"] == "major" and not commit_ids[commit_hash]["type_id"]["skip_version"]:
+            has_major = True
+        elif commit_ids[commit_hash]["type_id"]["bump_type"] == "minor" and not commit_ids[commit_hash]["type_id"]["skip_version"]:
+            has_minor = True
+        elif commit_ids[commit_hash]["type_id"]["bump_type"] == "patch" and not commit_ids[commit_hash]["type_id"]["skip_version"]:
+            has_patch = True
+        elif commit_ids[commit_hash]["type_id"]["bump_type"] == "none" or commit_ids[commit_hash]["type_id"]["skip_version"]:
+            has_none = True
+        elif commit_ids[commit_hash]["type_id"]["bump_type"] == "invalid":
+            has_invalid = True
+
     invalid_commits = [commit_ids[commit_hash] for commit_hash in commits if commit_ids[commit_hash]["type_id"] is None or commit_ids[commit_hash]["type_id"]["bump_type"] == "invalid"]
     valid_commits = [commit_ids[commit_hash] for commit_hash in commits if commit_ids[commit_hash]["type_id"] is not None and commit_ids[commit_hash]["type_id"]["bump_type"] != "invalid"]
     analyzed_commits: Dict[Literal["invalid", "valid"], Dict[Literal["commits", "count"], List[Dict[str, str | Dict[str, str]]] | int]] = {
@@ -119,6 +128,24 @@ def validate_commit_messages(commits: List[str]) -> str:
             "count": len(valid_commits),
         }
     }
+
+    if has_major:
+        bump = ("major", "X.0.0")
+    elif has_minor:
+        bump = ("minor", "0.X.0")
+    elif has_patch:
+        bump = ("patch", "0.0.X")
+    elif has_none:
+        bump = ("none", "N.N.N")
+    elif has_invalid:
+        bump = ("invalid", None)
+    else:
+        print("\nNo valid commits found to determine bump.")
+        bump = None
+
+    if bump is not None:
+        print(f"\nBump type: {bump[0]} ({bump[1]})")
+
     return analyzed_commits
 
 if __name__ == "__main__":
@@ -134,9 +161,11 @@ if __name__ == "__main__":
     unvalidated_commits = get_commits_since_branch_head(args.source, args.destination)
     validated_commits = validate_commit_messages(unvalidated_commits)
 
-
+    print()
+    print("Identified Commits:")
     for commit_hash in validated_commits["valid"]["commits"]:
-        print(f"    Commit {commit_hash['hash']} has recognized commit type (Type: {COMMIT_TYPES[commit_hash['type_id']['name']]['name']} - Bump: {COMMIT_TYPES[commit_hash['type_id']['name']]['bump_type']}) in subject: '{commit_hash['subject']}'")
+        scope_skip_versioning = f" (Scope Enforced Skip Version Increment)" if commit_hash["type_id"]["skip_version"] else f""
+        print(f"    Commit {commit_hash['hash']} has recognized commit type (Type: {COMMIT_TYPES[commit_hash['type_id']['name']]['name']} - Scope: {commit_hash['type_id']['scope_id']} / Bump: {commit_hash['type_id']['bump_type']}{scope_skip_versioning}) in subject: '{commit_hash['subject']}'")
 
     if validated_commits["invalid"]["count"] > 0:
         print("\nInvalid commit details -")
