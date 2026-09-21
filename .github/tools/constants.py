@@ -26,5 +26,6 @@ INCREMENT_BUMP_TYPE_MESSAGES = {
 RELEASE_OVERRIDE_SCOPES = {
     'ci': {'name': 'ci', 'description': 'Changes to CI configuration files and scripts', 'bump_type': 'none'},
     'tools': {'name': 'tools', 'description': 'Changes to build, release, or dependency tools', 'bump_type': 'none'},
+    'changelog': {'name': 'changelog', 'description': 'Changes to CHANGELOG.md', 'bump_type': 'none'},
     'packaging': {'name': 'packaging', 'description': 'Changes to packaging configuration files and scripts', 'bump_type': 'none'},
 }

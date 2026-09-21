@@ -17,6 +17,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.1] - 2026-09-21
+
+### Changed
+- Migrate Google embeddings provider from `google-generativeai` to the native-async `google-genai` SDK, updating `pyproject.toml`, `requirements.txt`, and `ADR-00014` accordingly (`a6251d0`)
+- Update integration tests to expect 22 registered tools (`get_bootstrap_questions`, `bootstrap_context`) (`2d8eaa7`)
+- Consolidate commit-validation and version-bump logic (`analyze_commits`, `determine_bump`, `determine_new_version`, `key_id_lookup`) into shared `.github/tools/shared_helpers.py` and `.github/tools/constants.py`, removing duplication between `validate_commits.py` and `build_and_publish.py` (`7cb58ff`, `1d90102`)
+
+### Fixed
+- Add exponential-backoff retry handling to the Voyage AI embedding provider for transient errors (429, 5xx, timeouts), configurable via `VOYAGE_BACKOFF_INITIAL_DELAY` (default 300s, doubling per attempt up to 4 attempts), with `x-request-id` logging and a one-time reduced-tier rate-limit warning (`9427fc8`)
+- Centralize commit-validation constants (`COMMIT_TYPES`, `INCREMENT_BUMP_TYPE_MESSAGES`, `RELEASE_OVERRIDE_SCOPES`) into `.github/tools/constants.py`, shared by `validate_commits.py` and `build_and_publish.py` (`5bbcdad`)
+
+---
+
 ## [1.2.1]
 
 ### Fixed
