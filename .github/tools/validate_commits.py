@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Any, Dict, Literal
 from shared_helpers import key_id_lookup, get_last_version, analyze_commits, determine_new_version
 from constants import COMMIT_TYPES, RELEASE_OVERRIDE_SCOPES
+from regex_patterns import TYPE_COPE_REGEX
 
 # ── Constants ────────────────────────────────────────────────────────────────
 GH_CMD = "gh.exe" if platform.system() == "Windows" else "gh"
@@ -83,7 +84,6 @@ def validate_commit_messages(commits: List[str]) -> Dict[str, Dict[str, List[Dic
     has_patch = False
     has_none = False
     has_invalid = False
-    type_id_entry = lambda typescope_match: key_id_lookup(typescope_match, COMMIT_TYPES)
     commit_ids: defaultdict[Any, Dict[str, str | Dict[str, str]]] = analyze_commits(commits)
 
     for commit_hash in commits:
@@ -148,22 +148,26 @@ if __name__ == "__main__":
     unvalidated_commits = get_commits_since_branch_head(args.source, args.destination)
     validated_commits, bump = validate_commit_messages(unvalidated_commits)
 
-    current_version = get_last_version()
-    print(f"Current version: {current_version}")
-    print()
-    new_version, bump_used = determine_new_version(current_version, unvalidated_commits, None, False, False)
-    print(f"New version: {new_version} Enforced Bump Type: {bump_used}")
-
-    print()
     print("Valid Commits:")
-    for commit_hash in validated_commits["valid"]["commits"]:
-        scope_skip_versioning = f" (Scope Enforced Skip Version Increment)" if commit_hash["type_id"]["skip_version"] else f""
-        _scope_id = commit_hash['type_id']['scope_id'] if 'scope_id' in commit_hash['type_id'].keys() else "ci"
-        print(f"    Commit {commit_hash['hash']} has recognized commit type (Type: {COMMIT_TYPES[commit_hash['type_id']['name']]['name']} - Scope: {_scope_id} / Bump: {commit_hash['type_id']['bump_type']}{scope_skip_versioning}) in subject: '{commit_hash['subject']}'")
+    if validated_commits["valid"]["commits"]:
+        for commit_hash in validated_commits["valid"]["commits"]:
+            scope_skip_versioning = f" (Scope Enforced Skip Version Increment)" if commit_hash["type_id"]["skip_version"] else f""
+            _scope_id = commit_hash['type_id']['scope_id'] if 'scope_id' in commit_hash['type_id'].keys() else "ci"
+            print(f"    Commit {commit_hash['hash']} has recognized commit type (Type: {COMMIT_TYPES[commit_hash['type_id']['name']]['name']} - Scope: {_scope_id} / Bump: {commit_hash['type_id']['bump_type']}{scope_skip_versioning}) in subject: '{commit_hash['subject']}'")
+    else:
+        print("    No valid commits found.")
 
     if validated_commits["invalid"]["count"] > 0:
         print("\nInvalid commit details -")
         for commit_hash in validated_commits["invalid"]["commits"]:
             print(f"    Commit {commit_hash['hash']} has no recognized type in subject: '{commit_hash['subject']}'")
-        print(f"Unrecognized types identified in {validated_commits['invalid']['count']} commit(s) subject line(s). Exiting process.")
+        print(f"Unrecognized 'type(scope):' header identified in {validated_commits['invalid']['count']} commit(s) subject line(s)."
+              f" All headers must adhere to the pattern '{TYPE_COPE_REGEX}'  Exiting process.")
         sys.exit(-1)
+
+    current_version = get_last_version()
+    print(f"Current version: {current_version}")
+    print()
+    new_version, bump_used = determine_new_version(current_version, unvalidated_commits, None, False, False)
+    print(f"New version: {new_version} Enforced Bump Type: {bump_used}")
+    print()

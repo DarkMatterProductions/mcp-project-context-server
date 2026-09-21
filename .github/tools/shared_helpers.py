@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from constants import RELEASE_OVERRIDE_SCOPES, COMMIT_TYPES
+from regex_patterns import MERGE_REGEX, TYPE_COPE_REGEX
 
 GH_CMD = "gh.exe" if platform.system() == "Windows" else "gh"
 GH_API_URL = "https://api.github.com/repos/cli/cli/releases/latest"
@@ -15,22 +16,23 @@ GIT_CMD = 'git.exe' if platform.system() == 'Windows' else 'git'
 
 
 def key_id_lookup(_type_scope_match: re.Match, mapping: dict) -> dict[str, str | bool]:
-    __type_id = _type_scope_match.group("type") if _type_scope_match.group("type") != '' else None
-    __scope_id = _type_scope_match.group("scope") if _type_scope_match.group("scope") != '' else None
-    __force_major = True if _type_scope_match.group("force_major") != '' else False
-    __scope_skip_version = True if _type_scope_match.group("scope") in RELEASE_OVERRIDE_SCOPES else False
-    key_ids = [key_id for key_id in mapping.keys() if key_id is not None and (key_id.startswith(__type_id) if __type_id else False)]
-    for key_id in key_ids:
-        type_id = mapping[key_id].copy()
-        type_id["force_major"] = __force_major
-        type_id["scope_id"] = __scope_id
-        type_id["skip_version"] = __scope_skip_version
-        type_id["bump_type"] = (
-            RELEASE_OVERRIDE_SCOPES[_type_scope_match.group("scope")]["bump_type"]
-            if __scope_skip_version
-            else type_id["bump_type"]
-        )
-        return type_id
+    if _type_scope_match is not None:
+        __type_id = _type_scope_match.group("type") if _type_scope_match.group("type") != '' else None
+        __scope_id = _type_scope_match.group("scope") if _type_scope_match.group("scope") != '' else None
+        __force_major = True if _type_scope_match.group("force_major") != '' else False
+        __scope_skip_version = True if _type_scope_match.group("scope") in RELEASE_OVERRIDE_SCOPES else False
+        key_ids = [key_id for key_id in mapping.keys() if key_id is not None and (key_id.startswith(__type_id) if __type_id else False)]
+        for key_id in key_ids:
+            type_id = mapping[key_id].copy()
+            type_id["force_major"] = __force_major
+            type_id["scope_id"] = __scope_id
+            type_id["skip_version"] = __scope_skip_version
+            type_id["bump_type"] = (
+                RELEASE_OVERRIDE_SCOPES[_type_scope_match.group("scope")]["bump_type"]
+                if __scope_skip_version
+                else type_id["bump_type"]
+            )
+            return type_id
     return {'name': 'invalid', 'description': 'Invalid Type', 'bump_type': 'invalid', 'force_major': False,  'skip_version': False}
 
 
@@ -187,13 +189,13 @@ def analyze_commits(commits: List[str]) -> defaultdict[Any, Dict[str, str | Dict
         commit_ids[commit_hash] = get_commit_message(commit_hash)
         commit_ids[commit_hash]["hash"] = commit_hash
         commit_ids[commit_hash]["short_hash"] = commit_hash[:7]
-        if re.match(r'^Merge\b', commit_ids[commit_hash]["subject"]):
+        if re.match(MERGE_REGEX, commit_ids[commit_hash]["subject"]):
             merge_type = COMMIT_TYPES['merge'].copy()
             merge_type["force_major"] = False
             merge_type["skip_version"] = False
             commit_ids[commit_hash]["type_id"] = merge_type
         else:
-            type_scope_match = re.match(r'(?P<type>\w+)(?P<force_major>!?)\((?P<scope>\w+)\):[ ]+', commit_ids[commit_hash]["subject"])
+            type_scope_match = re.match(TYPE_COPE_REGEX, commit_ids[commit_hash]["subject"])
             commit_ids[commit_hash]["type_id"] = type_id_entry(type_scope_match)
 
     return commit_ids
