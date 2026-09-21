@@ -85,8 +85,6 @@ async def run_index_pipeline(project_path: str | Path, store: VectorStoreProvide
         "indexed_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    await store.create_collection(col_name, metadata=collection_metadata)
-
     all_chunks: list[tuple[str, str, str, int, str, str]] = []
     for filename, file_content in files.items():
         chunk_idx = 0
@@ -98,6 +96,9 @@ async def run_index_pipeline(project_path: str | Path, store: VectorStoreProvide
                     chunk_idx += 1
 
     if not all_chunks:
+        # Not a failure — e.g. every .context/ file was deleted. Clearing the
+        # collection here is the correct, intentional reflection of that.
+        await store.create_collection(col_name, metadata=collection_metadata)
         return f"Indexed 0 chunks from {len(files)} files into collection '{col_name}'"
 
     semaphore = asyncio.Semaphore(_EMBED_CONCURRENCY)
@@ -111,29 +112,33 @@ async def run_index_pipeline(project_path: str | Path, store: VectorStoreProvide
                 logger.warning("Failed to embed %s: %s", doc_id, e)
                 return e
 
+    # Nothing destructive has happened yet: the store is untouched up to this
+    # point, so any embedding failure below can still abort without data loss.
     results = await asyncio.gather(*[_embed(*c) for c in all_chunks])
 
-    valid = [r for r in results if not isinstance(r, Exception)]
-    if valid:
-        await store.upsert(
-            collection_name=col_name,
-            ids=[r[0] for r in valid],
-            embeddings=[r[2] for r in valid],
-            documents=[r[1] for r in valid],
-            metadatas=[{"file": r[3], "chunk": r[4], "section": r[5], "section_sha512": r[6]} for r in valid],
+    # asyncio.gather preserves input order, so this pairing recovers which
+    # file/section each failure belongs to without changing _embed's return shape.
+    failed = [(chunk_meta, result) for chunk_meta, result in zip(all_chunks, results) if isinstance(result, Exception)]
+
+    if failed:
+        # All-or-nothing: abort without calling create_collection or upsert.
+        # The previously indexed collection, if any, is left completely intact.
+        preview = "; ".join(f"{filename}::{section} ({exc})" for (_, _, filename, _, section, _), exc in failed[:10])
+        more = f"; +{len(failed) - 10} more" if len(failed) > 10 else ""
+        return (
+            f"Error: failed to embed {len(failed)}/{len(all_chunks)} chunks from {len(files)} files "
+            f"— aborting without modifying collection '{col_name}' (previous index, if any, is unchanged). "
+            f"Failed chunks: {preview}{more}"
         )
 
-    failed_count = len(all_chunks) - len(valid)
-    if failed_count == len(all_chunks):
-        first_error = next(r for r in results if isinstance(r, Exception))
-        return (
-            f"Error: failed to embed all {len(all_chunks)} chunks from {len(files)} files "
-            f"— 0 chunks indexed. First error: {first_error}"
-        )
-    if failed_count:
-        return (
-            f"Indexed {len(valid)} chunks from {len(files)} files into collection '{col_name}' "
-            f"({failed_count} chunks failed to embed — see server logs)"
-        )
+    # Every chunk embedded successfully — only now is it safe to clear and repopulate.
+    await store.create_collection(col_name, metadata=collection_metadata)
+    await store.upsert(
+        collection_name=col_name,
+        ids=[r[0] for r in results],
+        embeddings=[r[2] for r in results],
+        documents=[r[1] for r in results],
+        metadatas=[{"file": r[3], "chunk": r[4], "section": r[5], "section_sha512": r[6]} for r in results],
+    )
 
-    return f"Indexed {len(valid)} chunks from {len(files)} files into collection '{col_name}'"
+    return f"Indexed {len(results)} chunks from {len(files)} files into collection '{col_name}'"

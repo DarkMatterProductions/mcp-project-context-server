@@ -229,10 +229,11 @@ class TestEmbedFailureHandling:
 
         assert result.startswith("Error:")
         assert "connection refused" in result
+        store.create_collection.assert_not_called()
         store.upsert.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_partial_chunk_embed_failure_reports_count(self, tmp_path):
+    async def test_partial_chunk_embed_failure_aborts_without_writing_to_store(self, tmp_path):
         context_dir = tmp_path / ".context"
         context_dir.mkdir()
         content = "## Section A\nFirst.\n\n## Section B\nSecond.\n"
@@ -249,7 +250,49 @@ class TestEmbedFailureHandling:
         ):
             result = await run_index_pipeline(str(tmp_path), store)
 
-        assert "Indexed 1 chunks from 1 files" in result
-        assert "1 chunks failed to embed" in result
-        store.upsert.assert_called_once()
-        assert len(store.upsert.call_args.kwargs["ids"]) == 1
+        assert result.startswith("Error:")
+        assert "timeout" in result
+        assert "Section B" in result
+        store.create_collection.assert_not_called()
+        store.upsert.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_partial_failure_never_touches_previously_indexed_store(self, tmp_path):
+        """Regression test: a transient embed failure on any subset of chunks
+        must never destroy a previously-good collection (PROJECTCONTEXT-REINDEX-DATA-LOSS.md)."""
+        context_dir = tmp_path / ".context"
+        context_dir.mkdir()
+        content = "## A\nFirst.\n\n## B\nSecond.\n\n## C\nThird.\n"
+        (context_dir / "project.md").write_text(content, encoding="utf-8")
+
+        embed_provider = _embed_provider()
+        embed_provider.embed_chunk = AsyncMock(side_effect=[[0.1, 0.2], Exception("rate limited"), [0.3, 0.4]])
+
+        store = _vector_store()
+        with (
+            patch("mcp_project_context_server.indexing.indexer.get_embedding_provider", return_value=embed_provider),
+            patch("mcp_project_context_server.indexing.indexer.get_repository_provider", return_value=_repo_provider()),
+            patch("mcp_project_context_server.indexing.indexer._EMBED_CONCURRENCY", 1),
+        ):
+            result = await run_index_pipeline(str(tmp_path), store)
+
+        assert result.startswith("Error:")
+        store.create_collection.assert_not_called()
+        store.upsert.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_zero_chunks_still_clears_collection(self, tmp_path):
+        context_dir = tmp_path / ".context"
+        context_dir.mkdir()
+        (context_dir / "empty.md").write_text("", encoding="utf-8")
+
+        store = _vector_store()
+        with (
+            patch("mcp_project_context_server.indexing.indexer.get_embedding_provider", return_value=_embed_provider()),
+            patch("mcp_project_context_server.indexing.indexer.get_repository_provider", return_value=_repo_provider()),
+        ):
+            result = await run_index_pipeline(str(tmp_path), store)
+
+        assert "Indexed 0 chunks" in result
+        store.create_collection.assert_called_once()
+        store.upsert.assert_not_called()

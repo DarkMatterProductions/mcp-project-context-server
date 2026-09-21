@@ -44,7 +44,7 @@ Automatic reindexing on file-change events (rather than requiring an explicit `i
 - **Simplicity**: No change-tracking, no stale entry cleanup, no file hash manifest. The implementation is straightforward and correct by construction.
 - **Correctness on renames/deletes**: Files that are renamed or deleted are automatically excluded from the next index — no explicit deletion logic is needed.
 - **Collection unavailability during rebuild**: Between the drop and the final batch-add, the collection contains no documents. A `search_project_context` call during this window will return zero results. For the typical use case (manual trigger, small dataset, fast rebuild), this window is negligible.
-- **No partial-failure recovery**: If the embed step fails mid-way through a large index operation, the collection is left empty. The user must call `index_project_context` again. Individual chunk embedding failures are logged and skipped rather than aborting the entire operation.
+- **All-or-nothing per run, no partial-failure contamination**: `run_index_pipeline()` embeds every chunk *before* touching the store. If any chunk fails to embed, the run aborts without calling `create_collection` or `upsert` at all, so the previously indexed collection (if any) is left completely intact. The user must call `index_project_context` again to retry; nothing is lost in the meantime. (Previously, the collection was dropped before embedding began, so a mid-run embedding failure permanently destroyed the previous collection's data — see `PROJECTCONTEXT-REINDEX-DATA-LOSS.md`.)
 
 ## Alternatives Considered
 
