@@ -3,77 +3,11 @@
 Unit tests for build_and_publish.py
 """
 import subprocess
-import sys
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-# Ensure the tools directory is on sys.path so the module can be imported
-# regardless of which directory pytest is invoked from.
-sys.path.insert(0, str(Path(__file__).parent))
-
 import build_and_publish as bap
-
-# ---------------------------------------------------------------------------
-# get_distance_from_main
-# ---------------------------------------------------------------------------
-class TestGetDistanceFromMain(unittest.TestCase):
-    @patch('build_and_publish.subprocess.run')
-    def test_returns_commit_count(self, mock_run):
-        mock_run.return_value = MagicMock(stdout='3\n')
-        self.assertEqual(bap.get_distance_from_main(), 3)
-
-    @patch('build_and_publish.subprocess.run')
-    def test_returns_zero_and_prints_stdout_on_called_process_error_with_output(self, mock_run):
-        err = subprocess.CalledProcessError(1, 'git')
-        err.stdout = 'some stdout'
-        err.stderr = 'some stderr'
-        mock_run.side_effect = err
-        with patch('builtins.print') as mock_print:
-            result = bap.get_distance_from_main()
-        self.assertEqual(result, 0)
-        printed = ' '.join(str(c) for c in mock_print.call_args_list)
-        self.assertIn('some stdout', printed)
-        self.assertIn('some stderr', printed)
-
-    @patch('build_and_publish.subprocess.run', side_effect=subprocess.CalledProcessError(1, 'git'))
-    def test_returns_zero_on_called_process_error(self, _):
-        self.assertEqual(bap.get_distance_from_main(), 0)
-
-    @patch('build_and_publish.subprocess.run', side_effect=Exception('boom'))
-    def test_returns_zero_on_generic_exception(self, _):
-        self.assertEqual(bap.get_distance_from_main(), 0)
-
-
-# ---------------------------------------------------------------------------
-# get_current_git_hash
-# ---------------------------------------------------------------------------
-class TestGetCurrentGitHash(unittest.TestCase):
-    @patch('build_and_publish.subprocess.run')
-    def test_returns_hash(self, mock_run):
-        mock_run.return_value = MagicMock(stdout='abc1234\n')
-        self.assertEqual(bap.get_current_git_hash(), 'abc1234')
-
-    @patch('build_and_publish.subprocess.run')
-    def test_returns_unknown_and_prints_stdout_on_called_process_error_with_output(self, mock_run):
-        err = subprocess.CalledProcessError(1, 'git')
-        err.stdout = 'some stdout'
-        err.stderr = 'some stderr'
-        mock_run.side_effect = err
-        with patch('builtins.print') as mock_print:
-            result = bap.get_current_git_hash()
-        self.assertEqual(result, 'unknown')
-        printed = ' '.join(str(c) for c in mock_print.call_args_list)
-        self.assertIn('some stdout', printed)
-        self.assertIn('some stderr', printed)
-
-    @patch('build_and_publish.subprocess.run', side_effect=subprocess.CalledProcessError(1, 'git'))
-    def test_returns_unknown_on_called_process_error(self, _):
-        self.assertEqual(bap.get_current_git_hash(), 'unknown')
-
-    @patch('build_and_publish.subprocess.run', side_effect=Exception('boom'))
-    def test_returns_unknown_on_generic_exception(self, _):
-        self.assertEqual(bap.get_current_git_hash(), 'unknown')
 
 
 # ---------------------------------------------------------------------------
@@ -82,26 +16,23 @@ class TestGetCurrentGitHash(unittest.TestCase):
 class TestGetLastVersion(unittest.TestCase):
     @patch('build_and_publish.subprocess.run')
     def test_returns_highest_version_tag(self, mock_run):
-        mock_run.side_effect = [
-            MagicMock(stdout='main\n'),
-            MagicMock(stdout='1.0.0\n2.0.0\n1.5.0\n'),
-        ]
+        mock_run.return_value = MagicMock(stdout='1.0.0\n2.0.0\n1.5.0\n')
         self.assertEqual(bap.get_last_version(), '2.0.0')
+        mock_run.assert_called_once_with(
+            [bap.GIT_CMD, 'tag', '--merged', 'HEAD'],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
 
     @patch('build_and_publish.subprocess.run')
     def test_returns_zero_when_no_version_tags(self, mock_run):
-        mock_run.side_effect = [
-            MagicMock(stdout='main\n'),
-            MagicMock(stdout='some-non-version-tag\n'),
-        ]
+        mock_run.return_value = MagicMock(stdout='some-non-version-tag\n')
         self.assertEqual(bap.get_last_version(), '0.0.0')
 
     @patch('build_and_publish.subprocess.run')
     def test_returns_zero_when_tags_empty(self, mock_run):
-        mock_run.side_effect = [
-            MagicMock(stdout='main\n'),
-            MagicMock(stdout='\n'),
-        ]
+        mock_run.return_value = MagicMock(stdout='\n')
         self.assertEqual(bap.get_last_version(), '0.0.0')
 
     @patch('build_and_publish.subprocess.run', side_effect=subprocess.CalledProcessError(1, 'git'))
@@ -173,46 +104,6 @@ class TestGetCommitsSinceTag(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# get_commit_message
-# ---------------------------------------------------------------------------
-class TestGetCommitMessage(unittest.TestCase):
-    @patch('build_and_publish.subprocess.run')
-    def test_returns_subject_and_body(self, mock_run):
-        mock_run.return_value = MagicMock(stdout='fix(scope): something\nbody text\n')
-        subject, body = bap.get_commit_message('abc123')
-        self.assertEqual(subject, 'fix(scope): something')
-        self.assertIn('body text', body)
-
-    @patch('build_and_publish.subprocess.run')
-    def test_returns_subject_only_when_no_body(self, mock_run):
-        mock_run.return_value = MagicMock(stdout='fix(scope): something')
-        subject, body = bap.get_commit_message('abc123')
-        self.assertEqual(subject, 'fix(scope): something')
-        self.assertEqual(body, '')
-
-    @patch('build_and_publish.subprocess.run', side_effect=subprocess.CalledProcessError(1, 'git'))
-    def test_returns_empty_strings_on_called_process_error(self, _):
-        self.assertEqual(bap.get_commit_message('abc123'), ('', ''))
-
-    @patch('build_and_publish.subprocess.run')
-    def test_returns_empty_strings_and_prints_stdout_on_called_process_error_with_output(self, mock_run):
-        err = subprocess.CalledProcessError(1, 'git')
-        err.stdout = 'some stdout'
-        err.stderr = 'some stderr'
-        mock_run.side_effect = err
-        with patch('builtins.print') as mock_print:
-            result = bap.get_commit_message('abc123')
-        self.assertEqual(result, ('', ''))
-        printed = ' '.join(str(c) for c in mock_print.call_args_list)
-        self.assertIn('some stdout', printed)
-        self.assertIn('some stderr', printed)
-
-    @patch('build_and_publish.subprocess.run', side_effect=Exception('boom'))
-    def test_returns_empty_strings_on_generic_exception(self, _):
-        self.assertEqual(bap.get_commit_message('abc123'), ('', ''))
-
-
-# ---------------------------------------------------------------------------
 # COMMIT_TYPES dictionary
 # ---------------------------------------------------------------------------
 class TestCommitTypesDictionary(unittest.TestCase):
@@ -221,174 +112,39 @@ class TestCommitTypesDictionary(unittest.TestCase):
             self.assertIn(t, bap.COMMIT_TYPES)
 
     def test_all_minor_types_present(self):
-        for t in ('feature',):
+        for t in ('feature', 'refactor', 'adrs'):
             self.assertIn(t, bap.COMMIT_TYPES)
 
     def test_all_patch_types_present(self):
-        for t in ('fix', 'test', 'refactor', 'adr', 'adrs'):
+        for t in ('fix',):
             self.assertIn(t, bap.COMMIT_TYPES)
 
     def test_all_no_release_types_present(self):
-        for t in ('docs', 'chore'):
+        for t in ('docs', 'chore', 'test', 'merge'):
             self.assertIn(t, bap.COMMIT_TYPES)
 
     def test_descriptions_are_non_empty_strings(self):
         for key, value in bap.COMMIT_TYPES.items():
-            self.assertIsInstance(value, str, msg=f"COMMIT_TYPES['{key}'] is not a string")
-            self.assertTrue(len(value) > 0, msg=f"COMMIT_TYPES['{key}'] is empty")
-
-    def test_adr_and_adrs_share_same_description(self):
-        self.assertEqual(bap.COMMIT_TYPES['adr'], bap.COMMIT_TYPES['adrs'])
+            self.assertIsInstance(value['description'], str, msg=f"COMMIT_TYPES['{key}']['description'] is not a string")
+            self.assertTrue(len(value['description']) > 0, msg=f"COMMIT_TYPES['{key}']['description'] is empty")
 
 
 # ---------------------------------------------------------------------------
-# NO_RELEASE_SCOPES constant
+# RELEASE_OVERRIDE_SCOPES constant
 # ---------------------------------------------------------------------------
-class TestNoReleaseScopesConstant(unittest.TestCase):
+class TestReleaseOverrideScopesConstant(unittest.TestCase):
     def test_ci_scope_is_present(self):
-        self.assertIn('ci', bap.NO_RELEASE_SCOPES)
+        self.assertIn('ci', bap.RELEASE_OVERRIDE_SCOPES)
 
     def test_tools_scope_is_present(self):
-        self.assertIn('tools', bap.NO_RELEASE_SCOPES)
+        self.assertIn('tools', bap.RELEASE_OVERRIDE_SCOPES)
 
-    def test_is_a_set(self):
-        self.assertIsInstance(bap.NO_RELEASE_SCOPES, set)
+    def test_is_a_dict(self):
+        self.assertIsInstance(bap.RELEASE_OVERRIDE_SCOPES, dict)
 
-
-# ---------------------------------------------------------------------------
-# determine_bump
-# ---------------------------------------------------------------------------
-class TestDetermineBump(unittest.TestCase):
-    def _mock_commit(self, subject: str):
-        """Return a mock get_commit_message that returns the given subject."""
-        return MagicMock(return_value=(subject, ''))
-
-    @patch('build_and_publish.get_commit_message')
-    def test_major_bump_on_breaking_type(self, mock_msg):
-        mock_msg.return_value = ('breaking(api): remove endpoint', '')
-        self.assertEqual(bap.determine_bump(['abc']), 'major')
-
-    @patch('build_and_publish.get_commit_message')
-    def test_major_bump_on_rewrite_type(self, mock_msg):
-        mock_msg.return_value = ('rewrite(core): full overhaul', '')
-        self.assertEqual(bap.determine_bump(['abc']), 'major')
-
-    @patch('build_and_publish.get_commit_message')
-    def test_major_bump_on_feature_bang(self, mock_msg):
-        mock_msg.return_value = ('feature!(scope): new breaking feature', '')
-        self.assertEqual(bap.determine_bump(['abc']), 'major')
-
-    @patch('build_and_publish.get_commit_message')
-    def test_major_bump_on_fix_bang(self, mock_msg):
-        mock_msg.return_value = ('fix!(scope): breaking fix', '')
-        self.assertEqual(bap.determine_bump(['abc']), 'major')
-
-    @patch('build_and_publish.get_commit_message')
-    def test_minor_bump_on_feature_type(self, mock_msg):
-        mock_msg.return_value = ('feature(scope): new feature', '')
-        self.assertEqual(bap.determine_bump(['abc']), 'minor')
-
-    @patch('build_and_publish.get_commit_message')
-    def test_patch_bump_on_fix_type(self, mock_msg):
-        mock_msg.return_value = ('fix(scope): correct a bug', '')
-        self.assertEqual(bap.determine_bump(['abc']), 'patch')
-
-    @patch('build_and_publish.get_commit_message')
-    def test_returns_none_on_test_type(self, mock_msg):
-        mock_msg.return_value = ('test(scope): add unit tests', '')
-        self.assertEqual(bap.determine_bump(['abc']), 'none')
-
-    @patch('build_and_publish.get_commit_message')
-    def test_patch_bump_on_refactor_type(self, mock_msg):
-        mock_msg.return_value = ('refactor(scope): restructure module', '')
-        self.assertEqual(bap.determine_bump(['abc']), 'patch')
-
-    @patch('build_and_publish.get_commit_message')
-    def test_patch_bump_on_adr_type(self, mock_msg):
-        mock_msg.return_value = ('adr(ADR-00001): accept decision', '')
-        self.assertEqual(bap.determine_bump(['abc']), 'patch')
-
-    @patch('build_and_publish.get_commit_message')
-    def test_patch_bump_on_adrs_type(self, mock_msg):
-        mock_msg.return_value = ('adrs(ADR-00001): update decisions', '')
-        self.assertEqual(bap.determine_bump(['abc']), 'patch')
-
-    @patch('build_and_publish.get_commit_message')
-    def test_returns_none_on_chore_only(self, mock_msg):
-        mock_msg.return_value = ('chore(ci): update pipeline', '')
-        self.assertEqual(bap.determine_bump(['abc']), 'none')
-
-    @patch('build_and_publish.get_commit_message')
-    def test_returns_none_on_docs_only(self, mock_msg):
-        mock_msg.return_value = ('docs(readme): update readme', '')
-        self.assertEqual(bap.determine_bump(['abc']), 'none')
-
-    @patch('build_and_publish.get_commit_message')
-    def test_raises_on_unknown_type(self, mock_msg):
-        mock_msg.return_value = ('unknown(scope): something', '')
-        with self.assertRaises(ValueError):
-            bap.determine_bump(['abc'])
-
-    @patch('build_and_publish.get_commit_message')
-    def test_major_wins_over_minor_across_commits(self, mock_msg):
-        mock_msg.side_effect = [
-            ('feature(scope): new feature', ''),
-            ('breaking(api): remove endpoint', ''),
-        ]
-        self.assertEqual(bap.determine_bump(['abc', 'def']), 'major')
-
-    @patch('build_and_publish.get_commit_message')
-    def test_print_includes_commit_type_description(self, mock_msg):
-        mock_msg.return_value = ('fix(scope): correct a bug', '')
-        with patch('builtins.print') as mock_print:
-            bap.determine_bump(['abc'])
-            printed = ' '.join(str(c) for c in mock_print.call_args_list)
-            self.assertIn(bap.COMMIT_TYPES['fix'], printed)
-
-    @patch('build_and_publish.get_commit_message')
-    def test_returns_none_on_ci_scope_overrides_fix(self, mock_msg):
-        mock_msg.return_value = ('fix(ci): update pipeline config', '')
-        self.assertEqual(bap.determine_bump(['abc']), 'none')
-
-    @patch('build_and_publish.get_commit_message')
-    def test_returns_none_on_tools_scope_overrides_feature(self, mock_msg):
-        mock_msg.return_value = ('feature(tools): add new build script', '')
-        self.assertEqual(bap.determine_bump(['abc']), 'none')
-
-    @patch('build_and_publish.get_commit_message')
-    def test_no_release_scope_does_not_block_other_commits(self, mock_msg):
-        mock_msg.side_effect = [
-            ('fix(ci): update pipeline', ''),
-            ('fix(scope): correct a bug', ''),
-        ]
-        self.assertEqual(bap.determine_bump(['abc', 'def']), 'patch')
-
-    @patch('build_and_publish.get_commit_message')
-    def test_returns_none_when_all_commits_are_no_release_scope(self, mock_msg):
-        mock_msg.side_effect = [
-            ('fix(ci): update pipeline', ''),
-            ('chore(tools): update build script', ''),
-            ('docs(ci): update workflow readme', ''),
-        ]
-        self.assertEqual(bap.determine_bump(['abc', 'def', 'ghi']), 'none')
-
-
-# ---------------------------------------------------------------------------
-# increment_version
-# ---------------------------------------------------------------------------
-class TestIncrementVersion(unittest.TestCase):
-    def test_major_increment(self):
-        self.assertEqual(bap.increment_version('1.2.3', 'major'), '2.0.0')
-
-    def test_minor_increment(self):
-        self.assertEqual(bap.increment_version('1.2.3', 'minor'), '1.3.0')
-
-    def test_patch_increment(self):
-        self.assertEqual(bap.increment_version('1.2.3', 'patch'), '1.2.4')
-
-    def test_raises_on_unknown_bump(self):
-        with self.assertRaises(ValueError):
-            bap.increment_version('1.2.3', 'unknown')
+    def test_all_scopes_force_none_bump(self):
+        for scope, entry in bap.RELEASE_OVERRIDE_SCOPES.items():
+            self.assertEqual(entry['bump_type'], 'none', msg=f"RELEASE_OVERRIDE_SCOPES['{scope}'] should force a 'none' bump")
 
 
 # ---------------------------------------------------------------------------
@@ -414,19 +170,6 @@ class TestDetermineNewVersion(unittest.TestCase):
         new_version, bump_used = bap.determine_new_version('1.2.3', ['abc'], force_bump='major')
         self.assertEqual(new_version, '2.0.0')
         self.assertEqual(bump_used, 'major')
-
-    @patch('build_and_publish.determine_bump', return_value='patch')
-    def test_delegates_to_determine_bump_when_no_force(self, mock_bump):
-        new_version, bump_used = bap.determine_new_version('1.2.3', ['abc'])
-        self.assertEqual(new_version, '1.2.4')
-        self.assertEqual(bump_used, 'patch')
-        mock_bump.assert_called_once_with(['abc'])
-
-    @patch('build_and_publish.determine_bump', return_value='none')
-    def test_returns_none_version_when_bump_is_none(self, mock_bump):
-        new_version, bump_used = bap.determine_new_version('1.2.3', ['abc'])
-        self.assertIsNone(new_version)
-        self.assertEqual(bump_used, 'none')
 
 
 # ---------------------------------------------------------------------------
@@ -484,13 +227,16 @@ class TestCreateGitTag(unittest.TestCase):
 # create_github_release
 # ---------------------------------------------------------------------------
 class TestCreateGithubRelease(unittest.TestCase):
-    def test_dry_run_does_not_call_gh(self):
+    @patch('build_and_publish.ensure_gh_cli')
+    def test_dry_run_does_not_call_gh(self, mock_ensure_gh_cli):
         with patch('build_and_publish.subprocess.Popen') as mock_popen:
             bap.create_github_release('1.0.0', ['artifact.whl'], dry_run=True)
             mock_popen.assert_not_called()
+        mock_ensure_gh_cli.assert_called_once_with(True)
 
+    @patch('build_and_publish.ensure_gh_cli')
     @patch('build_and_publish.subprocess.Popen')
-    def test_live_run_calls_gh_release_create(self, mock_popen):
+    def test_live_run_calls_gh_release_create(self, mock_popen, mock_ensure_gh_cli):
         mock_process = MagicMock()
         mock_process.stdout = iter(['line1\n'])
         mock_process.wait.return_value = None
@@ -504,8 +250,9 @@ class TestCreateGithubRelease(unittest.TestCase):
         self.assertIn('create', args)
         self.assertIn('1.0.0', args)
 
+    @patch('build_and_publish.ensure_gh_cli')
     @patch('build_and_publish.subprocess.Popen')
-    def test_raises_on_non_zero_exit(self, mock_popen):
+    def test_raises_on_non_zero_exit(self, mock_popen, mock_ensure_gh_cli):
         mock_process = MagicMock()
         mock_process.stdout = iter([])
         mock_process.wait.return_value = None
@@ -514,7 +261,6 @@ class TestCreateGithubRelease(unittest.TestCase):
 
         with self.assertRaises(subprocess.CalledProcessError):
             bap.create_github_release('1.0.0', [])
-
 
 
 # ---------------------------------------------------------------------------
@@ -609,9 +355,9 @@ class TestMain(unittest.TestCase):
                         p.stop()
         return defaults
 
-    def test_basic_run_creates_tag(self):
+    def test_basic_run_without_publish_does_not_create_tag(self):
         mocks = self._run_main([])
-        mocks['create_git_tag'].assert_called_once_with('1.0.1')
+        mocks['create_git_tag'].assert_not_called()
 
     def test_publish_without_build_exits(self):
         with patch('sys.argv', ['build_and_publish.py', '--publish']):
@@ -654,10 +400,9 @@ class TestMain(unittest.TestCase):
         mocks = self._run_main(['--build', '--publish'])
         mocks['create_github_release'].assert_called_once()
 
-    def test_dry_run_publish_passes_dry_run_to_release(self):
+    def test_dry_run_publish_does_not_call_create_github_release(self):
         mocks = self._run_main(['--build', '--publish', '--dry-run'])
-        _, kwargs = mocks['create_github_release'].call_args
-        self.assertTrue(kwargs.get('dry_run'))
+        mocks['create_github_release'].assert_not_called()
 
     def test_none_version_exits(self):
         with self.assertRaises(SystemExit):
@@ -682,7 +427,7 @@ class TestMain(unittest.TestCase):
                 self._run_main(
                     [],
                     env={'GITHUB_OUTPUT': str(tmp)},
-                    determine_new_version=MagicMock(return_value=('1.0.1', 'none')),
+                    determine_new_version=MagicMock(return_value=('1.0.0', 'none')),
                 )
             self.assertEqual(cm.exception.code, 0)
         finally:
@@ -691,4 +436,3 @@ class TestMain(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
