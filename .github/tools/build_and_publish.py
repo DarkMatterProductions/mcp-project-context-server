@@ -16,6 +16,7 @@ import zipfile
 from collections import defaultdict
 from pathlib import Path
 from typing import Tuple, List, Optional, Dict, Any
+from shared_helpers import key_id_lookup
 from constants import COMMIT_TYPES, INCREMENT_BUMP_TYPE_MESSAGES, RELEASE_OVERRIDE_SCOPES
 
 import requests
@@ -288,19 +289,6 @@ def get_commit_message(commit_hash: str) -> Dict[str, str]:
             "subject": "",
             "body": ""
         }
-
-
-def key_id_lookup(_type_scope_match: re.Match, mapping: dict) -> dict[str, str | bool]:
-    __type_id = _type_scope_match.group("type") if _type_scope_match else None
-    __force_major = _type_scope_match.group("force_major") if _type_scope_match else False
-    __scope_skip_version = _type_scope_match.group("scope") if _type_scope_match else False
-    key_ids = [key_id for key_id in mapping.keys() if key_id is not None and (key_id.startswith(__type_id) if __type_id else False)]
-    for key_id in key_ids:
-        type_id = mapping[key_id].copy()
-        type_id["force_major"] = __force_major
-        type_id["skip_version"] = __scope_skip_version
-        return type_id
-    return {'name': 'invalid', 'description': 'Invalid Type', 'bump_type': 'invalid', 'force_major': False, 'skip_version': False}
 
 
 def determine_bump(commits: List[str], verbose: bool = False, debug: bool=False) -> str:
