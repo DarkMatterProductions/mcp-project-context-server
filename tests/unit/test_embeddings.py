@@ -1,4 +1,6 @@
 """Tests for EmbeddingProvider."""
+import asyncio
+import logging
 import os
 
 import pytest
@@ -8,6 +10,8 @@ from shared.constructs import PROVIDERS
 
 from mcp_project_context_server.exceptions import EmbeddingError
 from mcp_project_context_server.integrations.embeddings.registry import get_embedding_provider
+from mcp_project_context_server.integrations.embeddings.voyage import client as voyage_client_module
+from mcp_project_context_server.integrations.embeddings.voyage.client import VoyageEmbeddingProvider
 
 
 def _provider_param(provider: str) -> pytest.param:
@@ -16,6 +20,45 @@ def _provider_param(provider: str) -> pytest.param:
     if os.getenv(env_key):
         return pytest.param(*EMBEDDING_PROVIDER(provider), marks=pytest.mark.skip(reason=f"{env_key} is set, and disables {provider}"), id=provider)
     return pytest.param(*EMBEDDING_PROVIDER(provider), id=provider)
+
+
+class _FakeVoyageRateLimitError(Exception):
+    """Stand-in for voyageai.error.RateLimitError in mocked SDK tests."""
+
+
+class _FakeVoyageServerError(Exception):
+    """Stand-in for voyageai.error.ServerError in mocked SDK tests."""
+
+
+class _FakeVoyageServiceUnavailableError(Exception):
+    """Stand-in for voyageai.error.ServiceUnavailableError in mocked SDK tests."""
+
+
+class _FakeVoyageAPIConnectionError(Exception):
+    """Stand-in for voyageai.error.APIConnectionError in mocked SDK tests."""
+
+
+class _FakeVoyageTimeout(Exception):
+    """Stand-in for voyageai.error.Timeout in mocked SDK tests."""
+
+
+class _FakeVoyageTryAgain(Exception):
+    """Stand-in for voyageai.error.TryAgain in mocked SDK tests."""
+
+
+def _install_fake_voyage_errors(mock_sdk) -> None:
+    """Give a mocked `voyageai` module real exception classes under `.error.*`.
+
+    `client.py` builds its retryable-exception tuple from these attributes on
+    every call; leaving them as auto-vivified MagicMocks makes any `except`
+    clause matching against that tuple raise TypeError.
+    """
+    mock_sdk.error.RateLimitError = _FakeVoyageRateLimitError
+    mock_sdk.error.ServerError = _FakeVoyageServerError
+    mock_sdk.error.ServiceUnavailableError = _FakeVoyageServiceUnavailableError
+    mock_sdk.error.APIConnectionError = _FakeVoyageAPIConnectionError
+    mock_sdk.error.Timeout = _FakeVoyageTimeout
+    mock_sdk.error.TryAgain = _FakeVoyageTryAgain
 
 
 
@@ -174,6 +217,7 @@ class TestEmbeddingProviders:
             sys_modules = {embed_import_path: mock_sdk}
 
         elif embed_provider_name == "voyage":
+            _install_fake_voyage_errors(mock_sdk)
             mock_response = mocker.MagicMock()
             mock_response.embeddings = [[0.1, 0.2, 0.3]]
             mock_client = mocker.AsyncMock()
@@ -280,6 +324,7 @@ class TestEmbeddingProviders:
             error_match = r"Ollama embedding failed"
 
         elif embed_provider_name == "voyage":
+            _install_fake_voyage_errors(mock_sdk)
             mock_client = mocker.AsyncMock()
             mock_client.embed.side_effect = error
             mock_sdk.AsyncClient = mocker.MagicMock(return_value=mock_client)
@@ -350,6 +395,7 @@ class TestEmbeddingProviders:
             sys_modules = {embed_import_path: mock_sdk}
 
         elif embed_provider_name == "voyage":
+            _install_fake_voyage_errors(mock_sdk)
             mock_client = mocker.AsyncMock()
             mock_client.embed.side_effect = original
             mock_sdk.AsyncClient = mocker.MagicMock(return_value=mock_client)
@@ -414,6 +460,7 @@ class TestEmbeddingProviders:
             sys_modules = {embed_import_path: mock_sdk}
 
         elif embed_provider_name == "voyage":
+            _install_fake_voyage_errors(mock_sdk)
             mock_client = mocker.AsyncMock()
             mock_sdk.AsyncClient = mocker.MagicMock(return_value=mock_client)
             sys_modules = {embed_import_path: mock_sdk}
@@ -463,3 +510,152 @@ class TestEmbeddingProviders:
             mock_sdk.embed_content.assert_called_once_with(model="embed-multilingual-v3.0", content="text")
         elif embed_provider_name == "vertexai":
             mock_text_cls.from_pretrained.assert_called_once_with("embed-multilingual-v3.0")
+
+
+class TestVoyageBackoff:
+    """Voyage-specific tests for §6 retry classification, backoff, and R6-R8 logging."""
+
+    @pytest.fixture(autouse=True)
+    def _reset_tier_warning_flag(self):
+        voyage_client_module._tier_warning_logged = False
+        yield
+        voyage_client_module._tier_warning_logged = False
+
+    @staticmethod
+    def _make_provider(monkeypatch, **env) -> VoyageEmbeddingProvider:
+        monkeypatch.setenv("VOYAGE_API_KEY", "test-key")
+        for key, value in env.items():
+            monkeypatch.setenv(key, value)
+        return VoyageEmbeddingProvider()
+
+    def test_default_backoff_initial_delay(self, monkeypatch):
+        monkeypatch.delenv("VOYAGE_BACKOFF_INITIAL_DELAY", raising=False)
+        provider = self._make_provider(monkeypatch)
+        assert provider._backoff_initial_delay == 300.0
+
+    def test_custom_backoff_initial_delay_from_env(self, monkeypatch):
+        provider = self._make_provider(monkeypatch, VOYAGE_BACKOFF_INITIAL_DELAY="5")
+        assert provider._backoff_initial_delay == 5.0
+
+    @pytest.mark.asyncio
+    async def test_embed_retries_on_rate_limit_then_succeeds(self, monkeypatch, mocker):
+        provider = self._make_provider(monkeypatch)
+        mock_sdk = mocker.MagicMock()
+        _install_fake_voyage_errors(mock_sdk)
+        mock_response = mocker.MagicMock()
+        mock_response.embeddings = [[0.1, 0.2, 0.3]]
+        mock_client = mocker.AsyncMock()
+        mock_client.embed.side_effect = [_FakeVoyageRateLimitError("429"), mock_response]
+        mock_sdk.AsyncClient = mocker.MagicMock(return_value=mock_client)
+        mocker.patch.dict("sys.modules", {"voyageai": mock_sdk})
+        mock_sleep = mocker.patch("asyncio.sleep", new=mocker.AsyncMock())
+
+        result = await provider.embed_chunk("hello world")
+
+        assert result == [0.1, 0.2, 0.3]
+        assert mock_client.embed.call_count == 2
+        mock_sleep.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "transient_error",
+        [
+            _FakeVoyageServerError("500"),
+            _FakeVoyageServiceUnavailableError("503"),
+            _FakeVoyageAPIConnectionError("connection reset"),
+            _FakeVoyageTimeout("sdk timeout"),
+            _FakeVoyageTryAgain("try again"),
+            asyncio.TimeoutError(),
+        ],
+        ids=["server_error", "service_unavailable", "connection_error", "sdk_timeout", "try_again", "asyncio_timeout"],
+    )
+    async def test_embed_retries_on_server_error_and_timeout(self, monkeypatch, mocker, transient_error):
+        provider = self._make_provider(monkeypatch)
+        mock_sdk = mocker.MagicMock()
+        _install_fake_voyage_errors(mock_sdk)
+        mock_response = mocker.MagicMock()
+        mock_response.embeddings = [[0.4, 0.5, 0.6]]
+        mock_client = mocker.AsyncMock()
+        mock_client.embed.side_effect = [transient_error, mock_response]
+        mock_sdk.AsyncClient = mocker.MagicMock(return_value=mock_client)
+        mocker.patch.dict("sys.modules", {"voyageai": mock_sdk})
+        mocker.patch("asyncio.sleep", new=mocker.AsyncMock())
+
+        result = await provider.embed_chunk("hello world")
+
+        assert result == [0.4, 0.5, 0.6]
+        assert mock_client.embed.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_embed_exhausts_retries_and_raises_embedding_error(self, monkeypatch, mocker):
+        provider = self._make_provider(monkeypatch)
+        mock_sdk = mocker.MagicMock()
+        _install_fake_voyage_errors(mock_sdk)
+        mock_client = mocker.AsyncMock()
+        mock_client.embed.side_effect = _FakeVoyageRateLimitError("429")
+        mock_sdk.AsyncClient = mocker.MagicMock(return_value=mock_client)
+        mocker.patch.dict("sys.modules", {"voyageai": mock_sdk})
+        mock_sleep = mocker.patch("asyncio.sleep", new=mocker.AsyncMock())
+
+        with pytest.raises(EmbeddingError, match=r"giving up after 4 attempts"):
+            await provider.embed_chunk("hello world")
+
+        assert mock_client.embed.call_count == 4
+        assert mock_sleep.await_count == 3
+
+    @pytest.mark.asyncio
+    async def test_embed_permanent_error_not_retried(self, monkeypatch, mocker):
+        provider = self._make_provider(monkeypatch)
+        mock_sdk = mocker.MagicMock()
+        _install_fake_voyage_errors(mock_sdk)
+        mock_client = mocker.AsyncMock()
+        mock_client.embed.side_effect = ValueError("401 Unauthorized")
+        mock_sdk.AsyncClient = mocker.MagicMock(return_value=mock_client)
+        mocker.patch.dict("sys.modules", {"voyageai": mock_sdk})
+        mock_sleep = mocker.patch("asyncio.sleep", new=mocker.AsyncMock())
+
+        with pytest.raises(EmbeddingError, match=r"401 Unauthorized"):
+            await provider.embed_chunk("hello world")
+
+        assert mock_client.embed.call_count == 1
+        mock_sleep.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_embed_logs_request_id_on_failure(self, monkeypatch, mocker, caplog):
+        provider = self._make_provider(monkeypatch)
+        mock_sdk = mocker.MagicMock()
+        _install_fake_voyage_errors(mock_sdk)
+        error = _FakeVoyageRateLimitError("429")
+        error.headers = {"x-request-id": "abc123"}
+        mock_client = mocker.AsyncMock()
+        mock_client.embed.side_effect = error
+        mock_sdk.AsyncClient = mocker.MagicMock(return_value=mock_client)
+        mocker.patch.dict("sys.modules", {"voyageai": mock_sdk})
+        mocker.patch("asyncio.sleep", new=mocker.AsyncMock())
+
+        with caplog.at_level(logging.WARNING):
+            with pytest.raises(EmbeddingError):
+                await provider.embed_chunk("hello world")
+
+        assert "abc123" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_embed_logs_tier_warning_once(self, monkeypatch, mocker, caplog):
+        provider = self._make_provider(monkeypatch)
+        mock_sdk = mocker.MagicMock()
+        _install_fake_voyage_errors(mock_sdk)
+        error = _FakeVoyageRateLimitError("429")
+        error.headers = {"x-api-warning": "reduced rate limits apply"}
+        mock_client = mocker.AsyncMock()
+        mock_client.embed.side_effect = error
+        mock_sdk.AsyncClient = mocker.MagicMock(return_value=mock_client)
+        mocker.patch.dict("sys.modules", {"voyageai": mock_sdk})
+        mocker.patch("asyncio.sleep", new=mocker.AsyncMock())
+
+        with caplog.at_level(logging.WARNING):
+            with pytest.raises(EmbeddingError):
+                await provider.embed_chunk("hello world")
+            with pytest.raises(EmbeddingError):
+                await provider.embed_chunk("hello world")
+
+        assert caplog.text.count("reduced rate limits apply") == 1

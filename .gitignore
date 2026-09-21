@@ -9,11 +9,12 @@
 /dataSources/
 /dataSources.local.xml
 
-/dist/*
-/build/*
+/dist
+/build
 *.iml
 .coverage
 coverage.xml
+junit.xml
 **/*.egg-info
 .idea/workspace.xml
 .claude/settings.local.json
@@ -25,3 +26,5 @@ venv/
 *.pyc
 __pycache__/
 .env*
+.mcp.json
+/.ai

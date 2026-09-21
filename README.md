@@ -244,6 +244,7 @@ pip install "mcp-project-context-server[voyage]"
 | `EMBED_PROVIDER` | — | Must be set to `voyage` |
 | `VOYAGE_API_KEY` | — | **Required.** Your Voyage AI API key |
 | `VOYAGE_EMBED_MODEL` | `voyage-code-3` | Embedding model to use |
+| `VOYAGE_BACKOFF_INITIAL_DELAY` | `300` | Initial backoff delay (seconds) when Voyage AI returns a transient error (429, 5xx, timeout, connection reset); doubles each retry, up to 4 attempts |
 
 **Example:**
 
@@ -251,6 +252,7 @@ pip install "mcp-project-context-server[voyage]"
 export EMBED_PROVIDER=voyage
 export VOYAGE_API_KEY=pa-...
 export VOYAGE_EMBED_MODEL=voyage-code-3  # Optional
+export VOYAGE_BACKOFF_INITIAL_DELAY=300  # Optional
 ```
 
 **Recommended models:**
@@ -1056,6 +1058,7 @@ index_project_context()
 | `OLLAMA_EMBED_MODEL` | `ollama` | `nomic-embed-text` | No |
 | `VOYAGE_API_KEY` | `voyage` | — | Yes |
 | `VOYAGE_EMBED_MODEL` | `voyage` | `voyage-code-3` | No |
+| `VOYAGE_BACKOFF_INITIAL_DELAY` | `voyage` | `300` | No |
 | `OPENAI_API_KEY` | `openai` | — | Yes |
 | `OPENAI_EMBED_MODEL` | `openai` | `text-embedding-3-small` | No |
 | `COHERE_API_KEY` | `cohere` | — | Yes |
