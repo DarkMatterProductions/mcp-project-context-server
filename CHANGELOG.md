@@ -17,7 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.1.0] - 2026-09-20
+## [1.2.1]
+
+### Fixed
+- Fixed the version assignment in the `CHANGELOG.md` file due to commit validation issues on build and release.
+
+---
+
+## [1.2.0] - 2026-09-20
 
 ### Added
 - Add ADR-00012 toolset: `list_adrs`, `read_adr`, `read_adr_status`, `list_adr_sections`, `read_adr_section`, `edit_adr`, `search_adr_sections`, `update_adr_status`, and `create_adr` MCP tools, along with `helpers/adr` parsing and resolution utilities (`8f20b86`)
