@@ -200,7 +200,6 @@ def analyze_commits(commits: List[str]) -> defaultdict[Any, Dict[str, str | Dict
         else:
             type_scope_match = re.match(r'(?P<type>\w+)(?P<force_major>!?)\((?P<scope>\w+)\):[ ]+', commit_ids[commit_hash]["subject"])
             commit_ids[commit_hash]["type_id"] = type_id_entry(type_scope_match)
-        commit_ids[commit_hash]["type_id"] = type_id_entry(type_scope_match)
 
     return commit_ids
 
