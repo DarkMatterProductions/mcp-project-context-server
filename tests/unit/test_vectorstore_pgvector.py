@@ -167,6 +167,81 @@ class TestDeleteCollection:
 
 
 # ---------------------------------------------------------------------------
+# ensure_collection
+# ---------------------------------------------------------------------------
+
+
+class TestEnsureCollection:
+    @pytest.mark.asyncio
+    async def test_ensure_collection_upserts_sidecar_row(self, pool_provider: tuple) -> None:
+        provider, pool, conn = pool_provider
+        conn.reset_mock()
+
+        await provider.ensure_collection("test-col", metadata={"env": "prod"})
+
+        calls = [str(c.args[0]).strip() for c in conn.execute.await_args_list if c.args]
+        assert any("INSERT INTO vs_collections" in c and "ON CONFLICT" in c for c in calls)
+        assert not any("DROP TABLE" in c for c in calls)
+
+
+# ---------------------------------------------------------------------------
+# list_ids
+# ---------------------------------------------------------------------------
+
+
+class TestListIds:
+    @pytest.mark.asyncio
+    async def test_returns_ids_from_table(self, pool_provider: tuple) -> None:
+        provider, pool, conn = pool_provider
+        conn.fetch = AsyncMock(return_value=[{"id": "a"}, {"id": "b"}])
+
+        result = await provider.list_ids("col")
+        assert result == ["a", "b"]
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_list_on_exception(self, pool_provider: tuple) -> None:
+        provider, pool, conn = pool_provider
+        conn.fetch = AsyncMock(side_effect=Exception("table missing"))
+
+        result = await provider.list_ids("col")
+        assert result == []
+
+
+# ---------------------------------------------------------------------------
+# delete_by_ids
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteByIds:
+    @pytest.mark.asyncio
+    async def test_noop_when_ids_empty(self, pool_provider: tuple) -> None:
+        provider, pool, conn = pool_provider
+        conn.reset_mock()
+
+        await provider.delete_by_ids("col", [])
+
+        conn.execute.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_deletes_given_ids(self, pool_provider: tuple) -> None:
+        provider, pool, conn = pool_provider
+        conn.reset_mock()
+
+        await provider.delete_by_ids("col", ["a", "b"])
+
+        calls = [c for c in conn.execute.await_args_list if c.args and "DELETE FROM" in str(c.args[0])]
+        assert len(calls) == 1
+        assert calls[0].args[1] == ["a", "b"]
+
+    @pytest.mark.asyncio
+    async def test_silently_handles_exception(self, pool_provider: tuple) -> None:
+        provider, pool, conn = pool_provider
+        conn.execute = AsyncMock(side_effect=Exception("gone"))
+
+        await provider.delete_by_ids("col", ["a"])  # must not raise
+
+
+# ---------------------------------------------------------------------------
 # upsert
 # ---------------------------------------------------------------------------
 

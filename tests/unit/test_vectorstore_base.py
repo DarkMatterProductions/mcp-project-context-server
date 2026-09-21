@@ -56,6 +56,15 @@ class _CompleteProvider:
     async def delete_collection(self, name: str) -> None:
         pass
 
+    async def ensure_collection(self, name: str, metadata: dict | None = None) -> None:
+        pass
+
+    async def list_ids(self, collection_name: str) -> list[str]:
+        return []
+
+    async def delete_by_ids(self, collection_name: str, ids: list[str]) -> None:
+        pass
+
     async def upsert(
         self,
         collection_name: str,
@@ -91,8 +100,9 @@ class _IncompleteProvider:
     def provider_name(self) -> str:
         return "incomplete"
 
-    # Missing: create_collection, delete_collection, upsert, query, count,
-    #          collection_exists, get_collection_metadata
+    # Missing: create_collection, delete_collection, ensure_collection, list_ids,
+    #          delete_by_ids, upsert, query, count, collection_exists,
+    #          get_collection_metadata
 
 
 class TestVectorStoreProviderProtocol:

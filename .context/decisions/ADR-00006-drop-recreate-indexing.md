@@ -1,7 +1,8 @@
 # ADR-00006: Drop-and-recreate indexing
 
 ## Status
-Implemented
+
+Superseded by ADR-00030
 
 ## Context
 
