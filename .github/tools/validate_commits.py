@@ -158,7 +158,8 @@ if __name__ == "__main__":
     print("Valid Commits:")
     for commit_hash in validated_commits["valid"]["commits"]:
         scope_skip_versioning = f" (Scope Enforced Skip Version Increment)" if commit_hash["type_id"]["skip_version"] else f""
-        print(f"    Commit {commit_hash['hash']} has recognized commit type (Type: {COMMIT_TYPES[commit_hash['type_id']['name']]['name']} - Scope: {commit_hash['type_id']['scope_id']} / Bump: {commit_hash['type_id']['bump_type']}{scope_skip_versioning}) in subject: '{commit_hash['subject']}'")
+        _scope_id = commit_hash['type_id']['scope_id'] if 'scope_id' in commit_hash['type_id'].keys() else "ci"
+        print(f"    Commit {commit_hash['hash']} has recognized commit type (Type: {COMMIT_TYPES[commit_hash['type_id']['name']]['name']} - Scope: {_scope_id} / Bump: {commit_hash['type_id']['bump_type']}{scope_skip_versioning}) in subject: '{commit_hash['subject']}'")
 
     if validated_commits["invalid"]["count"] > 0:
         print("\nInvalid commit details -")
