@@ -38,7 +38,7 @@ Supported `EMBED_PROVIDER` values
     Optional: `COHERE_EMBED_MODEL` (default: embed-english-v3.0).
 
 `google`
-    Google Gemini API (google-generativeai).  Requires `GOOGLE_API_KEY`.
+    Google Gemini API (google-genai).  Requires `GOOGLE_API_KEY`.
     Optional: `GOOGLE_EMBED_MODEL` (default: text-embedding-004).
 
 `vertexai`

@@ -246,7 +246,13 @@ class TestEmbeddingProviders:
             sys_modules = {embed_import_path: mock_sdk}
 
         elif embed_provider_name == "google":
-            mock_sdk.embed_content.return_value = {"embedding": [0.1, 0.2, 0.3]}
+            mock_embedding = mocker.MagicMock()
+            mock_embedding.values = [0.1, 0.2, 0.3]
+            mock_response = mocker.MagicMock()
+            mock_response.embeddings = [mock_embedding]
+            mock_client = mocker.MagicMock()
+            mock_client.aio.models.embed_content = mocker.AsyncMock(return_value=mock_response)
+            mock_sdk.Client = mocker.MagicMock(return_value=mock_client)
             sys_modules = {embed_import_path: mock_sdk}
 
         elif embed_provider_name == "vertexai":
@@ -284,8 +290,8 @@ class TestEmbeddingProviders:
                 embedding_types=["float"],
             )
         elif embed_provider_name == "google":
-            mock_sdk.configure.assert_called_once_with(api_key="test-key")
-            mock_sdk.embed_content.assert_called_once_with(model="embed-multilingual-v3.0", content="hello world")
+            mock_sdk.Client.assert_called_once_with(api_key="test-key")
+            mock_client.aio.models.embed_content.assert_called_once_with(model="embed-multilingual-v3.0", contents="hello world")
         elif embed_provider_name == "vertexai":
             mock_sdk.init.assert_called_once_with(
                 project="test-project-name", location="test-location", api_transport="rest"
@@ -346,7 +352,9 @@ class TestEmbeddingProviders:
             error_match = r"Cohere embedding failed"
 
         elif embed_provider_name == "google":
-            mock_sdk.embed_content.side_effect = error
+            mock_client = mocker.MagicMock()
+            mock_client.aio.models.embed_content = mocker.AsyncMock(side_effect=error)
+            mock_sdk.Client = mocker.MagicMock(return_value=mock_client)
             sys_modules = {embed_import_path: mock_sdk}
             error_match = r"Google embedding failed"
 
@@ -414,7 +422,9 @@ class TestEmbeddingProviders:
             sys_modules = {embed_import_path: mock_sdk}
 
         elif embed_provider_name == "google":
-            mock_sdk.embed_content.side_effect = original
+            mock_client = mocker.MagicMock()
+            mock_client.aio.models.embed_content = mocker.AsyncMock(side_effect=original)
+            mock_sdk.Client = mocker.MagicMock(return_value=mock_client)
             sys_modules = {embed_import_path: mock_sdk}
 
         elif embed_provider_name == "vertexai":
@@ -476,6 +486,13 @@ class TestEmbeddingProviders:
             sys_modules = {embed_import_path: mock_sdk}
 
         elif embed_provider_name == "google":
+            mock_embedding = mocker.MagicMock()
+            mock_embedding.values = [0.1, 0.2, 0.3]
+            mock_response = mocker.MagicMock()
+            mock_response.embeddings = [mock_embedding]
+            mock_client = mocker.MagicMock()
+            mock_client.aio.models.embed_content = mocker.AsyncMock(return_value=mock_response)
+            mock_sdk.Client = mocker.MagicMock(return_value=mock_client)
             sys_modules = {embed_import_path: mock_sdk}
 
         elif embed_provider_name == "vertexai":
@@ -507,7 +524,7 @@ class TestEmbeddingProviders:
                 embedding_types=["float"],
             )
         elif embed_provider_name == "google":
-            mock_sdk.embed_content.assert_called_once_with(model="embed-multilingual-v3.0", content="text")
+            mock_client.aio.models.embed_content.assert_called_once_with(model="embed-multilingual-v3.0", contents="text")
         elif embed_provider_name == "vertexai":
             mock_text_cls.from_pretrained.assert_called_once_with("embed-multilingual-v3.0")
 

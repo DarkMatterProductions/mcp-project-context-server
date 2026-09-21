@@ -37,7 +37,7 @@ is not set or contains an unrecognised value. Six providers are implemented:
   instead of a hardcoded constant, automatically accommodating providers with
   different context window sizes.
 - **Lazy imports**: provider-specific packages (`voyageai`, `openai`, `cohere`,
-  `google-generativeai`, `google-cloud-aiplatform`) are only imported when the
+  `google-genai`, `google-cloud-aiplatform`) are only imported when the
   corresponding provider is selected, keeping the base install lightweight.
 
 ## Consequences

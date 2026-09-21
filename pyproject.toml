@@ -46,7 +46,7 @@ ollama = ["ollama>=0.4.0"]
 voyage = ["voyageai"]
 openai = ["openai>=1.0"]
 cohere = ["cohere>=5.0"]
-google = ["google-generativeai"]
+google = ["google-genai"]
 google-vertex = ["google-cloud-aiplatform"]
 
 # --- Vector store providers ---
@@ -66,7 +66,7 @@ all = [
     "voyageai",
     "openai>=1.0",
     "cohere>=5.0",
-    "google-generativeai",
+    "google-genai",
     "google-cloud-aiplatform",
     "google-cloud-firestore",
     "asyncpg",
@@ -196,7 +196,7 @@ known_third_party = [
     "voyageai",
     "openai>=1.0",
     "cohere>=5.0",
-    "google-generativeai",
+    "google-genai",
     "google-cloud-aiplatform",
     "google-cloud-firestore",
     "asyncpg",
