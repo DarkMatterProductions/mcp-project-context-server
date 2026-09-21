@@ -18,7 +18,6 @@ def key_id_lookup(_type_scope_match: re.Match, mapping: dict) -> dict[str, str |
     __type_id = _type_scope_match.group("type") if _type_scope_match.group("type") != '' else None
     __scope_id = _type_scope_match.group("scope") if _type_scope_match.group("scope") != '' else None
     __force_major = True if _type_scope_match.group("force_major") != '' else False
-    __bump_type = (COMMIT_TYPES[_type_scope_match.group("type")]["bump_type"] if _type_scope_match.group("scope") not in RELEASE_OVERRIDE_SCOPES else RELEASE_OVERRIDE_SCOPES[_type_scope_match.group("scope")]["bump_type"]) if _type_scope_match.group("type") != '' else None
     __scope_skip_version = True if _type_scope_match.group("scope") in RELEASE_OVERRIDE_SCOPES else False
     key_ids = [key_id for key_id in mapping.keys() if key_id is not None and (key_id.startswith(__type_id) if __type_id else False)]
     for key_id in key_ids:
@@ -26,7 +25,11 @@ def key_id_lookup(_type_scope_match: re.Match, mapping: dict) -> dict[str, str |
         type_id["force_major"] = __force_major
         type_id["scope_id"] = __scope_id
         type_id["skip_version"] = __scope_skip_version
-        type_id["bump_type"] = __bump_type
+        type_id["bump_type"] = (
+            RELEASE_OVERRIDE_SCOPES[_type_scope_match.group("scope")]["bump_type"]
+            if __scope_skip_version
+            else type_id["bump_type"]
+        )
         return type_id
     return {'name': 'invalid', 'description': 'Invalid Type', 'bump_type': 'invalid', 'force_major': False,  'skip_version': False}
 
@@ -146,18 +149,10 @@ def get_commit_message(commit_hash: str) -> Dict[str, str]:
 def get_last_version() -> str:
     """Get the last semantic version tag, or return 0.0.0 if none exist."""
     try:
-        # Get current branch name
-        branch_result = subprocess.run(
-            [GIT_CMD, 'branch', '--show-current'],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        current_branch = branch_result.stdout.strip()
-
-        # Get tags merged into current branch
+        # Get tags merged into the current commit (HEAD resolves correctly
+        # even in a detached-HEAD checkout, e.g. in CI)
         result = subprocess.run(
-            [GIT_CMD, 'tag', '--merged', current_branch],
+            [GIT_CMD, 'tag', '--merged', 'HEAD'],
             capture_output=True,
             text=True,
             check=True
