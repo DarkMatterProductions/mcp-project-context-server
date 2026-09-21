@@ -29,10 +29,10 @@ _EMBED_TIMEOUT_SECONDS: float = 60.0
 class GoogleEmbeddingProvider(EmbeddingProvider):
     """Embedding provider backed by the Google Generative AI (Gemini) API.
 
-    The `google.generativeai` package is imported lazily inside `embed_chunk()` so
+    The `google.genai` package is imported lazily inside `embed_chunk()` so
     that the provider can be imported without requiring the package to be installed.
-    Because the `genai.embed_content` function is synchronous, it is wrapped with
-    `asyncio.to_thread` to avoid blocking the event loop.
+    The SDK's `client.aio.models.embed_content` surface is natively async, so no
+    thread-wrapping is needed.
     """
 
     def __init__(self) -> None:
@@ -78,13 +78,13 @@ class GoogleEmbeddingProvider(EmbeddingProvider):
             unreachable, or does not respond within the timeout.
         """
         try:
-            import google.generativeai as genai  # lazy import
+            from google import genai  # lazy import
 
-            genai.configure(api_key=self._api_key)
+            client = genai.Client(api_key=self._api_key)
             result = await asyncio.wait_for(
-                asyncio.to_thread(genai.embed_content, model=self._model, content=text),
+                client.aio.models.embed_content(model=self._model, contents=text),
                 timeout=_EMBED_TIMEOUT_SECONDS,
             )
-            return list(result["embedding"])
+            return list(result.embeddings[0].values)
         except Exception as exc:
             raise EmbeddingError(f"Google embedding failed (model={self._model}): {exc}") from exc
