@@ -185,6 +185,120 @@ class TestDeleteCollection:
 
 
 # ---------------------------------------------------------------------------
+# ensure_collection
+# ---------------------------------------------------------------------------
+
+
+class TestEnsureCollection:
+    @pytest.mark.asyncio
+    async def test_creates_meta_doc_when_absent(self, wired_provider) -> None:
+        provider = wired_provider
+        meta_get = MagicMock(exists=False)
+        provider._firestore.collection.return_value.document.return_value.get.return_value = meta_get
+
+        await provider.ensure_collection("col", metadata={"env": "prod"})
+
+        provider._index.remove_datapoints.assert_not_called()
+        set_call = provider._firestore.collection.return_value.document.return_value.set.call_args
+        assert set_call.args[0] == {"metadata": {"env": "prod"}, "datapoint_ids": []}
+
+    @pytest.mark.asyncio
+    async def test_preserves_existing_datapoint_ids(self, wired_provider) -> None:
+        provider = wired_provider
+        meta_get = MagicMock(exists=True)
+        meta_get.to_dict.return_value = {"datapoint_ids": ["a", "b"]}
+        provider._firestore.collection.return_value.document.return_value.get.return_value = meta_get
+
+        await provider.ensure_collection("col", metadata={"env": "staging"})
+
+        provider._index.remove_datapoints.assert_not_called()
+        set_call = provider._firestore.collection.return_value.document.return_value.set.call_args
+        assert set_call.args[0] == {"metadata": {"env": "staging"}, "datapoint_ids": ["a", "b"]}
+
+    @pytest.mark.asyncio
+    async def test_raises_vector_store_error_on_failure(self, wired_provider) -> None:
+        provider = wired_provider
+        provider._firestore.collection.side_effect = Exception("boom")
+
+        from mcp_project_context_server.integrations.vectorstore.base import VectorStoreError
+
+        with pytest.raises(VectorStoreError, match="Failed to ensure collection"):
+            await provider.ensure_collection("col")
+
+
+# ---------------------------------------------------------------------------
+# list_ids
+# ---------------------------------------------------------------------------
+
+
+class TestListIds:
+    @pytest.mark.asyncio
+    async def test_returns_known_datapoint_ids(self, wired_provider) -> None:
+        provider = wired_provider
+        meta_get = MagicMock(exists=True)
+        meta_get.to_dict.return_value = {"datapoint_ids": ["a", "b"]}
+        provider._firestore.collection.return_value.document.return_value.get.return_value = meta_get
+
+        result = await provider.list_ids("col")
+        assert result == ["a", "b"]
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_list_when_absent(self, wired_provider) -> None:
+        provider = wired_provider
+        meta_get = MagicMock(exists=False)
+        provider._firestore.collection.return_value.document.return_value.get.return_value = meta_get
+
+        result = await provider.list_ids("col")
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_list_on_exception(self, wired_provider) -> None:
+        provider = wired_provider
+        provider._firestore.collection.side_effect = Exception("gone")
+
+        result = await provider.list_ids("col")
+        assert result == []
+
+
+# ---------------------------------------------------------------------------
+# delete_by_ids
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteByIds:
+    @pytest.mark.asyncio
+    async def test_noop_when_ids_empty(self, wired_provider) -> None:
+        provider = wired_provider
+
+        await provider.delete_by_ids("col", [])
+
+        provider._index.remove_datapoints.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_removes_datapoints_and_updates_meta(self, wired_provider) -> None:
+        provider = wired_provider
+        meta_get = MagicMock(exists=True)
+        meta_get.to_dict.return_value = {"metadata": {"env": "prod"}, "datapoint_ids": ["a", "b", "c"]}
+        provider._firestore.collection.return_value.document.return_value.get.return_value = meta_get
+
+        await provider.delete_by_ids("col", ["b"])
+
+        provider._index.remove_datapoints.assert_called_once_with(datapoint_ids=["b"])
+        meta_set_call = provider._firestore.collection.return_value.document.return_value.set.call_args
+        assert meta_set_call.args[0] == {"metadata": {"env": "prod"}, "datapoint_ids": ["a", "c"]}
+
+    @pytest.mark.asyncio
+    async def test_raises_vector_store_error_on_failure(self, wired_provider) -> None:
+        provider = wired_provider
+        provider._index.remove_datapoints.side_effect = Exception("SDK error")
+
+        from mcp_project_context_server.integrations.vectorstore.base import VectorStoreError
+
+        with pytest.raises(VectorStoreError, match="Failed to delete IDs"):
+            await provider.delete_by_ids("col", ["a"])
+
+
+# ---------------------------------------------------------------------------
 # upsert
 # ---------------------------------------------------------------------------
 

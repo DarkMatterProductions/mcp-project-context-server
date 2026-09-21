@@ -63,6 +63,35 @@ class VectorStoreProvider(Protocol):
         """
         ...
 
+    async def ensure_collection(self, name: str, metadata: dict | None = None) -> None:
+        """Create a collection if absent; otherwise refresh its metadata in place.
+
+        Unlike :meth:`create_collection`, existing documents are never touched —
+        this is the non-destructive counterpart used by incremental indexing.
+
+        :param name: (str) Collection name.
+        :param metadata: (dict) Optional key/value metadata to attach/refresh on the collection.
+        :return: (None) This method does not return a value.
+        """
+        ...
+
+    async def list_ids(self, collection_name: str) -> list[str]:
+        """Return every document ID currently stored in a collection.
+
+        :param collection_name: (str) Collection to inspect.
+        :return: (list) All stored document IDs. Returns ``[]`` if the collection does not exist.
+        """
+        ...
+
+    async def delete_by_ids(self, collection_name: str, ids: list[str]) -> None:
+        """Remove specific documents from a collection by ID.
+
+        :param collection_name: (str) Target collection.
+        :param ids: (list) Document IDs to remove. Unknown IDs and an empty list are no-ops.
+        :return: (None) This method does not return a value.
+        """
+        ...
+
     async def upsert(
         self,
         collection_name: str,

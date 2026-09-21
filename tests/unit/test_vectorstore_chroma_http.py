@@ -170,6 +170,107 @@ class TestDeleteCollection:
 
 
 # ---------------------------------------------------------------------------
+# ensure_collection
+# ---------------------------------------------------------------------------
+
+
+class TestEnsureCollection:
+    @pytest.mark.asyncio
+    async def test_ensure_collection_creates_when_absent(
+        self, provider: ChromaHttpVectorStoreProvider, mock_client: MagicMock
+    ) -> None:
+        mock_col = MagicMock()
+        mock_client.get_or_create_collection.return_value = mock_col
+
+        await provider.ensure_collection("col", metadata={"k": "v"})
+
+        mock_client.get_or_create_collection.assert_called_once_with(name="col", metadata={"k": "v"})
+        mock_col.modify.assert_called_once_with(metadata={"k": "v"})
+        mock_client.delete_collection.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_ensure_collection_refreshes_metadata_when_present(
+        self, provider: ChromaHttpVectorStoreProvider, mock_client: MagicMock
+    ) -> None:
+        mock_col = MagicMock()
+        mock_client.get_or_create_collection.return_value = mock_col
+
+        await provider.ensure_collection("col", metadata={"env": "prod"})
+
+        mock_col.modify.assert_called_once_with(metadata={"env": "prod"})
+
+    @pytest.mark.asyncio
+    async def test_ensure_collection_defaults_metadata_to_empty_dict(
+        self, provider: ChromaHttpVectorStoreProvider, mock_client: MagicMock
+    ) -> None:
+        mock_col = MagicMock()
+        mock_client.get_or_create_collection.return_value = mock_col
+
+        await provider.ensure_collection("col")
+
+        mock_client.get_or_create_collection.assert_called_once_with(name="col", metadata={})
+        mock_col.modify.assert_called_once_with(metadata={})
+
+
+# ---------------------------------------------------------------------------
+# list_ids
+# ---------------------------------------------------------------------------
+
+
+class TestListIds:
+    @pytest.mark.asyncio
+    async def test_returns_ids_from_collection(
+        self, provider: ChromaHttpVectorStoreProvider, mock_client: MagicMock
+    ) -> None:
+        mock_col = MagicMock()
+        mock_col.get.return_value = {"ids": ["a", "b"]}
+        mock_client.get_collection.return_value = mock_col
+
+        result = await provider.list_ids("col")
+
+        assert result == ["a", "b"]
+        mock_col.get.assert_called_once_with(include=[])
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_list_when_collection_absent(
+        self, provider: ChromaHttpVectorStoreProvider, mock_client: MagicMock
+    ) -> None:
+        mock_client.get_collection.side_effect = Exception("missing")
+        result = await provider.list_ids("missing")
+        assert result == []
+
+
+# ---------------------------------------------------------------------------
+# delete_by_ids
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteByIds:
+    @pytest.mark.asyncio
+    async def test_noop_when_ids_empty(
+        self, provider: ChromaHttpVectorStoreProvider, mock_client: MagicMock
+    ) -> None:
+        await provider.delete_by_ids("col", [])
+        mock_client.get_collection.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_deletes_given_ids(self, provider: ChromaHttpVectorStoreProvider, mock_client: MagicMock) -> None:
+        mock_col = MagicMock()
+        mock_client.get_collection.return_value = mock_col
+
+        await provider.delete_by_ids("col", ["a", "b"])
+
+        mock_col.delete.assert_called_once_with(ids=["a", "b"])
+
+    @pytest.mark.asyncio
+    async def test_silently_handles_missing_collection(
+        self, provider: ChromaHttpVectorStoreProvider, mock_client: MagicMock
+    ) -> None:
+        mock_client.get_collection.side_effect = Exception("missing")
+        await provider.delete_by_ids("missing", ["a"])  # must not raise
+
+
+# ---------------------------------------------------------------------------
 # upsert
 # ---------------------------------------------------------------------------
 

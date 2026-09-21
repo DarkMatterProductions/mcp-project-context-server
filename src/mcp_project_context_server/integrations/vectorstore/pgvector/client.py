@@ -140,6 +140,62 @@ class PgVectorStoreProvider:
         except Exception:
             pass
 
+    async def ensure_collection(self, name: str, metadata: dict | None = None) -> None:
+        """Create the sidecar row for *name* if absent; otherwise refresh its metadata.
+
+        Leaves the collection's data table and ``dimension`` untouched — the
+        data table is created lazily by :meth:`upsert`'s ``_ensure_table``.
+
+        :param name: (str) Collection name.
+        :param metadata: (dict) Optional key/value metadata to attach/refresh on the collection.
+        :return: (None) This method does not return a value.
+        """
+        import json
+
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:  # type: ignore[attr-defined]
+            await conn.execute(
+                """
+                INSERT INTO vs_collections (name, dimension, metadata)
+                VALUES ($1, NULL, $2::jsonb)
+                ON CONFLICT (name) DO UPDATE SET metadata = EXCLUDED.metadata
+                """,
+                name,
+                json.dumps(metadata or {}),
+            )
+
+    async def list_ids(self, collection_name: str) -> list[str]:
+        """Return every document ID currently stored in *collection_name*.
+
+        :param collection_name: (str) Collection to inspect.
+        :return: (list) All stored document IDs. Returns ``[]`` if the collection does not exist.
+        """
+        try:
+            pool = await self._get_pool()
+            tbl = _table_name(collection_name)
+            async with pool.acquire() as conn:  # type: ignore[attr-defined]
+                rows = await conn.fetch(f"SELECT id FROM {tbl}")  # type: ignore[attr-defined]
+                return [r["id"] for r in rows]
+        except Exception:
+            return []
+
+    async def delete_by_ids(self, collection_name: str, ids: list[str]) -> None:
+        """Remove *ids* from *collection_name*.  No-op for an empty list or unknown IDs.
+
+        :param collection_name: (str) Target collection.
+        :param ids: (list) Document IDs to remove.
+        :return: (None) This method does not return a value.
+        """
+        if not ids:
+            return
+        try:
+            pool = await self._get_pool()
+            tbl = _table_name(collection_name)
+            async with pool.acquire() as conn:  # type: ignore[attr-defined]
+                await conn.execute(f"DELETE FROM {tbl} WHERE id = ANY($1::text[])", ids)  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
     async def _ensure_table(self, conn: Any, name: str, dimension: int) -> None:
         """Create the vector table for *name* if it does not yet exist."""
         tbl = _table_name(name)

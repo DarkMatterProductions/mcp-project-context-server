@@ -199,6 +199,75 @@ class GcpVectorSearchProvider:
         except Exception:
             pass
 
+    async def ensure_collection(self, name: str, metadata: dict | None = None) -> None:
+        """Create the sidecar metadata doc for *name* if absent; otherwise refresh its metadata.
+
+        Unlike :meth:`create_collection`, existing datapoints are preserved --
+        the sidecar's ``datapoint_ids`` list is left untouched.
+
+        :param name: (str) Collection name.
+        :param metadata: (dict) Optional key/value metadata to attach/refresh on the collection.
+        :return: (None) This method does not return a value.
+        :raises VectorStoreError: If the Firestore API call fails.
+        """
+        try:
+
+            def _sync() -> None:
+                db = self._get_firestore()
+                meta_ref = db.collection(self._meta_collection).document(name)
+                meta_doc = meta_ref.get()
+                existing_ids = list(meta_doc.to_dict().get("datapoint_ids") or []) if meta_doc.exists else []
+                meta_ref.set({"metadata": metadata or {}, "datapoint_ids": existing_ids})
+
+            await asyncio.to_thread(_sync)
+        except Exception as exc:
+            raise VectorStoreError(f"Failed to ensure collection '{name}': {exc}") from exc
+
+    async def list_ids(self, collection_name: str) -> list[str]:
+        """Return every datapoint ID currently known for *collection_name*.
+
+        :param collection_name: (str) Collection to inspect.
+        :return: (list) All stored document IDs. Returns ``[]`` if the collection does not exist.
+        """
+        try:
+            return await self._get_known_datapoint_ids(collection_name)
+        except Exception:
+            return []
+
+    async def delete_by_ids(self, collection_name: str, ids: list[str]) -> None:
+        """Remove *ids* from *collection_name*.  No-op for an empty list or unknown IDs.
+
+        :param collection_name: (str) Target collection.
+        :param ids: (list) Document IDs to remove.
+        :return: (None) This method does not return a value.
+        :raises VectorStoreError: If the Vertex AI or Firestore API calls fail.
+        """
+        if not ids:
+            return
+
+        def _sync() -> None:
+            index = self._get_index()
+            index.remove_datapoints(datapoint_ids=ids)
+
+            db = self._get_firestore()
+            for doc_id in ids:
+                db.collection(self._firestore_collection).document(doc_id).delete()
+
+            meta_ref = db.collection(self._meta_collection).document(collection_name)
+            meta_doc = meta_ref.get()
+            existing_ids = set(meta_doc.to_dict().get("datapoint_ids") or []) if meta_doc.exists else set()
+            meta_ref.set(
+                {
+                    "metadata": meta_doc.to_dict().get("metadata", {}) if meta_doc.exists else {},
+                    "datapoint_ids": sorted(existing_ids - set(ids)),
+                }
+            )
+
+        try:
+            await asyncio.to_thread(_sync)
+        except Exception as exc:
+            raise VectorStoreError(f"Failed to delete IDs from collection '{collection_name}': {exc}") from exc
+
     async def _remove_all_datapoints(self, name: str) -> None:
         """Remove every datapoint and document tagged with collection *name*."""
         datapoint_ids = await self._get_known_datapoint_ids(name)

@@ -102,6 +102,60 @@ class ChromaHttpVectorStoreProvider:
 
         await asyncio.to_thread(_sync)
 
+    async def ensure_collection(self, name: str, metadata: dict | None = None) -> None:
+        """Create *name* if absent; otherwise refresh its metadata without touching documents.
+
+        :param name: (str) Collection name.
+        :param metadata: (dict) Optional key/value metadata to attach/refresh on the collection.
+        :return: (None) This method does not return a value.
+        """
+        client = self._get_client()
+
+        def _sync() -> None:
+            col = client.get_or_create_collection(name=name, metadata=metadata or {})
+            # chromadb ignores `metadata` on get_or_create_collection when the
+            # collection already exists, so refresh it explicitly either way.
+            col.modify(metadata=metadata or {})
+
+        await asyncio.to_thread(_sync)
+
+    async def list_ids(self, collection_name: str) -> list[str]:
+        """Return every document ID currently stored in *collection_name*.
+
+        :param collection_name: (str) Collection to inspect.
+        :return: (list) All stored document IDs. Returns ``[]`` if the collection does not exist.
+        """
+        client = self._get_client()
+
+        def _sync() -> list[str]:
+            try:
+                col = client.get_collection(collection_name)
+            except Exception:
+                return []
+            return col.get(include=[])["ids"]
+
+        return await asyncio.to_thread(_sync)
+
+    async def delete_by_ids(self, collection_name: str, ids: list[str]) -> None:
+        """Remove *ids* from *collection_name*.  No-op for an empty list or unknown IDs.
+
+        :param collection_name: (str) Target collection.
+        :param ids: (list) Document IDs to remove.
+        :return: (None) This method does not return a value.
+        """
+        if not ids:
+            return
+        client = self._get_client()
+
+        def _sync() -> None:
+            try:
+                col = client.get_collection(collection_name)
+            except Exception:
+                return
+            col.delete(ids=ids)
+
+        await asyncio.to_thread(_sync)
+
     async def upsert(
         self,
         collection_name: str,

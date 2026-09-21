@@ -12,6 +12,7 @@ registry.
 import asyncio
 import logging
 import os
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -38,6 +39,27 @@ logger = logging.getLogger(__name__)
 
 _EMBED_CONCURRENCY: int = int(os.getenv("EMBED_CONCURRENCY", "4"))
 _MAX_CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "1500"))
+
+
+@dataclass(frozen=True)
+class _Chunk:
+    """A single chunk of file content, addressed by a content-derived ID.
+
+    :param id: (str) ``f"{filename}::{section}::{segment}-{section_sha512}"``.
+    :param text: (str) The chunk's raw text.
+    :param filename: (str) The source file this chunk was extracted from.
+    :param segment: (int) Sub-chunk index within its section, reset to 0 per section.
+    :param section: (str) The section heading this chunk belongs to.
+    :param section_sha512: (str) SHA-512 of the *whole section's* content (shared by all of
+        that section's sub-chunks).
+    """
+
+    id: str
+    text: str
+    filename: str
+    segment: int
+    section: str
+    section_sha512: str
 
 
 async def run_index_pipeline(project_path: str | Path, store: VectorStoreProvider) -> str:
@@ -85,60 +107,75 @@ async def run_index_pipeline(project_path: str | Path, store: VectorStoreProvide
         "indexed_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    all_chunks: list[tuple[str, str, str, int, str, str]] = []
+    all_chunks: list[_Chunk] = []
+    seen_ids: set[str] = set()
     for filename, file_content in files.items():
-        chunk_idx = 0
         for section in split_sections(file_content):
             section_sha512 = hash_content(section.content)
-            for piece in chunk_section(section, max_chars):
-                if piece.strip():
-                    all_chunks.append((f"{filename}::{chunk_idx}", piece, filename, chunk_idx, section.name, section_sha512))
-                    chunk_idx += 1
+            for segment, piece in enumerate(chunk_section(section, max_chars)):
+                if not piece.strip():
+                    continue
+                chunk_id = f"{filename}::{section.name}::{segment}-{section_sha512}"
+                if chunk_id in seen_ids:
+                    logger.warning("Duplicate chunk ID %s — keeping first occurrence", chunk_id)
+                    continue
+                seen_ids.add(chunk_id)
+                all_chunks.append(_Chunk(chunk_id, piece, filename, segment, section.name, section_sha512))
 
-    if not all_chunks:
-        # Not a failure — e.g. every .context/ file was deleted. Clearing the
-        # collection here is the correct, intentional reflection of that.
-        await store.create_collection(col_name, metadata=collection_metadata)
-        return f"Indexed 0 chunks from {len(files)} files into collection '{col_name}'"
+    expected_ids = {c.id for c in all_chunks}
+    existing_ids = set(await store.list_ids(col_name))
+    to_embed = [c for c in all_chunks if c.id not in existing_ids]
+    to_delete = sorted(existing_ids - expected_ids)
+    unchanged_count = len(all_chunks) - len(to_embed)
 
     semaphore = asyncio.Semaphore(_EMBED_CONCURRENCY)
 
-    async def _embed(doc_id: str, chunk: str, filename: str, chunk_idx: int, section: str, section_sha512: str):
+    async def _embed(chunk: _Chunk):
         async with semaphore:
             try:
-                embedding = await embed_chunk(chunk)
-                return (doc_id, chunk, embedding, filename, chunk_idx, section, section_sha512)
+                embedding = await embed_chunk(chunk.text)
+                return (chunk, embedding)
             except Exception as e:
-                logger.warning("Failed to embed %s: %s", doc_id, e)
+                logger.warning("Failed to embed %s: %s", chunk.id, e)
                 return e
 
     # Nothing destructive has happened yet: the store is untouched up to this
     # point, so any embedding failure below can still abort without data loss.
-    results = await asyncio.gather(*[_embed(*c) for c in all_chunks])
+    results = await asyncio.gather(*[_embed(c) for c in to_embed])
 
     # asyncio.gather preserves input order, so this pairing recovers which
     # file/section each failure belongs to without changing _embed's return shape.
-    failed = [(chunk_meta, result) for chunk_meta, result in zip(all_chunks, results) if isinstance(result, Exception)]
+    failed = [(chunk, result) for chunk, result in zip(to_embed, results) if isinstance(result, Exception)]
 
     if failed:
-        # All-or-nothing: abort without calling create_collection or upsert.
+        # All-or-nothing: abort without calling ensure_collection, upsert, or delete_by_ids.
         # The previously indexed collection, if any, is left completely intact.
-        preview = "; ".join(f"{filename}::{section} ({exc})" for (_, _, filename, _, section, _), exc in failed[:10])
+        preview = "; ".join(f"{chunk.filename}::{chunk.section} ({exc})" for chunk, exc in failed[:10])
         more = f"; +{len(failed) - 10} more" if len(failed) > 10 else ""
         return (
-            f"Error: failed to embed {len(failed)}/{len(all_chunks)} chunks from {len(files)} files "
+            f"Error: failed to embed {len(failed)}/{len(to_embed)} chunks from {len(files)} files "
             f"— aborting without modifying collection '{col_name}' (previous index, if any, is unchanged). "
             f"Failed chunks: {preview}{more}"
         )
 
-    # Every chunk embedded successfully — only now is it safe to clear and repopulate.
-    await store.create_collection(col_name, metadata=collection_metadata)
-    await store.upsert(
-        collection_name=col_name,
-        ids=[r[0] for r in results],
-        embeddings=[r[2] for r in results],
-        documents=[r[1] for r in results],
-        metadatas=[{"file": r[3], "chunk": r[4], "section": r[5], "section_sha512": r[6]} for r in results],
-    )
+    # Every chunk embedded successfully. Metadata is refreshed on every run,
+    # even a no-op reindex, since `indexed_at` means "last time indexing ran".
+    await store.ensure_collection(col_name, metadata=collection_metadata)
+    if results:
+        await store.upsert(
+            collection_name=col_name,
+            ids=[chunk.id for chunk, _ in results],
+            embeddings=[embedding for _, embedding in results],
+            documents=[chunk.text for chunk, _ in results],
+            metadatas=[
+                {"file": chunk.filename, "chunk": chunk.segment, "section": chunk.section, "section_sha512": chunk.section_sha512}
+                for chunk, _ in results
+            ],
+        )
+    if to_delete:
+        await store.delete_by_ids(col_name, to_delete)
 
-    return f"Indexed {len(results)} chunks from {len(files)} files into collection '{col_name}'"
+    return (
+        f"Indexed {len(all_chunks)} chunks from {len(files)} files into collection '{col_name}' "
+        f"({len(to_embed)} embedded, {unchanged_count} unchanged, {len(to_delete)} removed)"
+    )
