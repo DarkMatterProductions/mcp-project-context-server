@@ -17,6 +17,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0.0] - 2026-09-21
+
+### Breaking Changes
+- Replace drop-and-recreate indexing with incremental upsert-then-prune indexing in `run_index_pipeline()`: chunk IDs are now content-addressed (`f"{filename}::{section}::{segment}-{section_sha512}"`) instead of positional, so re-indexing skips unchanged chunks and only embeds or removes what actually changed (`046c03f`)
+- `VectorStoreProvider` implementations must now provide `ensure_collection`, `list_ids`, and `delete_by_ids` alongside existing methods; implemented across all four bundled backends (`chroma_local`, `chroma_http`, `pgvector`, `gcp_vector_search`) (`046c03f`)
+- The first `index_project_context` run after upgrading performs a one-time full re-embed, since the old positional chunk IDs share no overlap with the new content-addressed scheme (`046c03f`)
+
+### Added
+- Add ADR-00030 (Incremental upsert-then-prune indexing via content-addressed chunk IDs), accepted and superseding ADR-00006 (`5de2946`)
+
+### Changed
+- Replace inline regex literals in commit-validation tooling with shared `TYPE_COPE_REGEX`/`MERGE_REGEX` constants in `.github/tools/regex_patterns.py`, and guard `key_id_lookup` against unmatched commit-header regexes to avoid raising on non-conforming subjects (`821e65e`)
+- Reformat source and test files under `src/` and `tests/` to comply with `black`/`flake8` style rules; no functional changes except correcting a `str is not ""` identity comparison to `!=` in `tests/unit/test_tool_list_repositories.py` (`4f011b8`)
+- Update ADR-00006's Consequences section to reference ADR-00030 instead of the standalone data-loss spec document (`5de2946`)
+
+### Fixed
+- Make `run_index_pipeline()` leave the existing collection intact on partial embedding failures by deferring collection creation and `upsert` until every chunk embeds successfully; previously a mid-run embedding failure could destroy previously indexed data (`e70a5a3`)
+
+---
+
 ## [1.3.1] - 2026-09-21
 
 ### Changed
@@ -138,6 +158,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/DarkMatterProductions/mcp-project-context-server/compare/1.1.0...HEAD
+[Unreleased]: https://github.com/DarkMatterProductions/mcp-project-context-server/compare/2.0.0...HEAD
+[2.0.0]: https://github.com/DarkMatterProductions/mcp-project-context-server/compare/1.3.1...2.0.0
 [1.1.0]: https://github.com/DarkMatterProductions/mcp-project-context-server/compare/cca6114...1.1.0
 
