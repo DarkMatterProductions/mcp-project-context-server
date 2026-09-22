@@ -176,3 +176,4 @@ class VoyageEmbeddingProvider(EmbeddingProvider):
             except Exception as exc:
                 self._log_failure_headers(exc)
                 raise EmbeddingError(f"Voyage AI embedding failed (model={self._model}): {exc}") from exc
+        return []

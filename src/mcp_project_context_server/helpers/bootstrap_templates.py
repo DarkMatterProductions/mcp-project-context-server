@@ -59,8 +59,8 @@ BOOTSTRAP_TARGETS: dict[str, list[BootstrapQuestion]] = {
 }
 
 
-def get_questions(target: str) -> list[BootstrapQuestion] | None:
-    return BOOTSTRAP_TARGETS.get(target)
+def get_questions(target: str) -> list[BootstrapQuestion]:
+    return BOOTSTRAP_TARGETS.get(target, [])
 
 
 def render_project_md(name: str, sections: dict[str, str], questions: list[BootstrapQuestion] | None = None) -> str:
