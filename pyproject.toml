@@ -86,11 +86,6 @@ testsuite = [
     "pytest-benchmark>=4.0.0",
 ]
 
-[tool.setuptools_scm]
-version_scheme = "guess-next-dev"
-local_scheme = "node-and-date"
-#tag_regex = '^(?P<version>\d+\.\d+\.\d+[.dev\d+]*$'
-
 [project.scripts]
 project-context-server = "mcp_project_context_server.server:run"
 
@@ -105,9 +100,17 @@ Changelog = "https://github.com/DarkMatterProductions/mcp-project-context-server
 requires = ["setuptools>=64", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
+
+# ------------------------------------------
+# setuptools & setuptools-scm Configuration
+# ------------------------------------------
 [tool.setuptools-scm]
 write_to = "src/mcp_project_context_server/_version.py"
 
+[tool.setuptools_scm]
+version_scheme = "guess-next-dev"
+local_scheme = "node-and-date"
+#tag_regex = '^(?P<version>\d+\.\d+\.\d+[.dev\d+]*$'
 
 [tool.setuptools.packages.find]
 where = ["src"]  # Look for packages in src/
@@ -118,6 +121,9 @@ where = ["src"]  # Look for packages in src/
 [tool.setuptools.package-data]
 mcp_project_context_server = ["templates/*.md"]
 
+# ------------------------------------------
+# pytest Configuration
+# ------------------------------------------
 [tool.pytest.ini_options]
 pythonpath = [
     "src"
@@ -131,6 +137,68 @@ markers = [
     "external_services: marks tests that require ChromaDB and an embedding provider (e.g. Ollama). Skip with: -m 'not external_services'",
 ]
 
+# ------------------------------------------
+# Tox Configuration
+# ------------------------------------------
+
+[tool.tox]
+env_list = ["isort", "py311", "py312", "py313", "py314"]
+skip_missing_interpreters = true
+requires = [
+    "tox>=4.53.0",
+    "virtualenv>20.2",
+]
+
+[tool.tox.env_run_base]
+allowlist_externals = ["pytest", "black", "mypy", "flake8"]
+dependency_groups = ["testsuite"]
+commands = [["pytest", "--cov=mcp_project_context_server", "-vv", "--cov-report=xml:build/reports/coverage.xml", "--junitxml=build/reports/junit.xml", "--basetemp={env_tmp_dir}", "{posargs:tests/unit}"]]
+
+[tool.tox.env_run_base.set_env]
+PYTHONHOME = ""
+PYTHONPATH = ""
+PYTHONUSERBASE = ""
+PYTHONNOUSERSITE = "1"
+
+[tool.tox.env.integration]
+base_python = "python3.11"
+commands = [["pytest", "-vv", "--junitxml=build/reports/junit-integration.xml", "--basetemp={env_tmp_dir}", "tests/integration"]]
+
+[tool.tox.env.py311]
+base_python = "python3.11"
+
+[tool.tox.env.py311ollama]
+base_python = "python3.11"
+extras = "ollama"
+
+[tool.tox.env.py312]
+base_python = "python3.12"
+
+[tool.tox.env.py313]
+base_python = "python3.13"
+
+[tool.tox.env.py314]
+base_python = "python3.14"
+
+[tool.tox.env.black]
+deps = ["black>=26.3.1"]
+commands = [["black", "--check", "src", "tests"]]
+
+[tool.tox.env.isort]
+deps = ["isort>=8.0.1"]
+commands = [["isort", "--check-only", "src", "tests"]]
+
+[tool.tox.env.flake8]
+deps = ["flake8>=7.3.0", "flake8-pyproject>=1.2.4"]
+commands = [["flake8", "src", "tests"]]
+
+[tool.tox.env.typing]
+deps = ["mypy>=1.20.1", "types-requests", "types-toml", "types-pyyaml"]
+commands = [["mypy", "src"]]
+
+# ------------------------------------------
+# black Configuration
+# ------------------------------------------
 [tool.black]
 line-length = 120
 target-version = [
@@ -146,6 +214,9 @@ exclude = '''
 )/
 '''
 
+# ------------------------------------------
+# flake8 Configuration
+# ------------------------------------------
 [tool.flake8]
 plugins = "flake8"
 max-line-length = 120
@@ -187,6 +258,9 @@ exclude = [
 # W503: Line break before binary operator
 # W504: line break after binary operator
 
+# ------------------------------------------
+# isort Configuration
+# ------------------------------------------
 [tool.isort]
 profile = "black"
 line_length = 120
@@ -207,6 +281,9 @@ known_third_party = [
     "google-auth"
 ]
 
+# ------------------------------------------
+# mypy Configuration
+# ------------------------------------------
 [tool.mypy]
 mypy_path = ["src", "src/python"]
 files = ["src", "src/python"]
@@ -219,6 +296,9 @@ exclude = [
     ".*.egg-info/",
 ]
 
+# ------------------------------------------
+# Coverage Configuration
+# ------------------------------------------
 [tool.coverage.run]
 branch = true
 source =["mcp_project_context_server"]
