@@ -142,7 +142,7 @@ markers = [
 # ------------------------------------------
 
 [tool.tox]
-env_list = ["isort", "py311", "py312", "py313", "py314"]
+env_list = ["isort", "black", "typing", "flake8", "311", "312", "313", "314"]
 skip_missing_interpreters = true
 requires = [
     "tox>=4.53.0",
@@ -152,7 +152,7 @@ requires = [
 [tool.tox.env_run_base]
 allowlist_externals = ["pytest", "black", "mypy", "flake8"]
 dependency_groups = ["testsuite"]
-commands = [["pytest", "--cov=mcp_project_context_server", "-vv", "--cov-report=xml:build/reports/coverage.xml", "--junitxml=build/reports/junit.xml", "--basetemp={env_tmp_dir}", "{posargs:tests/unit}"]]
+commands = [["pytest", "--cov=mcp_project_context_server", "-vv", "--cov-report=xml:build/reports/coverage-{env:TOX_ENV_NAME}.xml", "--junitxml=build/reports/junit-{env:TOX_ENV_NAME}.xml", "{posargs:tests/unit}"]]
 
 [tool.tox.env_run_base.set_env]
 PYTHONHOME = ""
@@ -162,23 +162,23 @@ PYTHONNOUSERSITE = "1"
 
 [tool.tox.env.integration]
 base_python = "python3.11"
-commands = [["pytest", "-vv", "--junitxml=build/reports/junit-integration.xml", "--basetemp={env_tmp_dir}", "tests/integration"]]
+commands = [["pytest", "-vv", "--junitxml=build/reports/junit-integration-{env:TOX_ENV_NAME}.xml", "tests/integration"]]
 
-[tool.tox.env.py311]
-base_python = "python3.11"
+[tool.tox.env.311]
+base_python = ["python3.11"]
 
-[tool.tox.env.py311ollama]
-base_python = "python3.11"
-extras = "ollama"
+[tool.tox.env.311-ollama]
+base_python = ["python3.11"]
+extras = ["ollama"]
 
-[tool.tox.env.py312]
-base_python = "python3.12"
+[tool.tox.env.312]
+base_python = ["python3.12"]
 
-[tool.tox.env.py313]
-base_python = "python3.13"
+[tool.tox.env.313]
+base_python = ["python3.13"]
 
-[tool.tox.env.py314]
-base_python = "python3.14"
+[tool.tox.env.314]
+base_python = ["python3.14"]
 
 [tool.tox.env.black]
 deps = ["black>=26.3.1"]
@@ -300,5 +300,6 @@ exclude = [
 # Coverage Configuration
 # ------------------------------------------
 [tool.coverage.run]
+parallel = true
 branch = true
 source =["mcp_project_context_server"]

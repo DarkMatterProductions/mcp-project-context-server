@@ -26,7 +26,7 @@ class TestGetBootstrapQuestions:
         result = await handle({"target": "nonexistent"})
 
         text = result[0].text
-        assert "Unknown bootstrap target 'nonexistent'" in text
+        assert text == "Unknown bootstrap target 'nonexistent'. Known targets: project."
         assert "project" in text
 
 

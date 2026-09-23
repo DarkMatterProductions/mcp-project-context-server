@@ -32,7 +32,7 @@ async def handle(arguments: dict) -> list[types.TextContent]:
     else:
         questions = get_questions(target)
 
-    if questions is None:
+    if len(questions) == 0:
         known = ", ".join(sorted(BOOTSTRAP_TARGETS)) or "none"
         return [types.TextContent(type="text", text=f"Unknown bootstrap target '{target}'. Known targets: {known}.")]
 

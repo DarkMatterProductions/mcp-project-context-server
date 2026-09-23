@@ -23,6 +23,7 @@ AGENT.md
 # Virtual environment
 .venv/
 venv/
+.tox/
 *.pyc
 __pycache__/
 .env*
