@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [2.0.0] - 2026-09-21
+## [2.0.0] - 2026-09-22
 
 ### Breaking Changes
 - Replace drop-and-recreate indexing with incremental upsert-then-prune indexing in `run_index_pipeline()`: chunk IDs are now content-addressed (`f"{filename}::{section}::{segment}-{section_sha512}"`) instead of positional, so re-indexing skips unchanged chunks and only embeds or removes what actually changed (`046c03f`)
@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replace inline regex literals in commit-validation tooling with shared `TYPE_COPE_REGEX`/`MERGE_REGEX` constants in `.github/tools/regex_patterns.py`, and guard `key_id_lookup` against unmatched commit-header regexes to avoid raising on non-conforming subjects (`821e65e`)
 - Reformat source and test files under `src/` and `tests/` to comply with `black`/`flake8` style rules; no functional changes except correcting a `str is not ""` identity comparison to `!=` in `tests/unit/test_tool_list_repositories.py` (`4f011b8`)
 - Update ADR-00006's Consequences section to reference ADR-00030 instead of the standalone data-loss spec document (`5de2946`)
+- Migrate `tox.ini` configuration into `pyproject.toml` under `[tool.tox]`, consolidating Black/Flake8/Isort settings into their own `[tool.<tool>]` sections with no behavioral change (`51f3c36`)
+- Standardize Tox environment names to pair numeric Python versions (e.g. `311`, `312`) with their tool (e.g. `black`, `flake8`), append the environment name to coverage report output, and enable parallel coverage runs (`20c3701`)
+- Return an empty list instead of `None` from `get_questions` for nonexistent bootstrap targets, updating dependent tests and error messages accordingly (`20c3701`)
+- Tighten linting/formatting rules in `pyproject.toml` (extended Black-compatible ignores), adjust `sections.py` spacing, and replace an optional `None` default with an empty list in `bootstrap_templates.py` (`d780444`)
 
 ### Fixed
 - Make `run_index_pipeline()` leave the existing collection intact on partial embedding failures by deferring collection creation and `upsert` until every chunk embeds successfully; previously a mid-run embedding failure could destroy previously indexed data (`e70a5a3`)
