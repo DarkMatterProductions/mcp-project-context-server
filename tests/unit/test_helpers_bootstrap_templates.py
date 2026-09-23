@@ -16,7 +16,7 @@ class TestGetQuestions:
         assert get_questions("project") == PROJECT_QUESTIONS
 
     def test_unknown_target_returns_none(self):
-        assert get_questions("nonexistent") is None
+        assert get_questions("nonexistent") == []
 
     def test_registry_contains_project(self):
         assert "project" in BOOTSTRAP_TARGETS
